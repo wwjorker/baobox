@@ -1,5 +1,6 @@
 pub mod err;
 pub mod image_ops;
+pub mod ocr;
 pub mod paths;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -14,6 +15,9 @@ pub fn run() {
             image_ops::img_resize,
             image_ops::img_strip_exif,
             image_ops::stat_files,
+            ocr::ocr_image,
+            ocr::ocr_batch,
+            ocr::ocr_languages,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

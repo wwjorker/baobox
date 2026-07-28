@@ -478,6 +478,35 @@
   color: var(--dim);
   padding-top: 2px;
 }
+/* 文本类工具（OCR）的结果：产物是文字，要能直接读和复制 */
+.textout {
+  grid-column: 1 / -1;
+  position: relative;
+  margin: 6px 0 2px;
+  border: var(--b2);
+  background: var(--bg-soft);
+}
+.textout__body {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 190px;
+  overflow: auto;
+  font-family: var(--f-body);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  /* 识别结果是要拿去用的，必须能选中 */
+  user-select: text;
+  cursor: text;
+}
+.textout__copy {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--paper);
+}
+
 /* 失败必须给出原因和下一步，不能只标个红（风险 19） */
 .row__error {
   grid-column: 1 / -1;

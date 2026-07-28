@@ -40,7 +40,10 @@ const enUS: typeof zhCN = {
     },
     ocr: {
       image: { name: "Extract text from image", desc: "Uses the built-in Windows engine. Offline and free." },
-      batch: { name: "Batch OCR", desc: "Read a whole folder and export the text." },
+      batch: {
+        name: "Batch OCR to one file",
+        desc: "Read a stack of scans in one pass and merge them into a single transcript with filename headings.",
+      },
       screen: { name: "Screen capture OCR", desc: "Global hotkey, drag over any part of the screen, get the text." },
     },
     pdf: {
@@ -78,6 +81,12 @@ const enUS: typeof zhCN = {
     summary: "{ok} succeeded, {fail} failed · {saved} saved in total",
     summaryClean: "All {ok} succeeded · {saved} saved in total",
     grew: "didn't get smaller",
+    copy: "Copy",
+    copied: "Copied",
+    copyAll: "Copy all text",
+    noText: "No text found",
+    langs: "OCR languages: {list}",
+    langsNone: "No OCR language pack installed",
   },
 
   opt: {
@@ -95,6 +104,8 @@ const enUS: typeof zhCN = {
     redactBlackout: "Black out",
     dpi: "Resolution",
     password: "Password",
+    ocrLang: "Recognition language",
+    ocrLangAuto: "Auto",
   },
 
   status: {
@@ -120,6 +131,8 @@ const enUS: typeof zhCN = {
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",
     notFound: "Can't find this file — it may have been moved or deleted.",
+    ocrNoLanguage:
+      "No OCR language pack is installed. Add the Optical Character Recognition feature for your language under Settings → Time & language → Language & region, then try again.",
     unknown: "Failed: {detail}",
   },
 

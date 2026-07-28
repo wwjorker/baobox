@@ -40,7 +40,10 @@ export default {
     },
     ocr: {
       image: { name: "图片提取文字", desc: "用 Windows 内置引擎识别，离线、免费。" },
-      batch: { name: "批量 OCR", desc: "一次识别整个文件夹，导出为文本。" },
+      batch: {
+        name: "批量 OCR 合并导出",
+        desc: "一叠扫描件一次识别完，合并成一份带文件名标题的文字稿。",
+      },
       screen: { name: "截图取字", desc: "全局热键框选屏幕任意区域，直接取字。" },
     },
     pdf: {
@@ -78,6 +81,12 @@ export default {
     summary: "{ok} 个成功，{fail} 个失败 · 共省下 {saved}",
     summaryClean: "{ok} 个全部成功 · 共省下 {saved}",
     grew: "体积没有变小",
+    copy: "复制",
+    copied: "已复制",
+    copyAll: "复制全部文字",
+    noText: "没有识别到文字",
+    langs: "OCR 语言：{list}",
+    langsNone: "系统未安装 OCR 语言包",
   },
 
   opt: {
@@ -95,6 +104,8 @@ export default {
     redactBlackout: "涂黑",
     dpi: "分辨率",
     password: "密码",
+    ocrLang: "识别语言",
+    ocrLangAuto: "自动",
   },
 
   status: {
@@ -121,6 +132,8 @@ export default {
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
     notFound: "找不到这个文件，它可能已被移动或删除。",
+    ocrNoLanguage:
+      "系统里没有可用的 OCR 语言包。到「设置 → 时间和语言 → 语言和区域」里给你的语言添加「光学字符识别」功能后重试。",
     unknown: "处理失败：{detail}",
   },
 

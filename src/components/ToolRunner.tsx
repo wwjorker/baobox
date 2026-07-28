@@ -33,6 +33,8 @@ interface Outcome {
   out_bytes: number;
   out_path: string | null;
   note: string | null;
+  /** 仅文本类工具（OCR 等）会有 */
+  text?: string | null;
   error: AppErr | null;
 }
 
@@ -70,8 +72,29 @@ export function ToolRunner({
   const outputDirRef = useRef<string | null>(null);
 
   const notReady = tool.status !== "ready";
+  const isText = tool.output === "text";
   const accepts = tool.accepts.length ? tool.accepts : ["*"];
   const acceptsLabel = accepts.map((e) => e.toUpperCase()).join(" · ");
+  const [langs, setLangs] = useState<string[] | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  // OCR 依赖系统语言包，装没装要提前说清楚，别等识别出空结果让用户纳闷
+  useEffect(() => {
+    if (tool.pillar !== "ocr") return;
+    invoke<string[]>("ocr_languages")
+      .then(setLangs)
+      .catch(() => setLangs([]));
+  }, [tool.pillar]);
+
+  const copy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 1600);
+    } catch {
+      /* 剪贴板被拒时静默失败，不弹错误打断用户 */
+    }
+  };
 
   const addPaths = useCallback(
     async (paths: string[]) => {
@@ -192,6 +215,19 @@ export function ToolRunner({
         </div>
       )}
 
+      {tool.pillar === "ocr" && langs !== null && (
+        <div className={langs.length === 0 ? "notice" : "lede"}>
+          {langs.length === 0 ? (
+            <>
+              <span className="notice__mark">!</span>
+              <span>{t("err.ocrNoLanguage")}</span>
+            </>
+          ) : (
+            t("run.langs", { list: langs.join(" · ") })
+          )}
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="empty">
           <div className="empty__box">＋</div>
@@ -223,6 +259,7 @@ export function ToolRunner({
                   key={o.id}
                   def={o}
                   value={values[o.id]}
+                  dynamic={o.kind === "dynamic-choice" ? (langs ?? []) : undefined}
                   onChange={(v) => set(o.id, v)}
                 />
               ))}
@@ -259,6 +296,21 @@ export function ToolRunner({
                           : "×"}
                   </span>
                   {o?.note && <span className="row__note">{o.note}</span>}
+                  {isText && o?.ok && (
+                    <div className="textout">
+                      <pre className="textout__body">
+                        {o.text?.trim() || t("run.noText")}
+                      </pre>
+                      {o.text?.trim() && (
+                        <button
+                          className="chip textout__copy"
+                          onClick={() => copy(o.text!, r.path)}
+                        >
+                          {copied === r.path ? t("run.copied") : t("run.copy")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {/* 后端错误优先；没跑过时才用前端预检的结果，避免同一条错误显示两遍 */}
                   {(o?.error || r.missing) && (
                     <span className="row__error">
@@ -276,6 +328,22 @@ export function ToolRunner({
             <button className="go" onClick={run} disabled={notReady || running}>
               {running ? t("run.running") : summary ? t("run.done") : t("run.start")}
             </button>
+            {isText && summary && !running && (
+              <button
+                className="chip"
+                onClick={() =>
+                  copy(
+                    rows
+                      .filter((r) => r.outcome?.text?.trim())
+                      .map((r) => r.outcome!.text!.trim())
+                      .join("\n\n"),
+                    "__all__",
+                  )
+                }
+              >
+                {copied === "__all__" ? t("run.copied") : t("run.copyAll")}
+              </button>
+            )}
             {summary && !running && outputDirRef.current && (
               <button
                 className="chip"
@@ -299,14 +367,40 @@ export function ToolRunner({
 function OptionControl({
   def,
   value,
+  dynamic,
   onChange,
 }: {
   def: OptionDef;
   value: string | number | boolean;
+  /** 运行时探测出来的可选项，如系统已装的 OCR 语言 */
+  dynamic?: string[];
   onChange: (v: string | number | boolean) => void;
 }) {
   const { t } = useI18n();
   const label = t(def.label as never);
+
+  if (def.kind === "dynamic-choice") {
+    // 只装了一种语言时选择器毫无意义，直接不显示
+    if (!dynamic || dynamic.length < 2) return null;
+    return (
+      <div className="opt">
+        <span className="opt__label">{label}</span>
+        <button className="chip" aria-pressed={value === ""} onClick={() => onChange("")}>
+          {t("opt.ocrLangAuto")}
+        </button>
+        {dynamic.map((tag) => (
+          <button
+            key={tag}
+            className="chip"
+            aria-pressed={value === tag}
+            onClick={() => onChange(tag)}
+          >
+            {tag}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   if (def.kind === "number")
     return (

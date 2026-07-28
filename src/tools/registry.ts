@@ -32,7 +32,9 @@ export type OptionDef =
       def: string;
     }
   | { kind: "toggle"; id: string; label: string; def: boolean }
-  | { kind: "text"; id: string; label: string; def: string; placeholder?: string };
+  | { kind: "text"; id: string; label: string; def: string; placeholder?: string }
+  /** 选项来自运行时探测，比如系统装了哪些 OCR 语言包 */
+  | { kind: "dynamic-choice"; id: string; label: string; source: "ocrLanguages"; def: string };
 
 export interface ToolDef {
   /** 同时作为 i18n 查找键：tool.<id>.name / tool.<id>.desc */
@@ -46,6 +48,11 @@ export interface ToolDef {
   status: ToolStatus;
   /** 差异化卖点，界面上会打标 */
   highlight?: boolean;
+  /**
+   * 产物形态。多数工具是文件进文件出，但 OCR 这类的产物是文本，
+   * 用户要的是能直接看见和复制的内容，而不是一个待打开的文件。
+   */
+  output?: "file" | "text";
 }
 
 const IMG = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"];
@@ -162,11 +169,20 @@ export const TOOLS: ToolDef[] = [
     pillar: "ocr",
     accepts: IMG,
     command: "ocr_image",
-    status: "planned",
+    status: "ready",
     highlight: true,
-    options: [],
+    output: "text",
+    options: [{ kind: "dynamic-choice", id: "lang", label: "opt.ocrLang", source: "ocrLanguages", def: "" }],
   },
-  { id: "ocr.batch", pillar: "ocr", accepts: IMG, command: "ocr_batch", status: "planned", options: [] },
+  {
+    id: "ocr.batch",
+    pillar: "ocr",
+    accepts: IMG,
+    command: "ocr_batch",
+    status: "ready",
+    output: "text",
+    options: [{ kind: "dynamic-choice", id: "lang", label: "opt.ocrLang", source: "ocrLanguages", def: "" }],
+  },
   { id: "ocr.screen", pillar: "ocr", accepts: [], command: "ocr_screen", status: "planned", options: [] },
 
   // ------------------------------------------------------------ PDF（8）

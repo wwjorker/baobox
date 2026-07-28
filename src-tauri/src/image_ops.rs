@@ -1,4 +1,4 @@
-use crate::err::{AppError, AppResult};
+﻿use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
 use image::{DynamicImage, GenericImageView};
 use serde::Serialize;
@@ -367,8 +367,7 @@ fn write_out(src: &Path, fmt: OutFmt, data: &[u8]) -> AppResult<PathBuf> {
 
 // ============================================================ 命令
 
-#[tauri::command]
-pub fn img_compress_target(
+fn img_compress_target_blocking(
     app: AppHandle,
     paths: Vec<String>,
     target_kb: u32,
@@ -414,8 +413,7 @@ pub fn img_compress_target(
     })
 }
 
-#[tauri::command]
-pub fn img_compress(
+fn img_compress_blocking(
     app: AppHandle,
     paths: Vec<String>,
     quality: u8,
@@ -429,8 +427,7 @@ pub fn img_compress(
     })
 }
 
-#[tauri::command]
-pub fn img_convert(app: AppHandle, paths: Vec<String>, format: String) -> Vec<FileOutcome> {
+fn img_convert_blocking(app: AppHandle, paths: Vec<String>, format: String) -> Vec<FileOutcome> {
     let fmt = OutFmt::parse(&format);
     run_batch(&app, paths, move |src| {
         let img = load(src)?;
@@ -441,8 +438,7 @@ pub fn img_convert(app: AppHandle, paths: Vec<String>, format: String) -> Vec<Fi
     })
 }
 
-#[tauri::command]
-pub fn img_resize(app: AppHandle, paths: Vec<String>, long_edge: u32) -> Vec<FileOutcome> {
+fn img_resize_blocking(app: AppHandle, paths: Vec<String>, long_edge: u32) -> Vec<FileOutcome> {
     run_batch(&app, paths, move |src| {
         let img = load(src)?;
         let (w, h) = img.dimensions();
@@ -474,8 +470,7 @@ fn has_gps(bytes: &[u8]) -> bool {
         || exif.get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY).is_some()
 }
 
-#[tauri::command]
-pub fn img_strip_exif(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+fn img_strip_exif_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     run_batch(&app, paths, |src| {
         let bytes = std::fs::read(long_path(src))?;
         let had_gps = has_gps(&bytes);
@@ -508,4 +503,52 @@ pub fn img_strip_exif(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
         };
         Ok((dst, Some(note)))
     })
+}
+
+// ==================================================== 异步命令入口
+//
+// Tauri 的同步命令在主线程上执行，长任务会冻住整个窗口——
+// 界面停在「处理中…」，连进度事件都渲染不出来。所有耗时命令
+// 都必须是 async 并把实际工作交给 spawn_blocking。
+
+#[tauri::command]
+pub async fn img_compress_target(
+    app: AppHandle,
+    paths: Vec<String>,
+    target_kb: u32,
+    format: String,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        img_compress_target_blocking(app, paths, target_kb, format)
+    })
+    .await
+    .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn img_compress(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || img_compress_blocking(app, paths, quality))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn img_convert(app: AppHandle, paths: Vec<String>, format: String) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || img_convert_blocking(app, paths, format))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn img_resize(app: AppHandle, paths: Vec<String>, long_edge: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || img_resize_blocking(app, paths, long_edge))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn img_strip_exif(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || img_strip_exif_blocking(app, paths))
+        .await
+        .unwrap_or_default()
 }
