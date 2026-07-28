@@ -16,6 +16,20 @@ edition = "2021"
 name = "baobox_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# 开发构建体积控制：完整调试符号会让 target/ 膨胀到 5 GB 以上。
+# line-tables-only 保留崩溃时定位到具体行号的能力，去掉变量级调试信息，
+# 通常能砍掉一半以上体积。本机 F 盘空间紧张，这个取舍划算。
+[profile.dev]
+debug = "line-tables-only"
+
+# 发布构建：优先体积，符合「安装包尽量小」的产品定位
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

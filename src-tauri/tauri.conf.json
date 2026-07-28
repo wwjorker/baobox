@@ -20,7 +20,6 @@
       }
     ],
     "security": {
-      "_comment": "安全红线 5：零网络能力。不允许任何远程来源，connect-src 只留 Tauri 自身的 IPC 通道。",
       "csp": "default-src 'self'; img-src 'self' data: blob: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
