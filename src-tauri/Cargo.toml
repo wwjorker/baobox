@@ -1,0 +1,47 @@
+[package]
+name = "baobox"
+version = "0.1.0"
+description = "本地文件工具箱 — 不上传、无限制、不联网"
+authors = ["wwjorker"]
+license = "MIT"
+repository = "https://github.com/wwjorker/baobox"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "baobox_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ---- 阶段 0 高危技术验证依赖 ----
+# 风险 10：mozjpeg 需 C/汇编工具链，若编译失败则降级为纯 Rust 编码器
+mozjpeg = "0.10"
+# 风险 11：WinRT 系统 OCR 引擎（零体积、纯离线）
+windows = { version = "0.58", features = [
+  "Media_Ocr",
+  "Graphics_Imaging",
+  "Storage",
+  "Storage_Streams",
+  "Globalization",
+  "Foundation",
+  "Foundation_Collections",
+] }
+# 风险 2：PDF 结构操作 + 中文字体子集化嵌入
+lopdf = "0.34"
+ttf-parser = "0.25"
+# 图片编解码主力
+image = "0.25"
+oxipng = { version = "9", default-features = false, features = ["parallel"] }
+
