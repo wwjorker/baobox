@@ -1,51 +1,101 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect, useState } from "react";
+import { useI18n } from "./i18n";
+import { TitleBar } from "./components/TitleBar";
+import { Sidebar } from "./components/Sidebar";
+import { CommandPalette } from "./components/CommandPalette";
+import { ToolRunner } from "./components/ToolRunner";
+import { findTool, toolsOf, type Pillar } from "./tools/registry";
+import "./styles/app.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export default function App() {
+  const { t } = useI18n();
+  const [pillar, setPillar] = useState<Pillar>("image");
+  const [toolId, setToolId] = useState<string | null>(null);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const tool = toolId ? findTool(toolId) : undefined;
+
+  const openTool = (id: string) => {
+    const def = findTool(id);
+    if (!def) return;
+    setPillar(def.pillar);
+    setToolId(id);
+    setRecent((prev) => [id, ...prev.filter((x) => x !== id)].slice(0, 3));
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+      if (e.key === "Escape") setPaletteOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="shell">
+      <TitleBar onSearch={() => setPaletteOpen(true)} />
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+      <div className="body">
+        <Sidebar
+          active={pillar}
+          recent={recent}
+          onPillar={(p) => {
+            setPillar(p);
+            setToolId(null);
+          }}
+          onTool={openTool}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+
+        <main className="main">
+          {tool ? (
+            <ToolRunner key={tool.id} tool={tool} />
+          ) : (
+            <>
+              <div className="crumb">
+                <b>{t(`pillar.${pillar}` as never)}</b>
+              </div>
+              <h1 className="h1">{t(`pillar.${pillar}` as never)}</h1>
+              <p className="lede">{t("app.tagline")}</p>
+
+              <div className="grid">
+                {toolsOf(pillar).map((tl) => (
+                  <button key={tl.id} className="card" onClick={() => openTool(tl.id)}>
+                    <span className="card__name">
+                      {t(`tool.${tl.id}.name` as never)}
+                      {tl.highlight && (
+                        <span className="badge is-highlight">{t("status.highlight")}</span>
+                      )}
+                    </span>
+                    <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+
+      <footer className="statusbar">
+        <span className="statusbar__dot" />
+        <span>{t("app.offline")}</span>
+        <span className="statusbar__push">
+          <span className="savedplate">
+            <span className="savedplate__label">{t("app.saved")}</span>
+            <span className="savedplate__value">0 MB</span>
+          </span>
+        </span>
+      </footer>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onPick={openTool}
+      />
+    </div>
   );
 }
-
-export default App;

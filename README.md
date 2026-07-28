@@ -77,6 +77,20 @@ The riskiest parts were tested before writing any feature code:
 | Chinese fonts must be embedded in PDFs, but the font file is 18.8 MB and not redistributable | ✅ Subsetting works — 30 glyphs ≈ 4.5 KB of outline data |
 | Office COM for PDF→Word | ⚠️ **Blocked.** Word's PDF-reflow dialog hangs headless calls, and suppressing it requires writing to the user's Word registry settings. Deferred to a later opt-in feature. |
 
+## Size
+
+Staying small is the whole point, so it gets measured rather than hoped for:
+
+| | Size |
+|---|---|
+| Release binary today — includes mozjpeg, image, oxipng, lopdf, ttf-parser and the OCR bindings | **3.0 MB** |
+| Frontend assets | ~0.5 MB |
+| `pdfium.dll`, once PDF rendering lands | ~11 MB |
+| **Projected install footprint** | **≈ 15 MB** |
+
+For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of the
+same feature set would start around 150 MB.
+
 ## Development
 
 ```bash

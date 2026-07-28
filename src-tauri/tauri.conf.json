@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Baobox",
   "version": "0.1.0",
-  "identifier": "com.baobox.app",
+  "identifier": "io.github.wwjorker.baobox",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -16,7 +16,9 @@
         "width": 1080,
         "height": 720,
         "minWidth": 900,
-        "minHeight": 600
+        "minHeight": 600,
+        "center": true,
+        "decorations": false
       }
     ],
     "security": {

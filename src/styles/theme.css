@@ -1,0 +1,106 @@
+/**
+ * Baobox 设计令牌 —— 粗野贴纸风
+ *
+ * 核心规则（来自视觉打磨稿，不要随意破坏）：
+ *  · 黄色是「框」不是「底」：内容一律落在白纸上，黄色只出现在侧栏、状态条和边缘
+ *  · 边框分三级：主元素 3px + 硬投影 / 次级 2px / 行分隔 1px
+ *  · 投影是硬的（offset，无模糊），不是柔和阴影
+ *  · 圆角极小（3px），不用大圆角
+ */
+
+:root {
+  /* 底色与纸面 */
+  --bg: #ffe44d;
+  --bg-soft: #ffef8c;
+  --paper: #ffffff;
+  --paper-hover: #fffbe6;
+
+  /* 文字 */
+  --ink: #141109;
+  --dim: #6e6244;
+
+  /* 功能色 */
+  --red: #ff3b18;
+  --blue: #1467c8;
+  --green: #0f9b54;
+  --bad: #d3132b;
+
+  /* 三级边框 */
+  --b1: 3px solid var(--ink);
+  --b2: 2px solid var(--ink);
+  --b3: 1px solid rgba(20, 17, 9, 0.16);
+
+  /* 硬投影 */
+  --sh: 5px 5px 0 var(--ink);
+  --sh-lg: 8px 8px 0 var(--ink);
+  --sh-press: 10px 10px 0 var(--ink);
+
+  --rad: 3px;
+
+  /* 字体：不打包 webfont，直接用 Windows 自带的。
+     Arial Black 撑起粗野风的标题，微软雅黑负责中文。 */
+  --f-display: "Arial Black", "Segoe UI Black", "Microsoft YaHei", sans-serif;
+  --f-body: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  --f-mono: Consolas, "Cascadia Mono", monospace;
+
+  /* 弹簧曲线，用于所有交互反馈 */
+  --spring: cubic-bezier(0.34, 1.7, 0.5, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--f-body);
+  color: var(--ink);
+  background: var(--bg);
+  /* 桌面应用不该有网页那种文字选中和拖拽行为 */
+  user-select: none;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 键盘焦点必须始终可见 */
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* 尊重系统的「减少动态效果」设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 滚动条也要符合这套语言，默认那个圆润的灰条会破坏气质 */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-soft);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border: 3px solid var(--bg-soft);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--red);
+}

@@ -1,0 +1,124 @@
+/** 简体中文文案。key 的层级与界面结构对应，新增功能时就近插入。 */
+export default {
+  app: {
+    name: "百宝箱",
+    tagline: "本地文件工作台",
+    offline: "全程离线 · 未发出任何网络请求",
+    saved: "已省下",
+    search: "搜索 {count} 个工具",
+    minimize: "最小化",
+    maximize: "最大化",
+    close: "关闭",
+  },
+
+  pillar: {
+    image: "图片",
+    ocr: "OCR 识字",
+    pdf: "PDF",
+    file: "文件",
+    recent: "最近",
+    tools: "工具",
+  },
+
+  // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），
+  // 而 t() 是按点号逐级下钻的，所以字典结构必须跟 id 的分段一致。
+  tool: {
+    image: {
+      "compress-target": {
+        name: "压到指定体积以内",
+        desc: "网站限制上传 500KB？拖进来，自动逼近目标体积，画质掉得最少。原图一律不动。",
+      },
+      compress: { name: "批量压缩", desc: "一次压一整个文件夹，不限数量、不限体积。" },
+      convert: { name: "格式转换", desc: "JPG / PNG / WebP 之间批量互转。" },
+      resize: { name: "批量缩放", desc: "按百分比、按长边或按精确尺寸调整。" },
+      "strip-exif": {
+        name: "抹除 EXIF 隐私信息",
+        desc: "照片里藏着拍摄地点的 GPS 坐标和设备型号。发出去之前清掉。",
+      },
+      watermark: { name: "添加水印", desc: "文字或图片水印，位置与透明度可调。" },
+      redact: { name: "打码遮挡", desc: "给身份证号、手机号打马赛克或涂黑。" },
+    },
+    ocr: {
+      image: { name: "图片提取文字", desc: "用 Windows 内置引擎识别，离线、免费。" },
+      batch: { name: "批量 OCR", desc: "一次识别整个文件夹，导出为文本。" },
+      screen: { name: "截图取字", desc: "全局热键框选屏幕任意区域，直接取字。" },
+    },
+    pdf: {
+      merge: { name: "合并", desc: "多个 PDF 拖进来排好序，合成一份。" },
+      split: { name: "拆分 / 提取 / 删页", desc: "页面缩略图直接勾选，所见即所得。" },
+      rotate: { name: "旋转与重排", desc: "调整页面方向和先后顺序。" },
+      compress: { name: "压缩", desc: "重新压缩内嵌图片，显示前后体积对比。" },
+      "to-image": { name: "PDF 转图片", desc: "导出为 PNG 或 JPG，可选 DPI。" },
+      "from-image": { name: "图片转 PDF", desc: "多张图片合成一份 PDF。" },
+      encrypt: { name: "加密 / 解密", desc: "设置打开密码，或移除已知密码。" },
+      stamp: { name: "页码与水印", desc: "添加页码、文字水印或图片水印。" },
+    },
+    file: {
+      rename: { name: "批量重命名", desc: "规则可叠加，实时预览，改错了能一键撤销。" },
+      dedupe: { name: "重复文件查找", desc: "按内容精确比对，不只看文件名。" },
+    },
+  },
+
+  run: {
+    dropHere: "把文件拖到这里",
+    dropHint: "或点击选择 · 不限数量、不限体积",
+    ready: "{count} 个文件已就绪 · 共 {size}",
+    addMore: "{count} 个已就绪 · {size} · 点此再添加",
+    start: "开始处理",
+    running: "处理中…",
+    done: "完成 ✓ 再来一次",
+    cancel: "取消",
+    waiting: "等待",
+    failed: "失败",
+    emptyTitle: "把文件扔进来",
+    emptyHint: "支持 {formats}，一次多少张都行，不限体积。",
+    outputTo: "结果输出到 {dir}，原文件不会被修改。",
+  },
+
+  opt: {
+    targetSize: "每张不超过",
+    format: "输出格式",
+    formatKeep: "原格式",
+    quality: "画质",
+    longEdge: "长边",
+    keepOrientation: "保留方向信息",
+    watermarkText: "水印文字",
+    watermarkPlaceholder: "例如：仅供内部使用",
+    opacity: "透明度",
+    redactMode: "遮挡方式",
+    redactPixelate: "马赛克",
+    redactBlackout: "涂黑",
+    dpi: "分辨率",
+    password: "密码",
+  },
+
+  status: {
+    ready: "可用",
+    wip: "开发中",
+    planned: "尚未实现",
+    plannedHint: "这个工具还没做出来。当前版本处于骨架阶段，功能会陆续补上。",
+    highlight: "特色",
+  },
+
+  result: {
+    from: "原体积",
+    to: "新体积",
+    saved: "省下",
+    skipReason: "跳过并继续",
+    showInFolder: "在文件夹中显示",
+  },
+
+  err: {
+    // 错误必须说人话并给出下一步，不能直接抛技术堆栈（风险 19）
+    decode: "无法读取这个文件，它可能已损坏或不是真正的 {format} 文件。",
+    encrypted: "这份 PDF 有密码保护。请先用「加密 / 解密」工具移除密码。",
+    tooLarge: "文件超出可处理范围。请先拆分后再试。",
+    noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
+    pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
+    unknown: "处理失败：{detail}",
+  },
+
+  lang: { switch: "English", name: "简体中文" },
+};
+// 刻意不加 `as const`：那会把每条文案变成字面量类型，其他语言就无法赋值了。
+// 键名依然是字面量，所以 t() 的自动补全和拼写检查照常生效。
