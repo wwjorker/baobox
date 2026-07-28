@@ -72,7 +72,12 @@ const enUS: typeof zhCN = {
     failed: "Failed",
     emptyTitle: "Drop your files in",
     emptyHint: "Supports {formats}. Any number of files, any size.",
-    outputTo: "Results go to {dir}. Your originals are left untouched.",
+    outputTo: "Results go to a {dir} folder next to your files. Originals are left untouched.",
+    pick: "Choose files",
+    openOutput: "Open output folder",
+    summary: "{ok} succeeded, {fail} failed · {saved} saved in total",
+    summaryClean: "All {ok} succeeded · {saved} saved in total",
+    grew: "didn't get smaller",
   },
 
   opt: {
@@ -114,6 +119,7 @@ const enUS: typeof zhCN = {
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",
+    notFound: "Can't find this file — it may have been moved or deleted.",
     unknown: "Failed: {detail}",
   },
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 工具注册表
  *
  * 每个工具用一份声明式描述定义清楚：属于哪根支柱、收什么文件、
@@ -58,7 +58,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_compress_target",
-    status: "planned",
+    status: "ready",
     highlight: true,
     options: [
       { kind: "number", id: "targetKb", label: "opt.targetSize", min: 50, max: 5000, step: 50, def: 500, unit: "KB" },
@@ -80,7 +80,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_compress",
-    status: "planned",
+    status: "ready",
     options: [
       { kind: "number", id: "quality", label: "opt.quality", min: 1, max: 100, step: 1, def: 82 },
     ],
@@ -90,7 +90,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_convert",
-    status: "planned",
+    status: "ready",
     options: [
       {
         kind: "choice",
@@ -110,7 +110,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_resize",
-    status: "planned",
+    status: "ready",
     options: [
       { kind: "number", id: "longEdge", label: "opt.longEdge", min: 100, max: 8000, step: 100, def: 1920, unit: "px" },
     ],
@@ -120,7 +120,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_strip_exif",
-    status: "planned",
+    status: "ready",
     highlight: true,
     options: [{ kind: "toggle", id: "keepOrientation", label: "opt.keepOrientation", def: true }],
   },

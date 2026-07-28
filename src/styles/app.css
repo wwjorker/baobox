@@ -471,6 +471,13 @@
   color: #fff;
   border-color: var(--ink);
 }
+.row__note {
+  grid-column: 2 / -1;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  padding-top: 2px;
+}
 /* 失败必须给出原因和下一步，不能只标个红（风险 19） */
 .row__error {
   grid-column: 1 / -1;

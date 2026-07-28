@@ -2,11 +2,13 @@
 
 **A local file toolkit for Windows. No uploads, no limits, no network.**
 
-> ## 🚧 Work in progress — not usable yet
+> ## 🚧 Work in progress — no release yet
 >
-> There is **no release to download**. The project was scaffolded in July 2026 and is
-> in the technical-validation stage. Everything under "Planned features" is planned,
-> **not built**. Star or watch if you want to hear when v1.0 ships.
+> There is **no build to download**. Five image tools work end to end; everything
+> else is still a stub and says so in the app. Star or watch to hear when v1.0 ships.
+>
+> **Working today:** compress to a target size · batch compress · format conversion ·
+> batch resize · strip EXIF
 
 ---
 
@@ -90,6 +92,26 @@ Staying small is the whole point, so it gets measured rather than hoped for:
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of the
 same feature set would start around 150 MB.
+
+## Measured: compress to a target size
+
+Hitting an exact size cap is the thing TinyPNG and friends can't do — they give you
+quality presets, while upload forms enforce byte limits. Baobox binary-searches the
+quality parameter and falls back to downscaling when quality alone can't get there.
+
+Four synthetic photos (dense noise, deliberately hard to compress), WebP output:
+
+| Target | Files under target | Slowest file |
+|---|---|---|
+| ≤ 500 KB | 4 / 4 | 4.7 s (4000×3000) |
+| ≤ 200 KB | 4 / 4 | 3.4 s |
+| ≤ 100 KB | 4 / 4 | 2.7 s |
+
+A first implementation took **44 s** on the largest file because it re-encoded at full
+resolution on every probe. Estimating the initial downscale from the area ratio in one
+step cut that to 4.7 s.
+
+Originals are SHA-256 compared before and after every run and have never changed.
 
 ## Development
 

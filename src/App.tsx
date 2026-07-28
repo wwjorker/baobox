@@ -5,6 +5,7 @@ import { Sidebar } from "./components/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToolRunner } from "./components/ToolRunner";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
+import { fmtSize, useSaved } from "./useSaved";
 import "./styles/app.css";
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
   const [toolId, setToolId] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const { saved, addSaved } = useSaved();
 
   const tool = toolId ? findTool(toolId) : undefined;
 
@@ -53,7 +55,7 @@ export default function App() {
 
         <main className="main">
           {tool ? (
-            <ToolRunner key={tool.id} tool={tool} />
+            <ToolRunner key={tool.id} tool={tool} onSaved={addSaved} />
           ) : (
             <>
               <div className="crumb">
@@ -86,7 +88,7 @@ export default function App() {
         <span className="statusbar__push">
           <span className="savedplate">
             <span className="savedplate__label">{t("app.saved")}</span>
-            <span className="savedplate__value">0 MB</span>
+            <span className="savedplate__value">{fmtSize(saved)}</span>
           </span>
         </span>
       </footer>

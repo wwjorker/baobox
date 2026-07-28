@@ -72,7 +72,12 @@ export default {
     failed: "失败",
     emptyTitle: "把文件扔进来",
     emptyHint: "支持 {formats}，一次多少张都行，不限体积。",
-    outputTo: "结果输出到 {dir}，原文件不会被修改。",
+    outputTo: "结果输出到源文件旁的 {dir} 文件夹，原文件不会被修改。",
+    pick: "选择文件",
+    openOutput: "打开输出文件夹",
+    summary: "{ok} 个成功，{fail} 个失败 · 共省下 {saved}",
+    summaryClean: "{ok} 个全部成功 · 共省下 {saved}",
+    grew: "体积没有变小",
   },
 
   opt: {
@@ -115,6 +120,7 @@ export default {
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
+    notFound: "找不到这个文件，它可能已被移动或删除。",
     unknown: "处理失败：{detail}",
   },
 
