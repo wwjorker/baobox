@@ -6,8 +6,10 @@ pub mod image_ops;
 pub mod ocr;
 pub mod paths;
 pub mod pdf_font;
+pub mod pdf_img;
 pub mod pdf_ops;
 pub mod pdf_render;
+pub mod qr;
 pub mod redact;
 pub mod rename;
 pub mod screen_ocr;
@@ -90,6 +92,13 @@ pub fn run() {
             image_edit::img_adjust,
             textfile::text_fix_encoding,
             textfile::file_hash,
+            textfile::text_replace,
+            textfile::dir_tree,
+            pdf_ops::pdf_extract_images,
+            pdf_ops::pdf_reverse,
+            pdf_ops::pdf_pages,
+            qr::qr_generate,
+            qr::qr_decode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -79,6 +79,13 @@ export interface ToolDef {
    * 首页那个数字就成了假的。它是最好的传播素材，更不能虚报。
    */
   savesSpace?: boolean;
+  /**
+   * 收的是文件夹本身，不是里面的文件。
+   *
+   * 目录树导出就是这一类。其余工具拖进文件夹要展开成文件，
+   * 而这个工具展开了就什么都不剩了——它要的正是那个文件夹。
+   */
+  takesFolders?: boolean;
 }
 
 const IMG = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"];
@@ -360,6 +367,28 @@ export const TOOLS: ToolDef[] = [
     options: [{ kind: "text", id: "password", label: "opt.password", def: "" }],
   },
   {
+    id: "pdf.extract-images",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_extract_images",
+    status: "ready",
+    options: [
+      { kind: "number", id: "minPx", label: "opt.minPx", min: 0, max: 2000, step: 50, def: 100, unit: "px" },
+    ],
+  },
+  { id: "pdf.reverse", pillar: "pdf", accepts: PDF, command: "pdf_reverse", status: "ready", options: [] },
+  {
+    id: "pdf.pages",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_pages",
+    status: "ready",
+    options: [
+      { kind: "text", id: "pages", label: "opt.pageSpec", def: "", placeholder: "opt.pageSpecHint" },
+      { kind: "toggle", id: "keepMode", label: "opt.keepMode", def: false },
+    ],
+  },
+  {
     id: "pdf.stamp",
     pillar: "pdf",
     accepts: PDF,
@@ -384,6 +413,52 @@ export const TOOLS: ToolDef[] = [
     status: "ready",
     highlight: true,
     options: [{ kind: "toggle", id: "addBom", label: "opt.addBom", def: true }],
+  },
+  {
+    id: "file.replace",
+    pillar: "file",
+    accepts: ["txt", "csv", "log", "md", "json", "xml", "srt", "ass", "ini", "html", "css", "js"],
+    command: "text_replace",
+    status: "ready",
+    options: [
+      { kind: "text", id: "find", label: "opt.find", def: "", placeholder: "opt.findHint" },
+      { kind: "text", id: "replace", label: "opt.replaceWith", def: "" },
+      { kind: "toggle", id: "useRegex", label: "opt.useRegex", def: false },
+      { kind: "toggle", id: "caseSensitive", label: "opt.caseSensitive", def: true },
+    ],
+  },
+  {
+    id: "file.tree",
+    pillar: "file",
+    accepts: [],
+    command: "dir_tree",
+    status: "ready",
+    output: "text",
+    takesFolders: true,
+    options: [
+      { kind: "number", id: "depth", label: "opt.treeDepth", min: 1, max: 12, step: 1, def: 4 },
+      { kind: "toggle", id: "showSize", label: "opt.showSize", def: true },
+    ],
+  },
+  {
+    id: "file.qr-make",
+    pillar: "file",
+    accepts: ["txt", "csv"],
+    command: "qr_generate",
+    status: "ready",
+    highlight: true,
+    options: [
+      { kind: "number", id: "size", label: "opt.qrSize", min: 128, max: 1200, step: 64, def: 512, unit: "px" },
+    ],
+  },
+  {
+    id: "file.qr-read",
+    pillar: "file",
+    accepts: IMG,
+    command: "qr_decode",
+    status: "ready",
+    output: "text",
+    options: [],
   },
   {
     id: "file.hash",

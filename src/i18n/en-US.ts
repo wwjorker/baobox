@@ -115,6 +115,15 @@ const enUS: typeof zhCN = {
         desc: "Add an open password to a PDF. Not built yet — see the note below.",
       },
       stamp: { name: "Page numbers & watermark", desc: "Stamp every page with a watermark and page numbers, Chinese included. Only the glyphs actually used get embedded, so a 19.7 MB font costs about 13 KB." },
+      "extract-images": {
+        name: "Extract embedded images",
+        desc: "Pull the pictures out exactly as stored, without re-encoding — rendering a page and screenshotting it costs a generation of quality, and the original pixels are usually the point. Set a minimum size to skip icons and rules.",
+      },
+      reverse: { name: "Reverse page order", desc: "Flip the whole document. Scanners feeding pages backwards is a common accident." },
+      pages: {
+        name: "Delete or keep pages",
+        desc: "Give page numbers like 1,3,5-8. Deletes them by default; flip the switch to keep only those instead. Reversed ranges are understood.",
+      },
     },
     file: {
       rename: { name: "Batch rename", desc: "Stackable rules, live preview, and one-click undo." },
@@ -122,6 +131,22 @@ const enUS: typeof zhCN = {
       encoding: {
         name: "Fix mojibake",
         desc: "A text file saved as GBK opens as garbage on a UTF-8 machine. Detects the original encoding and converts to UTF-8, using Firefox's detector — it is reliable on GBK and Big5.",
+      },
+      replace: {
+        name: "Find and replace",
+        desc: "Change text across a batch of files. Regex supported. Encoding is detected, so a pile of old GBK files can be edited directly without repairing them first.",
+      },
+      tree: {
+        name: "Export a directory tree",
+        desc: "Turn a folder's structure into plain text — for explaining what is in a delivery, or walking someone through a project. A screenshot cannot be searched; this can.",
+      },
+      "qr-make": {
+        name: "Generate QR codes",
+        desc: "One line of a text file per code. A column of URLs or a batch of asset tags becomes a folder of PNGs, instead of pasting them into a website one at a time.",
+      },
+      "qr-read": {
+        name: "Read QR codes",
+        desc: "Pull the contents out of an image. Several codes in one picture are read separately, and one that is too blurred to decode does not spoil the rest.",
       },
       hash: {
         name: "File checksum",
@@ -218,6 +243,14 @@ const enUS: typeof zhCN = {
     encFixed: "was {from} → UTF-8",
     encAlready: "already UTF-8, content unchanged",
     hashAlgo: "{algo}",
+    pdfExtracted: "{n} images pulled out",
+    pdfReversed: "{n} pages reversed",
+    pdfPages: "{total} pages → {left} left",
+    replaced: "{n} replacements",
+    replaceNone: "no matches — content passed through unchanged",
+    treeLines: "{n} lines",
+    qrMade: "{n} codes generated",
+    qrFound: "{n} codes read",
   },
 
   opt: {
@@ -257,6 +290,18 @@ const enUS: typeof zhCN = {
     grayscale: "Greyscale",
     addBom: "Add BOM",
     hashAlgo: "Algorithm",
+    minPx: "Minimum size",
+    pageSpec: "Pages",
+    pageSpecHint: "e.g. 1,3,5-8",
+    keepMode: "Keep these instead",
+    find: "Find",
+    findHint: "text to replace",
+    replaceWith: "Replace with",
+    useRegex: "Regex",
+    caseSensitive: "Match case",
+    treeDepth: "Max depth",
+    showSize: "Show file sizes",
+    qrSize: "Side length",
   },
 
   redact: {
@@ -362,6 +407,14 @@ const enUS: typeof zhCN = {
     stitchTooLong: "The result would be {got} pixels long, over the {max} limit. Try it in batches.",
     trimAllUniform: "The whole image is one colour — there is no border to trim.",
     emptyFile: "This file is empty.",
+    pdfNoImages: "No extractable images in this PDF (or all of them are under the minimum size).",
+    badPageSpec: "Can't read this page range: {got}. Write it like 1,3,5-8.",
+    noPagesMatched: "None of those page numbers exist in this document.",
+    wouldDeleteAllPages: "That would remove every page, leaving nothing.",
+    emptyFind: "\"Find\" can't be empty.",
+    badRegex: "That regular expression isn't valid.",
+    qrTooLong: "This line is too long to fit in a QR code.",
+    qrNotFound: "No QR code found in this image.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",

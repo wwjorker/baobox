@@ -100,4 +100,12 @@ chardetng = "0.1"
 # 哈希校验。blake3 已经在了（重复文件比对用），这里补 sha256——
 # 网站给的校验值基本都是 SHA-256，只提供 blake3 等于用户没法核对。
 sha2 = "0.10"
+# 二维码。生成和识别是两套算法，各用各的库：
+# qrcode 只负责编码，rqrr 负责从图里找出定位图案再解。都是纯 Rust。
+qrcode = { version = "0.14", default-features = false }
+rqrr = "0.10"
+# 自己解 PDF 图片流。lopdf 的 decompressed_content() 对 Subtype=Image 直接
+# 返回 Err（见 pdf_img.rs 的说明），所以内嵌图片这条路必须自己走。
+# flate2 已经被 lopdf 依赖，直接声明不增加体积。
+flate2 = "1"
 

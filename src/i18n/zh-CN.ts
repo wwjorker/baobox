@@ -109,6 +109,15 @@ export default {
         desc: "给 PDF 加上打开密码。暂未实现——见下方说明。",
       },
       stamp: { name: "页码与水印", desc: "给每页加中文水印和页码。字体只嵌入用到的那几十个字形，19.7 MB 的字体最终只占十几 KB。" },
+      "extract-images": {
+        name: "提取内嵌图片",
+        desc: "把 PDF 里的图原样抠出来，不重新编码——渲染整页再截图会掉一轮画质，而你要的往往正是原始像素。可以设最小尺寸，滤掉图标和分隔线。",
+      },
+      reverse: { name: "反转页序", desc: "整份倒过来。扫描仪倒着进纸是很常见的事故。" },
+      pages: {
+        name: "删除或保留指定页",
+        desc: "填 1,3,5-8 这样的页码。默认是删掉它们，打开开关就变成只留它们。中文逗号、区间倒着写都认。",
+      },
     },
     file: {
       rename: { name: "批量重命名", desc: "规则可叠加，实时预览，改错了能一键撤销。" },
@@ -116,6 +125,22 @@ export default {
       encoding: {
         name: "乱码修复",
         desc: "GBK 存的 txt / csv 在 UTF-8 环境里打开全是「锟斤拷」。自动认出原编码再转成 UTF-8，用的是 Firefox 那套检测器，对 GBK 和 Big5 判得准。",
+      },
+      replace: {
+        name: "批量查找替换",
+        desc: "一批文本文件里统一改字。支持正则。编码自动检测，所以一堆 GBK 的老文件也能直接改，不用先跑一遍乱码修复。",
+      },
+      tree: {
+        name: "目录树导出",
+        desc: "把文件夹结构导成纯文本树，交付时说明包里有什么、给同事讲项目结构都用得上。截图搜不了，这个能。",
+      },
+      "qr-make": {
+        name: "二维码批量生成",
+        desc: "文本文件里一行一条，批量出图。一列网址、一批设备编号做成二维码，不用一个个去网站上生成再下载。",
+      },
+      "qr-read": {
+        name: "二维码识别",
+        desc: "从图片里读出二维码内容。一张图里有好几个也能分别读出来，其中一两个模糊解不出来的不影响其余。",
       },
       hash: {
         name: "文件哈希校验",
@@ -214,6 +239,14 @@ export default {
     encFixed: "原编码 {from} → UTF-8",
     encAlready: "本来就是 UTF-8，未改动内容",
     hashAlgo: "{algo}",
+    pdfExtracted: "抠出 {n} 张图",
+    pdfReversed: "{n} 页已倒序",
+    pdfPages: "{total} 页 → 剩 {left} 页",
+    replaced: "替换 {n} 处",
+    replaceNone: "没找到匹配，内容原样输出",
+    treeLines: "{n} 行",
+    qrMade: "生成 {n} 个二维码",
+    qrFound: "读出 {n} 个二维码",
   },
 
   opt: {
@@ -253,6 +286,18 @@ export default {
     grayscale: "转灰度",
     addBom: "加 BOM 头",
     hashAlgo: "算法",
+    minPx: "最小尺寸",
+    pageSpec: "页码",
+    pageSpecHint: "例如 1,3,5-8",
+    keepMode: "改成只保留这些页",
+    find: "查找",
+    findHint: "要被替换掉的内容",
+    replaceWith: "替换为",
+    useRegex: "用正则",
+    caseSensitive: "区分大小写",
+    treeDepth: "最大层数",
+    showSize: "显示文件大小",
+    qrSize: "边长",
   },
 
   redact: {
@@ -358,6 +403,14 @@ export default {
     stitchTooLong: "接出来会有 {got} 像素长，超过 {max} 的上限。分几批接吧。",
     trimAllUniform: "整张图都是同一个颜色，没有边可裁。",
     emptyFile: "这是个空文件。",
+    pdfNoImages: "这份 PDF 里没有可提取的图片（或都小于设定的最小尺寸）。",
+    badPageSpec: "看不懂这段页码：{got}。写成 1,3,5-8 这样。",
+    noPagesMatched: "填的页码没有一个落在这份文件的页数范围内。",
+    wouldDeleteAllPages: "这样会把所有页都删光，剩不下东西。",
+    emptyFind: "「查找」不能为空。",
+    badRegex: "正则写得不对，请检查。",
+    qrTooLong: "这条内容太长，二维码装不下。",
+    qrNotFound: "这张图里没找到二维码。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

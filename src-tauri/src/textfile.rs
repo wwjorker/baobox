@@ -31,6 +31,16 @@ fn detect(bytes: &[u8]) -> &'static encoding_rs::Encoding {
     det.guess(None, true)
 }
 
+/// 按检测出的编码读成字符串。
+///
+/// 凡是要读用户文本文件的地方都该走这里——二维码生成、查找替换都一样。
+/// 各写各的 from_utf8_lossy 的话，GBK 文件在别处照样是乱码，
+/// 「乱码修复」就成了一个孤立的补丁而不是整个软件的默认行为。
+pub fn decode_text(bytes: &[u8]) -> String {
+    let (text, _, _) = detect(bytes).decode(bytes);
+    text.into_owned()
+}
+
 /// 把文本转成 UTF-8。返回产物路径和检测到的原编码名。
 pub fn fix_encoding(src: &Path, add_bom: bool) -> AppResult<(PathBuf, String, bool)> {
     let bytes = std::fs::read(long_path(src))?;
@@ -82,6 +92,213 @@ pub async fn text_fix_encoding(
                 }),
             ))
         })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 查找替换
+
+/// 批量查找替换。
+///
+/// 编码走统一检测，所以一批 GBK 的老文件也能直接改，不用先跑一遍乱码修复。
+/// 产物一律写新文件——安全红线 1，原文件绝不动。
+pub fn replace_in_file(
+    src: &Path,
+    find: &str,
+    replace: &str,
+    use_regex: bool,
+    case_sensitive: bool,
+) -> AppResult<(PathBuf, usize)> {
+    if find.is_empty() {
+        return Err(AppError::new("err.emptyFind"));
+    }
+    let bytes = std::fs::read(long_path(src))?;
+    let text = decode_text(&bytes);
+
+    let (out, hits) = if use_regex {
+        let re = regex::RegexBuilder::new(find)
+            .case_insensitive(!case_sensitive)
+            .build()
+            .map_err(|e| AppError::new("err.badRegex").detail(e))?;
+        let hits = re.find_iter(&text).count();
+        (re.replace_all(&text, replace).into_owned(), hits)
+    } else if case_sensitive {
+        (text.replace(find, replace), text.matches(find).count())
+    } else {
+        // 不区分大小写的字面替换：把 find 转义后当正则用，
+        // 免得自己写一遍大小写无关的搜索
+        let re = regex::RegexBuilder::new(&regex::escape(find))
+            .case_insensitive(true)
+            .build()
+            .map_err(|e| AppError::new("err.badRegex").detail(e))?;
+        let hits = re.find_iter(&text).count();
+        (re.replace_all(&text, replace).into_owned(), hits)
+    };
+
+    let dir = output_dir_for(src)?;
+    let ext = src
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+        .unwrap_or_else(|| "txt".into());
+    let dst = unique_path(&dir, &stem_of(src), &ext);
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(out.as_bytes());
+    std::fs::write(long_path(&dst), &data)?;
+    Ok((dst, hits))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn text_replace(
+    app: AppHandle,
+    paths: Vec<String>,
+    find: String,
+    replace: String,
+    useRegex: bool,
+    caseSensitive: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let (dst, hits) = replace_in_file(src, &find, &replace, useRegex, caseSensitive)?;
+            Ok((
+                dst,
+                Some(if hits == 0 {
+                    Note::new("note.replaceNone")
+                } else {
+                    Note::new("note.replaced").with("n", hits)
+                }),
+            ))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 目录树导出
+
+/// 把一个文件夹的结构导成纯文本树。
+///
+/// 用途很具体：交付时说明这个包里有什么、给同事讲项目结构、归档前留一份清单。
+/// 手写不现实，截图又搜不了。
+pub fn tree_of(root: &Path, max_depth: usize, show_size: bool) -> AppResult<String> {
+    let mut out = String::new();
+    out.push_str(&format!("{}\n", root.display()));
+    walk(root, "", max_depth, 0, show_size, &mut out)?;
+    Ok(out)
+}
+
+fn walk(
+    dir: &Path,
+    prefix: &str,
+    max_depth: usize,
+    depth: usize,
+    show_size: bool,
+    out: &mut String,
+) -> AppResult<()> {
+    if depth >= max_depth {
+        return Ok(());
+    }
+    let mut entries: Vec<_> = match std::fs::read_dir(long_path(dir)) {
+        Ok(rd) => rd.flatten().collect(),
+        // 没权限的目录跳过就行，不该让整棵树导不出来
+        Err(_) => return Ok(()),
+    };
+    // 目录在前、同类按名字排，输出才是稳定可比对的
+    entries.sort_by_key(|e| {
+        let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        (!is_dir, e.file_name().to_string_lossy().to_lowercase())
+    });
+
+    let last = entries.len().saturating_sub(1);
+    for (i, e) in entries.iter().enumerate() {
+        let name = e.file_name().to_string_lossy().to_string();
+        let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let branch = if i == last { "└── " } else { "├── " };
+        out.push_str(prefix);
+        out.push_str(branch);
+        out.push_str(&name);
+        if is_dir {
+            out.push('/');
+        } else if show_size {
+            if let Ok(m) = e.metadata() {
+                out.push_str(&format!("  ({})", human_size(m.len())));
+            }
+        }
+        out.push('\n');
+        if is_dir {
+            let next = format!("{prefix}{}", if i == last { "    " } else { "│   " });
+            walk(&e.path(), &next, max_depth, depth + 1, show_size, out)?;
+        }
+    }
+    Ok(())
+}
+
+fn human_size(b: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+    if b >= GB {
+        format!("{:.2} GB", b as f64 / GB as f64)
+    } else if b >= MB {
+        format!("{:.1} MB", b as f64 / MB as f64)
+    } else if b >= KB {
+        format!("{} KB", b / KB)
+    } else {
+        format!("{b} B")
+    }
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn dir_tree(
+    app: AppHandle,
+    paths: Vec<String>,
+    depth: u32,
+    showSize: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let d = depth.clamp(1, 12) as usize;
+        let total = paths.len();
+        let mut out = Vec::with_capacity(total);
+        crate::batch::reset_cancel();
+
+        for (index, p) in paths.iter().enumerate() {
+            let root = PathBuf::from(p);
+            if crate::batch::cancelled() {
+                let o = FileOutcome::skipped(&root, "run.cancelledSkip");
+                crate::batch::emit(&app, index, total, &o);
+                out.push(o);
+                continue;
+            }
+            crate::batch::emit_working(&app, index, total, &crate::paths::file_name_of(&root));
+
+            let o = match tree_of(&root, d, showSize) {
+                Ok(text) => {
+                    let lines = text.lines().count();
+                    // 同时落一份 txt，方便直接发给别人
+                    let saved = (|| -> AppResult<PathBuf> {
+                        let dir = output_dir_for(&root)?;
+                        let dst = unique_path(&dir, &format!("{} 目录树", stem_of(&root)), "txt");
+                        let mut bytes = vec![0xEF, 0xBB, 0xBF];
+                        bytes.extend_from_slice(text.as_bytes());
+                        std::fs::write(long_path(&dst), &bytes)?;
+                        Ok(dst)
+                    })();
+                    let mut o = FileOutcome::text_only(
+                        &root,
+                        text,
+                        Some(Note::new("note.treeLines").with("n", lines)),
+                    );
+                    o.out_path = saved.ok().map(|d| d.to_string_lossy().to_string());
+                    o
+                }
+                Err(e) => FileOutcome::fail(&root, e),
+            };
+            crate::batch::emit(&app, index, total, &o);
+            out.push(o);
+        }
+        out
     })
     .await
     .unwrap_or_default()

@@ -139,15 +139,21 @@ export function ToolRunner({
       // 拖进来的可能是文件夹。「一次压一整个文件夹」是说明里写着的，
       // 之前扩展名过滤直接把目录筛掉，拖进来什么都不会发生。
       // 大目录遍历要时间，先把状态摆出来，别让界面看着毫无反应。
-      setExpanding(true);
+      //
+      // 但目录树那类工具要的就是文件夹本身，展开了反而什么都不剩。
       let allowed: string[];
-      try {
-        allowed = await invoke<string[]>("expand_inputs", {
-          paths,
-          accepts: tool.accepts,
-        });
-      } finally {
-        setExpanding(false);
+      if (tool.takesFolders) {
+        allowed = paths;
+      } else {
+        setExpanding(true);
+        try {
+          allowed = await invoke<string[]>("expand_inputs", {
+            paths,
+            accepts: tool.accepts,
+          });
+        } finally {
+          setExpanding(false);
+        }
       }
       if (allowed.length === 0) return;
 
@@ -196,7 +202,7 @@ export function ToolRunner({
           });
       }
     },
-    [tool.accepts],
+    [tool.accepts, tool.takesFolders],
   );
 
   // 首页接住的文件在这里落地。addPaths 会按 accepts 过滤、按路径去重，
@@ -220,6 +226,8 @@ export function ToolRunner({
   }, [addPaths]);
 
   const pick = async () => {
+    // 只收文件夹的工具，「选择文件」对它没有意义
+    if (tool.takesFolders) return pickFolder();
     const sel = await open({
       multiple: true,
       filters: tool.accepts.length ? [{ name: "files", extensions: tool.accepts }] : undefined,

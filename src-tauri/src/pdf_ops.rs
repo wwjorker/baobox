@@ -365,44 +365,18 @@ fn recompress_image(stream: &mut lopdf::Stream, quality: u8) -> Option<(usize, u
         return None;
     }
 
-    let filter = match stream.dict.get(b"Filter") {
-        Ok(Object::Name(n)) => String::from_utf8_lossy(n).to_string(),
-        Ok(Object::Array(a)) if a.len() == 1 => a[0]
-            .as_name()
-            .map(|n| String::from_utf8_lossy(n).to_string())
-            .unwrap_or_default(),
-        _ => return None,
-    };
-    let cs = match stream.dict.get(b"ColorSpace") {
-        Ok(Object::Name(n)) => String::from_utf8_lossy(n).to_string(),
-        _ => String::new(),
-    };
+    let filter = crate::pdf_img::single_filter(stream)?;
 
     let before = stream.content.len();
     let img: image::DynamicImage = match filter.as_str() {
         "DCTDecode" => {
             image::load_from_memory_with_format(&stream.content, image::ImageFormat::Jpeg).ok()?
         }
+        // 裸像素这条路要自己解压：lopdf 对 Subtype=Image 一律拒绝解压，
+        // 而这半边按体积比 JPEG 那半边还大。详见 pdf_img.rs。
         "FlateDecode" => {
-            let raw = stream.decompressed_content().ok()?;
-            match cs.as_str() {
-                "DeviceRGB" => {
-                    let need = (w as usize) * (h as usize) * 3;
-                    if raw.len() < need {
-                        return None;
-                    }
-                    image::RgbImage::from_raw(w, h, raw[..need].to_vec())?.into()
-                }
-                "DeviceGray" => {
-                    let need = (w as usize) * (h as usize);
-                    if raw.len() < need {
-                        return None;
-                    }
-                    image::GrayImage::from_raw(w, h, raw[..need].to_vec())?.into()
-                }
-                // Indexed / ICCBased 等需要查调色板或色彩配置，改错了会变色，宁可不动
-                _ => return None,
-            }
+            let raw = crate::pdf_img::raw_pixels(stream)?;
+            crate::pdf_img::to_image(stream, &raw, w, h)?
         }
         _ => return None,
     };
@@ -472,6 +446,211 @@ fn pdf_compress_blocking(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec
             } else {
                 Note::new("note.pdfRecompressed").with("n", touched)
             }),
+        ))
+    })
+}
+
+// ================================================ 提取内嵌图片
+
+/// 把 PDF 里的图片原样抠出来。
+///
+/// 关键在「原样」：DCTDecode 的流本身就是一份完整 JPEG，直接写盘即可，
+/// 不重新编码——渲染整页再截图会掉一轮画质，而这个功能的用途
+/// （拿回设计稿里的原图、抽出扫描件的每一页）恰恰要的是原始像素。
+pub fn extract_images(src: &Path, min_px: u32) -> AppResult<(PathBuf, usize)> {
+    let doc = open(src)?;
+    let dir = output_dir_for(src)?;
+    let stem = stem_of(src);
+
+    let mut n = 0usize;
+    let mut last = dir.clone();
+    // 按对象号排序，产物编号才是稳定的；HashMap 的遍历顺序每次都不一样
+    let mut ids: Vec<lopdf::ObjectId> = doc
+        .objects
+        .iter()
+        .filter(|(_, o)| {
+            matches!(o, Object::Stream(s) if s
+                .dict
+                .get(b"Subtype")
+                .and_then(|x| x.as_name())
+                .map(|k| k == b"Image")
+                .unwrap_or(false))
+        })
+        .map(|(id, _)| *id)
+        .collect();
+    ids.sort();
+
+    for id in ids {
+        let Some(Object::Stream(s)) = doc.objects.get(&id) else {
+            continue;
+        };
+        let w = s.dict.get(b"Width").and_then(|o| o.as_i64()).unwrap_or(0) as u32;
+        let h = s.dict.get(b"Height").and_then(|o| o.as_i64()).unwrap_or(0) as u32;
+        // 图标、分隔线、扫描噪点会有成百上千个，全导出来只是垃圾
+        if w < min_px || h < min_px {
+            continue;
+        }
+
+        let Some(filter) = crate::pdf_img::single_filter(s) else {
+            continue;
+        };
+
+        let (bytes, ext): (Vec<u8>, &str) = match filter.as_str() {
+            // 已经是 JPEG，原样落盘，一个字节都不动 —— 这个功能的用途
+            // （拿回设计稿里的原图、抽出扫描件每一页）要的就是原始像素
+            "DCTDecode" => (s.content.clone(), "jpg"),
+            // JPX 是 JPEG 2000，多数看图软件打不开，但比不导出好
+            "JPXDecode" => (s.content.clone(), "jp2"),
+            "FlateDecode" => {
+                let Some(raw) = crate::pdf_img::raw_pixels(s) else {
+                    continue;
+                };
+                let Some(img) = crate::pdf_img::to_image(s, &raw, w, h) else {
+                    continue;
+                };
+                match crate::image_ops::encode(&img, crate::image_ops::OutFmt::Png, 100) {
+                    Ok(b) => (b, "png"),
+                    Err(_) => continue,
+                }
+            }
+            _ => continue,
+        };
+
+        n += 1;
+        let dst = unique_path(&dir, &format!("{stem} 图{n:03}"), ext);
+        std::fs::write(long_path(&dst), &bytes)?;
+        last = dst;
+    }
+
+    if n == 0 {
+        return Err(AppError::new("err.pdfNoImages"));
+    }
+    Ok((last, n))
+}
+
+fn pdf_extract_images_blocking(app: AppHandle, paths: Vec<String>, min_px: u32) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (last, n) = extract_images(src, min_px)?;
+        Ok((last, Some(Note::new("note.pdfExtracted").with("n", n))))
+    })
+}
+
+// ================================================ 页面重排与删除
+
+/// 解析「1,3,5-8」这类页码范围，返回 1 基页号。
+///
+/// 用户会写各种花样：空格、中文逗号、倒着写的区间。都认，
+/// 因为在这上面报错只会让人烦躁，而意图是明确的。
+pub fn parse_pages(spec: &str, total: u32) -> AppResult<Vec<u32>> {
+    let mut out = Vec::new();
+    let cleaned = spec.replace('，', ",").replace('－', "-").replace('–', "-");
+    for part in cleaned.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            continue;
+        }
+        if let Some((a, b)) = part.split_once('-') {
+            let (a, b) = (a.trim(), b.trim());
+            let from: u32 = a.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?;
+            // 「5-」表示从第 5 页到最后
+            let to: u32 = if b.is_empty() {
+                total
+            } else {
+                b.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?
+            };
+            let (lo, hi) = if from <= to { (from, to) } else { (to, from) };
+            out.extend(lo..=hi);
+        } else {
+            out.push(part.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?);
+        }
+    }
+    out.retain(|p| *p >= 1 && *p <= total);
+    out.sort_unstable();
+    out.dedup();
+    if out.is_empty() {
+        return Err(AppError::new("err.noPagesMatched"));
+    }
+    Ok(out)
+}
+
+/// 反转页序。扫描仪按倒序进纸是很常见的事故。
+pub fn reverse_file(src: &Path) -> AppResult<(PathBuf, usize)> {
+    let doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    let n = pages.len();
+
+    // 逐页抽成单页文档再倒着合并。直接改 Kids 数组更快，
+    // 但页树里可能有嵌套节点，那样改容易把结构弄坏。
+    let mut singles: Vec<Document> = Vec::with_capacity(n);
+    let nums: Vec<u32> = pages.keys().copied().collect();
+    for keep in nums.iter().rev() {
+        let mut one = doc.clone();
+        let drop: Vec<u32> = nums.iter().copied().filter(|p| p != keep).collect();
+        one.delete_pages(&drop);
+        one.adjust_zero_pages();
+        singles.push(one);
+    }
+
+    let mut merged = merge_docs(singles)?;
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 倒序", stem_of(src)), "pdf");
+    save(&mut merged, &dst)?;
+    Ok((dst, n))
+}
+
+fn pdf_reverse_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    run_batch(&app, paths, |src| {
+        let (dst, n) = reverse_file(src)?;
+        Ok((dst, Some(Note::new("note.pdfReversed").with("n", n))))
+    })
+}
+
+/// 删除或保留指定页。
+pub fn select_pages(src: &Path, spec: &str, keep_mode: bool) -> AppResult<(PathBuf, usize, usize)> {
+    let mut doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    let total = pages.len() as u32;
+    let listed = parse_pages(spec, total)?;
+
+    let all: Vec<u32> = pages.keys().copied().collect();
+    let drop: Vec<u32> = if keep_mode {
+        all.iter().copied().filter(|p| !listed.contains(p)).collect()
+    } else {
+        listed.clone()
+    };
+
+    if drop.len() >= all.len() {
+        return Err(AppError::new("err.wouldDeleteAllPages"));
+    }
+
+    doc.delete_pages(&drop);
+    doc.adjust_zero_pages();
+    let left = all.len() - drop.len();
+
+    let dir = output_dir_for(src)?;
+    let label = if keep_mode { "保留页" } else { "删页" };
+    let dst = unique_path(&dir, &format!("{} {label}", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, total as usize, left))
+}
+
+fn pdf_pages_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    spec: String,
+    keep_mode: bool,
+) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, total, left) = select_pages(src, &spec, keep_mode)?;
+        Ok((
+            dst,
+            Some(Note::new("note.pdfPages").with("total", total).with("left", left)),
         ))
     })
 }
@@ -638,6 +817,38 @@ fn pdf_to_text_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> 
 #[tauri::command]
 pub async fn pdf_merge(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || pdf_merge_blocking(app, paths))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn pdf_extract_images(
+    app: AppHandle,
+    paths: Vec<String>,
+    minPx: u32,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_extract_images_blocking(app, paths, minPx))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_reverse(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_reverse_blocking(app, paths))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn pdf_pages(
+    app: AppHandle,
+    paths: Vec<String>,
+    pages: String,
+    keepMode: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_pages_blocking(app, paths, pages, keepMode))
         .await
         .unwrap_or_default()
 }
