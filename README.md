@@ -2,169 +2,222 @@
 
 **A local file toolkit for Windows. No uploads, no limits, no network.**
 
-> ## 🚧 Work in progress — no release yet
+[中文说明](#中文) · MIT · Windows 10/11
+
+![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
+
+> ## 🚧 Preview — 18 of 22 tools work
 >
-> There is **no build to download**. Five image tools work end to end; everything
-> else is still a stub and says so in the app. Star or watch to hear when v1.0 ships.
->
-> **Working today:** compress to a target size · batch compress · format conversion ·
-> batch resize · strip EXIF
+> No release binary yet; build from source with the steps below. Everything
+> marked ✅ has been run against real files and measured. Anything else says so
+> inside the app rather than pretending to work.
 
 ---
 
-## Why
+## Why this exists
 
-Online tools like iLovePDF, Smallpdf and TinyPNG are used by millions, and they all
-share the same four problems:
+iLovePDF, Smallpdf and TinyPNG have enormous user bases and four problems in
+common: your files get uploaded to someone else's server, free tiers cap size
+and count, nothing works offline, and the pages are full of upsell.
 
-- Your files get uploaded to someone else's server
-- Free tiers cap file size, batch count, and daily usage
-- Nothing works without a connection
-- Ads and upsell prompts everywhere
+The local alternatives are awkward in their own ways.
+[Stirling-PDF](https://github.com/Stirling-Tools/Stirling-PDF) is excellent but
+wants a Docker runtime, which rules it out for anyone who just needs to unlock
+one PDF. Others have interfaces from a decade ago, or you install a separate
+program per task.
 
-The local alternatives aren't great either. [Stirling-PDF](https://github.com/Stirling-Tools/Stirling-PDF)
-is excellent but **requires Docker**, which rules it out for most people who just want
-to sign one PDF. Others (FileOptimizer, IrfanView) have interfaces from another decade,
-or you end up installing a separate program for every single task.
+**Baobox is one double-clickable app.** No Docker, no Java, no Python. Your
+files never leave the machine because the binary has no HTTP client compiled
+into it.
 
-**Baobox is a single double-clickable app.** No Docker, no Java, no Python.
-Your files never leave the machine because the app never opens a socket.
+## What works today
 
-## Planned features
+### Images
 
-### v1.0 — 20 tools
-
-| Area | Tools |
+| Tool | |
 |---|---|
-| **Images** | Batch compress · **Compress to a target file size** · Format conversion (jpg/png/webp) · Batch resize · **Strip EXIF privacy data** · Watermark · **Redact / pixelate** |
-| **OCR** | Extract text from images · Batch OCR · Screen-capture OCR (global hotkey) |
-| **PDF** | Merge · Split / extract / delete pages · Rotate & reorder · Compress · PDF→image · image→PDF · Encrypt / decrypt · Page numbers & watermark |
-| **Files** | Batch rename (rule chain, live preview, undo) · Duplicate file finder |
+| **Compress to a target size** | ✅ Binary-searches quality, falls back to downscaling. TinyPNG gives you quality presets; upload forms enforce bytes. |
+| **Strip EXIF privacy data** | ✅ Removes GPS and device metadata without re-encoding pixels |
+| Batch compress · Convert format · Batch resize | ✅ |
+| Watermark · Redact | ⏳ Needs an interactive region picker |
 
-### Later — ~60 more
+### OCR — free, offline, no subscription
 
-PDF cropping, N-up imposition, redaction, flattening, signatures, metadata scrubbing,
-compare, searchable-PDF OCR · AVIF/ICO/HEIC, colour adjustment, long-image stitching,
-9-grid slicing, GIF tools, reusable presets · archive extraction, QR codes,
-CSV/Excel/JSON conversion · GBK↔UTF-8 mojibake repair, traditional↔simplified Chinese.
+iLovePDF and Smallpdf put OCR behind a paid plan. Windows already ships an
+engine that is [faster and more accurate than Tesseract](https://transloadit.com/devtips/recognize-text-in-images-ocr-in-rust/),
+so this costs nothing and adds no bytes.
 
-## Non-negotiable safety rules
-
-These are enforced throughout the codebase, not aspirations:
-
-1. **Original files are never overwritten.** Output always goes to a new directory.
-2. **Deletion always goes to the Recycle Bin.** Never a permanent unlink.
-3. **Zero network capability.** No HTTP is compiled in; CSP blocks all remote loads.
-   Pull the ethernet cable and everything still works.
-4. **Redaction really removes text** from the content stream rather than drawing a
-   black box over it. If a document can't be handled safely, Baobox refuses the job
-   instead of giving you a false sense of security.
-
-## Tech stack
-
-Tauri v2 · Rust · React · TypeScript · Vite
-
-Windows only, deliberately — OCR uses the built-in `Windows.Media.Ocr` engine, which
-is faster and more accurate than Tesseract while adding **zero bytes** to the download.
-
-## Validated so far
-
-The riskiest parts were tested before writing any feature code:
-
-| Risk | Result |
+| Tool | |
 |---|---|
-| `mozjpeg` needs a C/asm toolchain | ✅ Compiles — 2m36s cold build |
-| WinRT OCR quality and speed | ✅ 77 ms per image, 4/4 keywords, mixed CJK/Latin |
-| CJK text comes back space-separated | ✅ Fixed — spaces dropped only between CJK characters |
-| Chinese fonts must be embedded in PDFs, but the font file is 18.8 MB and not redistributable | ✅ Subsetting works — 30 glyphs ≈ 4.5 KB of outline data |
-| Office COM for PDF→Word | ⚠️ **Blocked.** Word's PDF-reflow dialog hangs headless calls, and suppressing it requires writing to the user's Word registry settings. Deferred to a later opt-in feature. |
+| Extract text from image | ✅ 77 ms per image |
+| Batch OCR to one transcript | ✅ |
+| Screen-capture OCR | ⏳ Needs a global hotkey and overlay |
 
-## Size
+### PDF
 
-Staying small is the whole point, so it gets measured rather than hoped for:
-
-| | Size |
+| Tool | |
 |---|---|
-| Release binary today — includes mozjpeg, image, oxipng, lopdf, ttf-parser and the OCR bindings | **3.0 MB** |
-| Frontend assets | ~0.5 MB |
-| `pdfium.dll`, once PDF rendering lands | ~11 MB |
-| **Projected install footprint** | **≈ 15 MB** |
+| Merge · Split · Rotate · Extract text · Image→PDF | ✅ |
+| **Compress** | ✅ 33% off a 148 MB sample of real coursework |
+| **PDF→image** | ✅ Uses the Windows rendering engine, so no 11 MB pdfium DLL |
+| **Chinese watermark & page numbers** | ✅ Font subsetting: 19.7 MB font → 13.5 KB embedded |
+| Unlock restrictions | ✅ Clears print/copy locks; open passwords need the password |
+| Set a password | ❌ Deliberately not built — [see below](#what-is-deliberately-missing) |
 
-For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of the
-same feature set would start around 150 MB.
+### Files
 
-## Measured: compress to a target size
+| Tool | |
+|---|---|
+| **Find duplicates** | ✅ Compares content, not names. Protects files a program depends on. |
+| **Batch rename** | ✅ Stackable rules, live preview, undo log |
 
-Hitting an exact size cap is the thing TinyPNG and friends can't do — they give you
-quality presets, while upload forms enforce byte limits. Baobox binary-searches the
-quality parameter and falls back to downscaling when quality alone can't get there.
+## Measured, not estimated
 
-Four synthetic photos (dense noise, deliberately hard to compress), WebP output:
+**Compress to a target size** — four synthetic photos chosen to be hard to
+compress, WebP output:
 
-| Target | Files under target | Slowest file |
+| Target | Under target | Slowest file |
 |---|---|---|
 | ≤ 500 KB | 4 / 4 | 4.7 s (4000×3000) |
 | ≤ 200 KB | 4 / 4 | 3.4 s |
 | ≤ 100 KB | 4 / 4 | 2.7 s |
 
-A first implementation took **44 s** on the largest file because it re-encoded at full
-resolution on every probe. Estimating the initial downscale from the area ratio in one
-step cut that to 4.7 s.
+A first implementation took 44 s on the largest file by re-encoding at full
+resolution on every probe. Estimating the initial downscale from the area ratio
+in one step brought that to 4.7 s.
 
-Originals are SHA-256 compared before and after every run and have never changed.
+**PDF parsing** — 1070 real PDFs off a working machine: 1030 parsed (96.3%),
+27536 pages, 10.1 s total, slowest file 759 ms. All 40 failures were genuinely
+malformed.
 
-## Development
+**PDF compression** — 12 real documents, 148.5 MB → 99.4 MB (33%). Every output
+re-opened and page-counted; none broken, none larger.
+
+**Duplicate detection** — 338190 files scanned in 8.9 minutes. Sampled pairs
+byte-compared: zero false matches.
+
+## Rules the code actually follows
+
+1. **Originals are never modified.** Output goes to a new folder. Verified by
+   SHA-256 comparison before and after every acceptance run.
+2. **Deletion goes to the Recycle Bin**, never an unlink. Confirmation lists
+   every path, warns when a duplicate set would be wiped entirely, and starts
+   with focus on Cancel.
+3. **Identical is not the same as safe to delete.** A full-drive scan reported
+   115 GB reclaimable, led by CUDA runtimes duplicated across conda
+   environments and a Git object. Files owned by a package manager, virtualenv,
+   repository or installed program are labelled, kept, and excluded from the
+   reclaimable figure.
+4. **Cloud placeholders are skipped.** Reading a OneDrive or WPS placeholder
+   downloads it. A tool for reclaiming space has no business pulling gigabytes
+   back down to compare them.
+5. **No network capability.** No HTTP is compiled in and the CSP permits no
+   remote origins. Pull the cable; everything still works.
+
+## What is deliberately missing
+
+**Setting a PDF password.** `lopdf` can decrypt but not encrypt. A hand-rolled
+PDF encryption that gets any detail wrong hands you a file that claims to be
+protected while offering none — worse than not offering the feature. Waiting on
+a vetted implementation.
+
+**PDF → Word.** Needs LibreOffice (400 MB) or a commercial SDK. Driving an
+installed copy of Word over COM was tried and abandoned: Word's PDF-reflow
+dialog hangs headless calls, and suppressing it means writing to your Word
+registry settings.
+
+## Size
+
+| | |
+|---|---|
+| Installer | **2.5 MB** |
+| Installed | 7.6 MB |
+| Memory in use | ~23 MB |
+
+For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
+the same feature set starts around 150 MB.
+
+## Known rough edges
+
+- **No code signing.** SmartScreen will warn about an unknown publisher. A
+  certificate costs several hundred dollars a year. Releases carry SHA-256
+  checksums so you can at least verify what you downloaded.
+- **Antivirus false positives are likely.** A small Rust binary that does bulk
+  file operations and registers a global hotkey looks suspicious to heuristics.
+- **Windows only, on purpose.** OCR uses the WinRT engine and PDF rendering uses
+  `Windows.Data.Pdf`. Neither has a cross-platform equivalent that stays this
+  small.
+
+## Build
 
 ```bash
 npm install
-npm run tauri dev
+npm run tauri build
 ```
 
-Requires Rust (MSVC toolchain), Node, and the Visual Studio C++ build tools.
+Needs Rust with the MSVC toolchain, Node 22+, and Visual Studio C++ build tools.
 
 ## Licence
 
-MIT
+MIT. Dependency audit in [LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md) —
+599 crates, no copyleft obligations. Ghostscript was avoided specifically
+because it is AGPL.
 
 ---
+
+<a name="中文"></a>
 
 # 中文
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 开发中 —— 目前还不能用
+> ## 🚧 预览版 —— 22 个工具中 18 个可用
 >
-> **没有可下载的版本。** 项目 2026 年 7 月建立，正处在技术验证阶段。
-> 下面「计划功能」里的东西**都还没做出来**。想知道 v1.0 什么时候发布，可以点 Star 或 Watch。
+> 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
+> 其余的在软件里会明说自己还没做好，不会假装能用。
 
 ## 为什么做这个
 
-iLovePDF、Smallpdf、TinyPNG 这类在线工具用户量巨大，但有四个共同硬伤：文件必须上传到别人的服务器、
-免费版限制体积和数量、断网就废、广告和诱导付费。
+iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文件要传到别人服务器、
+免费版限体积限数量、断网就废、满屏诱导付费。
 
-本地替代品也不理想。[Stirling-PDF](https://github.com/Stirling-Tools/Stirling-PDF) 功能强大但**必须跑 Docker**，
-对只想签一份 PDF 的普通人来说门槛太高；其余的要么界面停留在十几年前，要么一个功能得装一个软件。
+本地替代品也不省心。[Stirling-PDF](https://github.com/Stirling-Tools/Stirling-PDF)
+很强但要跑 Docker——只想解锁一份 PDF 的人根本不会装。其余的要么界面停在十年前，
+要么一个功能装一个软件。
 
-**Baobox 是一个双击就能用的程序。** 不需要 Docker、Java 或 Python。
-你的文件不会离开这台电脑——因为这个程序压根不会打开网络连接。
+**Baobox 就是一个双击能开的程序。** 不需要 Docker、Java 或 Python。
+你的文件不会离开这台电脑——因为这个二进制里压根没编进 HTTP 客户端。
 
 ## 三个差异化的点
 
-- **OCR 免费**。iLovePDF 和 Smallpdf 都把 OCR 锁在付费订阅里（约 $4/月）。
-  Baobox 用 Windows 系统内置的 OCR 引擎，离线、免费，且比 Tesseract 更快更准。
-- **压到指定体积**。网站限制上传 500KB 是高频刚需，而 TinyPNG 只能调质量档位，做不到精确控制。
-- **中文用户需要的功能**：GBK/UTF-8 乱码修复、聊天记录长图拼接、九宫格切图、简繁转换——欧美产品普遍不做。
+- **OCR 免费**。iLovePDF 和 Smallpdf 把 OCR 锁在付费订阅里。Windows 自带的引擎
+  比 Tesseract 更快更准，调它零成本、零体积。
+- **压到指定体积**。网站限制上传 500KB 是刚需，而 TinyPNG 只能调质量档位。
+- **中文该有的功能**。中文水印和页码需要把字体嵌进 PDF，而微软雅黑 19.7 MB
+  且受版权保护不能分发——子集化后只占 13.5 KB。
 
-## 安全底线
+## 代码真正遵守的规矩
 
-这几条是代码层面的硬约束，不是口号：
+1. **绝不修改原文件**，结果一律写入新目录。每次验收都用 SHA-256 比对确认过。
+2. **删除只进回收站**，永不永久删除。确认框列出每一条路径，整组被勾选时单独警告，
+   默认焦点在「取消」。
+3. **内容相同不等于可以删。** 全盘扫描报出 115 GB「可回收」，但榜首是 conda 环境里
+   重复的 CUDA 运行库和 Git 内部对象——删任何一份，环境就废、仓库就坏。这类文件会
+   标明归属、强制保留，且**不计入可回收数字**。
+4. **跳过云端占位文件。** 读 OneDrive / WPS 的占位符会触发下载。一个用来腾空间的
+   工具，没道理把云端几个 GB 拉回本地来做比对。
+5. **零网络能力。** 拔掉网线，所有功能照常。
 
-1. **绝不覆盖原文件**，处理结果一律写入新目录
-2. **删除只进回收站**，永不永久删除
-3. **零网络能力**，断网可完整运行
-4. **涂黑密文是真的从内容流里删掉文字**，而不是盖个黑框。做不到安全处理的文档会直接拒绝，
-   而不是给你一个虚假的安全感
+## 已知的粗糙之处
+
+- **没有代码签名**，SmartScreen 会提示「未知发布者」。证书每年几百美元。
+  发布包会附 SHA-256 校验值，至少能确认下载的东西没被掉包。
+- **国内杀软大概率误报**。小体积 Rust 程序 + 批量文件操作 + 全局热键，
+  在启发式检测眼里就是可疑组合。
+- **只做 Windows**，这是刻意的。OCR 用 WinRT 引擎，PDF 渲染用 `Windows.Data.Pdf`，
+  跨平台方案都做不到这个体积。
 
 ## 授权
 
-MIT
+MIT。依赖审查见 [LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md)——
+599 个依赖，无任何传染性许可证。PDF 压缩刻意没用 Ghostscript，因为它是 AGPL。

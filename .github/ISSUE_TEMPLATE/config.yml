@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Antivirus flagged the download / 杀毒软件报毒
+    url: https://github.com/wwjorker/baobox/blob/main/README.md#known-rough-edges
+    about: >
+      Expected and explained in the README — an unsigned Rust binary doing bulk
+      file operations trips heuristics. 这是已知情况，README 里有说明。
+  - name: Why is there no "set PDF password"? / 为什么没有「设置 PDF 密码」
+    url: https://github.com/wwjorker/baobox/blob/main/README.md#what-is-deliberately-missing
+    about: >
+      Deliberate. Shipping encryption that might be wrong is worse than not
+      shipping it. 这是刻意不做的，理由见 README。

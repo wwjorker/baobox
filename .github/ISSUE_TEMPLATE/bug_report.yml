@@ -1,0 +1,60 @@
+name: Bug report / 问题反馈
+description: Something behaved wrong / 某个功能表现不对
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Baobox runs entirely on your machine, so nothing is logged anywhere I can
+        see. The details below are the only way I can reproduce anything.
+
+        Baobox 完全在你本机运行，任何日志我都看不到，所以下面的信息是复现问题的唯一线索。
+
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool / 哪个工具
+      placeholder: "e.g. Compress to a target size / 压到指定体积以内"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened / 发生了什么
+      description: >
+        What you expected versus what you got. If a file was produced but is
+        wrong, say how it is wrong.
+        期望的结果 vs 实际结果。如果产出了文件但不对，说明哪里不对。
+    validations:
+      required: true
+
+  - type: textarea
+    id: files
+    attributes:
+      label: The files involved / 涉及的文件
+      description: >
+        Type, size, and anything unusual — scanned rather than digital PDF,
+        CMYK image, very long path, non-ASCII filename, on a network or cloud
+        drive. **Do not upload anything private.**
+        类型、体积，以及任何特殊之处——扫描件 PDF、CMYK 图片、超长路径、
+        非 ASCII 文件名、位于网络盘或云盘。**不要上传任何私人文件。**
+
+  - type: input
+    id: version
+    attributes:
+      label: Baobox version / 版本
+      placeholder: "e.g. 0.1.0 or a commit hash"
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version / 系统版本
+      placeholder: "winver → e.g. Windows 11 23H2"
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message / 错误提示
+      description: Copy the message shown in the app. / 复制软件里显示的那句提示。
+      render: text
