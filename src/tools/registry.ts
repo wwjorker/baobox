@@ -186,9 +186,28 @@ export const TOOLS: ToolDef[] = [
   { id: "ocr.screen", pillar: "ocr", accepts: [], command: "ocr_screen", status: "planned", options: [] },
 
   // ------------------------------------------------------------ PDF（8）
-  { id: "pdf.merge", pillar: "pdf", accepts: PDF, command: "pdf_merge", status: "planned", options: [] },
-  { id: "pdf.split", pillar: "pdf", accepts: PDF, command: "pdf_split", status: "planned", options: [] },
-  { id: "pdf.rotate", pillar: "pdf", accepts: PDF, command: "pdf_rotate", status: "planned", options: [] },
+  { id: "pdf.merge", pillar: "pdf", accepts: PDF, command: "pdf_merge", status: "ready", options: [] },
+  { id: "pdf.split", pillar: "pdf", accepts: PDF, command: "pdf_split", status: "ready", options: [] },
+  {
+    id: "pdf.rotate",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_rotate",
+    status: "ready",
+    options: [
+      {
+        kind: "choice",
+        id: "degrees",
+        label: "opt.rotate",
+        def: "90",
+        choices: [
+          { value: "90", label: "90°" },
+          { value: "180", label: "180°" },
+          { value: "270", label: "270°" },
+        ],
+      },
+    ],
+  },
   {
     id: "pdf.compress",
     pillar: "pdf",
@@ -205,7 +224,16 @@ export const TOOLS: ToolDef[] = [
     status: "planned",
     options: [{ kind: "number", id: "dpi", label: "opt.dpi", min: 72, max: 600, step: 24, def: 150, unit: "DPI" }],
   },
-  { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "planned", options: [] },
+  { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "ready", options: [] },
+  {
+    id: "pdf.to-text",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_to_text",
+    status: "ready",
+    output: "text",
+    options: [],
+  },
   {
     id: "pdf.encrypt",
     pillar: "pdf",

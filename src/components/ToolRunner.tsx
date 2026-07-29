@@ -65,6 +65,7 @@ export function ToolRunner({
   const [rows, setRows] = useState<Row[]>([]);
   const [running, setRunning] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
+  const [workingOn, setWorkingOn] = useState<string | null>(null);
   const [over, setOver] = useState(false);
   const [values, setValues] = useState<Record<string, string | number | boolean>>(() =>
     Object.fromEntries(tool.options.map((o) => [o.id, o.def])),
@@ -150,6 +151,12 @@ export function ToolRunner({
     setDoneCount(0);
     setRows((prev) => prev.map((r) => ({ ...r, outcome: undefined })));
 
+    // 开工前的「正在处理哪一个」，避免遇到慢文件时界面毫无动静
+    const unWorking = await getCurrentWebview().listen<{ name: string; index: number; total: number }>(
+      "baobox://working",
+      ({ payload }) => setWorkingOn(`${payload.index + 1}/${payload.total} · ${payload.name}`),
+    );
+
     // 逐个文件上报，中途失败也保留已完成的部分
     const un = await getCurrentWebview().listen<{ index: number; total: number; outcome: Outcome }>(
       "baobox://progress",
@@ -172,6 +179,8 @@ export function ToolRunner({
       );
     } finally {
       un();
+      unWorking();
+      setWorkingOn(null);
       setRunning(false);
     }
   };
@@ -326,7 +335,13 @@ export function ToolRunner({
 
           <div className="runbar">
             <button className="go" onClick={run} disabled={notReady || running}>
-              {running ? t("run.running") : summary ? t("run.done") : t("run.start")}
+              {running
+                ? workingOn
+                  ? `${t("run.running")} ${workingOn}`
+                  : t("run.running")
+                : summary
+                  ? t("run.done")
+                  : t("run.start")}
             </button>
             {isText && summary && !running && (
               <button

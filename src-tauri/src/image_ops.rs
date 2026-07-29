@@ -1,9 +1,10 @@
-﻿use crate::err::{AppError, AppResult};
+﻿use crate::batch::{run_batch, FileOutcome};
+use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
 use image::{DynamicImage, GenericImageView};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 
 // ============================================================ 输出格式
 
@@ -243,26 +244,8 @@ fn shrink_until_fits(
 }
 
 // ============================================================ 批量运行器
-
-#[derive(Serialize, Clone)]
-pub struct FileOutcome {
-    pub path: String,
-    pub name: String,
-    pub ok: bool,
-    pub in_bytes: u64,
-    pub out_bytes: u64,
-    pub out_path: Option<String>,
-    /// 附加说明，如「质量 78 · 缩放 85%」
-    pub note: Option<String>,
-    pub error: Option<AppError>,
-}
-
-#[derive(Serialize, Clone)]
-pub struct Progress {
-    pub index: usize,
-    pub total: usize,
-    pub outcome: FileOutcome,
-}
+// FileOutcome / Progress / run_batch 已提取到 crate::batch，
+// 供图片、PDF、OCR 等所有支柱共用，前端因此只需要认一种结果结构。
 
 fn load(src: &Path) -> AppResult<DynamicImage> {
     let bytes = std::fs::read(long_path(src))?;
@@ -273,60 +256,6 @@ fn load(src: &Path) -> AppResult<DynamicImage> {
             .unwrap_or_else(|| "图片".into());
         AppError::decode(&ext, e)
     })
-}
-
-/// 逐个文件处理并即时上报。
-///
-/// 方案风险 18：结果逐条提交而不是最后统一写入，中途取消或崩溃时
-/// 已完成的部分依然留在磁盘上，不会白干。
-fn run_batch<F>(app: &AppHandle, paths: Vec<String>, job: F) -> Vec<FileOutcome>
-where
-    F: Fn(&Path) -> AppResult<(PathBuf, Option<String>)>,
-{
-    let total = paths.len();
-    let mut out = Vec::with_capacity(total);
-
-    for (index, p) in paths.iter().enumerate() {
-        let src = PathBuf::from(p);
-        let in_bytes = std::fs::metadata(long_path(&src)).map(|m| m.len()).unwrap_or(0);
-
-        let outcome = match job(&src) {
-            Ok((dst, note)) => {
-                let out_bytes = std::fs::metadata(long_path(&dst)).map(|m| m.len()).unwrap_or(0);
-                FileOutcome {
-                    path: p.clone(),
-                    name: file_name_of(&src),
-                    ok: true,
-                    in_bytes,
-                    out_bytes,
-                    out_path: Some(dst.to_string_lossy().to_string()),
-                    note,
-                    error: None,
-                }
-            }
-            Err(e) => FileOutcome {
-                path: p.clone(),
-                name: file_name_of(&src),
-                ok: false,
-                in_bytes,
-                out_bytes: 0,
-                out_path: None,
-                note: None,
-                error: Some(e),
-            },
-        };
-
-        let _ = app.emit(
-            "baobox://progress",
-            Progress {
-                index,
-                total,
-                outcome: outcome.clone(),
-            },
-        );
-        out.push(outcome);
-    }
-    out
 }
 
 /// 文件加入列表时的元信息。

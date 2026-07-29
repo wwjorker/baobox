@@ -1,4 +1,4 @@
-/** 简体中文文案。key 的层级与界面结构对应，新增功能时就近插入。 */
+﻿/** 简体中文文案。key 的层级与界面结构对应，新增功能时就近插入。 */
 export default {
   app: {
     name: "百宝箱",
@@ -52,7 +52,8 @@ export default {
       rotate: { name: "旋转与重排", desc: "调整页面方向和先后顺序。" },
       compress: { name: "压缩", desc: "重新压缩内嵌图片，显示前后体积对比。" },
       "to-image": { name: "PDF 转图片", desc: "导出为 PNG 或 JPG，可选 DPI。" },
-      "from-image": { name: "图片转 PDF", desc: "多张图片合成一份 PDF。" },
+      "from-image": { name: "图片转 PDF", desc: "多张图片合成一份 PDF，页面尺寸自动跟随图片。" },
+      "to-text": { name: "PDF 提取文字", desc: "把本身带文本层的 PDF 转成纯文本。扫描件请用 OCR 那边。" },
       encrypt: { name: "加密 / 解密", desc: "设置打开密码，或移除已知密码。" },
       stamp: { name: "页码与水印", desc: "添加页码、文字水印或图片水印。" },
     },
@@ -106,6 +107,7 @@ export default {
     password: "密码",
     ocrLang: "识别语言",
     ocrLangAuto: "自动",
+    rotate: "旋转角度",
   },
 
   status: {
@@ -132,6 +134,7 @@ export default {
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
     notFound: "找不到这个文件，它可能已被移动或删除。",
+    pdfNoPages: "这份 PDF 里没有任何页面，可能已损坏。",
     ocrNoLanguage:
       "系统里没有可用的 OCR 语言包。到「设置 → 时间和语言 → 语言和区域」里给你的语言添加「光学字符识别」功能后重试。",
     unknown: "处理失败：{detail}",

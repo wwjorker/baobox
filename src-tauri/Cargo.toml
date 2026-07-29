@@ -63,7 +63,7 @@ windows = { version = "0.58", features = [
   "Win32_System_Com",
 ] }
 # 风险 2：PDF 结构操作 + 中文字体子集化嵌入
-lopdf = "0.34"
+lopdf = { version = "0.34", features = ["embed_image"] }
 ttf-parser = "0.25"
 # 图片编解码主力
 image = "0.25"

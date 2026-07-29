@@ -2354,6 +2354,7 @@ dependencies = [
  "chrono",
  "encoding_rs",
  "flate2",
+ "image",
  "indexmap 2.14.0",
  "itoa",
  "log",

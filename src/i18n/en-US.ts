@@ -1,4 +1,4 @@
-import type zhCN from "./zh-CN";
+﻿import type zhCN from "./zh-CN";
 
 /** English copy. Must stay structurally identical to zh-CN.ts — the type below enforces it. */
 const enUS: typeof zhCN = {
@@ -52,7 +52,14 @@ const enUS: typeof zhCN = {
       rotate: { name: "Rotate & reorder", desc: "Change page orientation and sequence." },
       compress: { name: "Compress", desc: "Recompress embedded images and show the before/after size." },
       "to-image": { name: "PDF to image", desc: "Export as PNG or JPG at your chosen DPI." },
-      "from-image": { name: "Image to PDF", desc: "Combine several images into one PDF." },
+      "from-image": {
+        name: "Image to PDF",
+        desc: "Combine several images into one PDF, page size following each image.",
+      },
+      "to-text": {
+        name: "Extract PDF text",
+        desc: "Pull plain text out of PDFs that already have a text layer. Use OCR for scans.",
+      },
       encrypt: { name: "Encrypt / decrypt", desc: "Set an open password, or remove one you know." },
       stamp: { name: "Page numbers & watermark", desc: "Add page numbers, text or an image watermark." },
     },
@@ -106,6 +113,7 @@ const enUS: typeof zhCN = {
     password: "Password",
     ocrLang: "Recognition language",
     ocrLangAuto: "Auto",
+    rotate: "Rotation",
   },
 
   status: {
@@ -131,6 +139,7 @@ const enUS: typeof zhCN = {
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",
     notFound: "Can't find this file — it may have been moved or deleted.",
+    pdfNoPages: "This PDF has no pages — it may be damaged.",
     ocrNoLanguage:
       "No OCR language pack is installed. Add the Optical Character Recognition feature for your language under Settings → Time & language → Language & region, then try again.",
     unknown: "Failed: {detail}",

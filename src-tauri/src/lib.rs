@@ -1,7 +1,9 @@
+pub mod batch;
 pub mod err;
 pub mod image_ops;
 pub mod ocr;
 pub mod paths;
+pub mod pdf_ops;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +20,11 @@ pub fn run() {
             ocr::ocr_image,
             ocr::ocr_batch,
             ocr::ocr_languages,
+            pdf_ops::pdf_merge,
+            pdf_ops::pdf_split,
+            pdf_ops::pdf_rotate,
+            pdf_ops::pdf_from_image,
+            pdf_ops::pdf_to_text,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
