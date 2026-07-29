@@ -655,6 +655,348 @@ fn pdf_pages_blocking(
     })
 }
 
+// ================================================ N 合 1 拼版
+
+/// 把多页缩排到一页上。
+///
+/// 讲义、代码、合同草稿——打印出来大半是空白页边，2 合 1 直接省一半纸。
+/// 靠 Form XObject 实现：把每一页原样包成一个可复用对象，再用变换矩阵
+/// 缩放平移画上去。比重新排版内容可靠得多，页面里的字体、矢量、图片
+/// 一律不用碰。
+pub fn nup_file(src: &Path, cols: u32, rows: u32, gap: f32) -> AppResult<(PathBuf, usize, usize)> {
+    let doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    let per_sheet = (cols * rows) as usize;
+    if per_sheet <= 1 {
+        return Err(AppError::new("err.nupTooSmall"));
+    }
+
+    let src_ids: Vec<lopdf::ObjectId> = pages.values().copied().collect();
+    let total = src_ids.len();
+
+    // 以第一页的尺寸作为版面基准；混排尺寸的文档少见，
+    // 真遇到也是按同一个格子放，不会画到格子外
+    let (_, _, pw, ph) = page_box(&doc, src_ids[0]);
+
+    let mut out = Document::with_version("1.5");
+    let pages_id = out.new_object_id();
+    let mut kids = Vec::new();
+    let mut sheets = 0usize;
+
+    for chunk in src_ids.chunks(per_sheet) {
+        let mut content = String::new();
+        let mut xobjects = lopdf::Dictionary::new();
+
+        for (i, page_id) in chunk.iter().enumerate() {
+            let Some(form_id) = page_to_form(&doc, &mut out, *page_id) else {
+                continue;
+            };
+            let name = format!("BaoX{i}");
+            xobjects.set(name.clone(), form_id);
+
+            let (col, row) = (i as u32 % cols, i as u32 / cols);
+            let cell_w = (pw - gap * (cols + 1) as f32) / cols as f32;
+            let cell_h = (ph - gap * (rows + 1) as f32) / rows as f32;
+            // 等比缩放，取两个方向里更紧的那个，保证整页装得下
+            let scale = (cell_w / pw).min(cell_h / ph);
+            let x = gap + col as f32 * (cell_w + gap) + (cell_w - pw * scale) / 2.0;
+            // 第一格在左上，所以行号要从顶部往下数
+            let y = ph - gap - (row + 1) as f32 * cell_h - row as f32 * gap
+                + (cell_h - ph * scale) / 2.0;
+
+            content.push_str(&format!(
+                "q {scale:.5} 0 0 {scale:.5} {x:.2} {y:.2} cm /{name} Do Q\n"
+            ));
+        }
+
+        let content_id = out.add_object(Object::Stream(lopdf::Stream::new(
+            lopdf::Dictionary::new(),
+            content.into_bytes(),
+        )));
+        let mut res = lopdf::Dictionary::new();
+        res.set("XObject", Object::Dictionary(xobjects));
+
+        let mut page = lopdf::Dictionary::new();
+        page.set("Type", "Page");
+        page.set("Parent", pages_id);
+        page.set("Contents", content_id);
+        page.set("Resources", Object::Dictionary(res));
+        page.set(
+            "MediaBox",
+            vec![
+                Object::Real(0.0),
+                Object::Real(0.0),
+                Object::Real(pw),
+                Object::Real(ph),
+            ],
+        );
+        kids.push(Object::Reference(out.add_object(Object::Dictionary(page))));
+        sheets += 1;
+    }
+
+    let mut pages_dict = lopdf::Dictionary::new();
+    pages_dict.set("Type", "Pages");
+    pages_dict.set("Count", kids.len() as u32);
+    pages_dict.set("Kids", kids);
+    out.objects.insert(pages_id, Object::Dictionary(pages_dict));
+    let mut cat = lopdf::Dictionary::new();
+    cat.set("Type", "Catalog");
+    cat.set("Pages", pages_id);
+    let catalog = out.add_object(Object::Dictionary(cat));
+    out.trailer.set("Root", catalog);
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(
+        &dir,
+        &format!("{} {}合1", stem_of(src), per_sheet),
+        "pdf",
+    );
+    save(&mut out, &dst)?;
+    Ok((dst, total, sheets))
+}
+
+/// 把一页原样打包成可以画到别处的 Form XObject。
+///
+/// 页面的内容流、资源、以及它依赖的所有对象都得跟着搬到新文档里，
+/// 漏一个引用产物就是空白页——而且不会报错。
+fn page_to_form(src: &Document, out: &mut Document, page_id: lopdf::ObjectId) -> Option<lopdf::ObjectId> {
+    let dict = src.get_object(page_id).ok()?.as_dict().ok()?;
+
+    // 内容流可能是一个也可能是数组，拼成一份
+    let mut content = Vec::new();
+    match dict.get(b"Contents").ok()? {
+        Object::Reference(r) => {
+            if let Ok(Object::Stream(s)) = src.get_object(*r) {
+                content.extend_from_slice(&s.get_plain_content().ok()?);
+            }
+        }
+        Object::Array(a) => {
+            for o in a {
+                if let Object::Reference(r) = o {
+                    if let Ok(Object::Stream(s)) = src.get_object(*r) {
+                        content.extend_from_slice(&s.get_plain_content().unwrap_or_default());
+                        content.push(b'\n');
+                    }
+                }
+            }
+        }
+        _ => return None,
+    }
+
+    let resources = dict
+        .get(b"Resources")
+        .ok()
+        .map(|r| deep_copy(src, out, r))
+        .unwrap_or(Object::Dictionary(lopdf::Dictionary::new()));
+
+    let (x, y, w, h) = page_box_of(src, page_id);
+    let mut fd = lopdf::Dictionary::new();
+    fd.set("Type", "XObject");
+    fd.set("Subtype", "Form");
+    fd.set("FormType", 1i64);
+    fd.set(
+        "BBox",
+        vec![
+            Object::Real(x),
+            Object::Real(y),
+            Object::Real(x + w),
+            Object::Real(y + h),
+        ],
+    );
+    fd.set("Resources", resources);
+
+    let mut stream = lopdf::Stream::new(fd, content);
+    let _ = stream.compress();
+    Some(out.add_object(Object::Stream(stream)))
+}
+
+/// 把一个对象连同它引用到的一切复制到目标文档。
+fn deep_copy(src: &Document, out: &mut Document, obj: &Object) -> Object {
+    // 递归有环的风险：资源字典里出现自引用会栈溢出，限个深度
+    fn go(src: &Document, out: &mut Document, obj: &Object, depth: u32) -> Object {
+        if depth > 24 {
+            return Object::Null;
+        }
+        match obj {
+            Object::Reference(r) => match src.get_object(*r) {
+                Ok(inner) => {
+                    let copied = go(src, out, inner, depth + 1);
+                    Object::Reference(out.add_object(copied))
+                }
+                Err(_) => Object::Null,
+            },
+            Object::Dictionary(d) => {
+                let mut nd = lopdf::Dictionary::new();
+                for (k, v) in d.iter() {
+                    nd.set(k.to_vec(), go(src, out, v, depth + 1));
+                }
+                Object::Dictionary(nd)
+            }
+            Object::Array(a) => {
+                Object::Array(a.iter().map(|v| go(src, out, v, depth + 1)).collect())
+            }
+            Object::Stream(s) => {
+                let mut ns = s.clone();
+                let mut nd = lopdf::Dictionary::new();
+                for (k, v) in s.dict.iter() {
+                    nd.set(k.to_vec(), go(src, out, v, depth + 1));
+                }
+                ns.dict = nd;
+                Object::Stream(ns)
+            }
+            other => other.clone(),
+        }
+    }
+    go(src, out, obj, 0)
+}
+
+/// page_box 的只读版本，用于跨文档取尺寸
+fn page_box_of(doc: &Document, page_id: lopdf::ObjectId) -> (f32, f32, f32, f32) {
+    let read = |key: &[u8]| -> Option<Vec<f32>> {
+        let d = doc.get_object(page_id).ok()?.as_dict().ok()?;
+        let arr = match d.get(key).ok()? {
+            Object::Array(a) => a.clone(),
+            Object::Reference(r) => doc.get_object(*r).ok()?.as_array().ok()?.clone(),
+            _ => return None,
+        };
+        let v: Vec<f32> = arr
+            .iter()
+            .filter_map(|o| match o {
+                Object::Integer(i) => Some(*i as f32),
+                Object::Real(f) => Some(*f),
+                _ => None,
+            })
+            .collect();
+        (v.len() == 4).then_some(v)
+    };
+    let b = read(b"MediaBox").unwrap_or_else(|| vec![0.0, 0.0, 595.0, 842.0]);
+    let (x0, y0, x1, y1) = (b[0].min(b[2]), b[1].min(b[3]), b[0].max(b[2]), b[1].max(b[3]));
+    (x0, y0, x1 - x0, y1 - y0)
+}
+
+fn pdf_nup_blocking(app: AppHandle, paths: Vec<String>, layout: String, gap: f32) -> Vec<FileOutcome> {
+    let (cols, rows) = match layout.as_str() {
+        "1x2" => (1u32, 2u32),
+        "2x2" => (2, 2),
+        "3x3" => (3, 3),
+        "2x4" => (2, 4),
+        _ => (2, 1),
+    };
+    run_batch(&app, paths, move |src| {
+        let (dst, total, sheets) = nup_file(src, cols, rows, gap)?;
+        Ok((
+            dst,
+            Some(
+                Note::new("note.nup")
+                    .with("total", total)
+                    .with("sheets", sheets)
+                    .with("per", cols * rows),
+            ),
+        ))
+    })
+}
+
+// ================================================ 插入空白页
+
+/// 在指定位置插入空白页。
+///
+/// 双面打印时常需要在章节之间补一张空白，让下一章从正面开始。
+pub fn insert_blank(src: &Path, after_spec: &str, count: u32) -> AppResult<(PathBuf, usize)> {
+    let mut doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    let total = pages.len() as u32;
+    // 空的话就在每一页后面都插，这正是「章节间补白」最常见的用法
+    let targets: Vec<u32> = if after_spec.trim().is_empty() {
+        (1..=total).collect()
+    } else {
+        parse_pages(after_spec, total)?
+    };
+
+    let ids: Vec<lopdf::ObjectId> = pages.values().copied().collect();
+    let (_, _, pw, ph) = page_box(&doc, ids[0]);
+
+    // 逐页拆成单页文档，在指定位置后插入空白，再合并回去
+    let nums: Vec<u32> = pages.keys().copied().collect();
+    let mut parts: Vec<Document> = Vec::new();
+    let mut inserted = 0usize;
+
+    for (i, n) in nums.iter().enumerate() {
+        let mut one = doc.clone();
+        let drop: Vec<u32> = nums.iter().copied().filter(|p| p != n).collect();
+        one.delete_pages(&drop);
+        one.adjust_zero_pages();
+        parts.push(one);
+
+        if targets.contains(&(i as u32 + 1)) {
+            for _ in 0..count.max(1) {
+                parts.push(blank_page(pw, ph));
+                inserted += 1;
+            }
+        }
+    }
+
+    let mut merged = merge_docs(parts)?;
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 加空白页", stem_of(src)), "pdf");
+    save(&mut merged, &dst)?;
+    let _ = &mut doc;
+    Ok((dst, inserted))
+}
+
+fn blank_page(w: f32, h: f32) -> Document {
+    let mut d = Document::with_version("1.5");
+    let pages_id = d.new_object_id();
+    let content = d.add_object(Object::Stream(lopdf::Stream::new(
+        lopdf::Dictionary::new(),
+        Vec::new(),
+    )));
+    let mut pd = lopdf::Dictionary::new();
+    pd.set("Type", "Page");
+    pd.set("Parent", pages_id);
+    pd.set("Contents", content);
+    pd.set(
+        "MediaBox",
+        vec![
+            Object::Real(0.0),
+            Object::Real(0.0),
+            Object::Real(w),
+            Object::Real(h),
+        ],
+    );
+    let page = d.add_object(Object::Dictionary(pd));
+
+    let mut tree = lopdf::Dictionary::new();
+    tree.set("Type", "Pages");
+    tree.set("Count", 1i64);
+    tree.set("Kids", vec![Object::Reference(page)]);
+    d.objects.insert(pages_id, Object::Dictionary(tree));
+
+    let mut cat = lopdf::Dictionary::new();
+    cat.set("Type", "Catalog");
+    cat.set("Pages", pages_id);
+    let cat_id = d.add_object(Object::Dictionary(cat));
+    d.trailer.set("Root", cat_id);
+    d
+}
+
+fn pdf_blank_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    after: String,
+    count: u32,
+) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, n) = insert_blank(src, &after, count)?;
+        Ok((dst, Some(Note::new("note.blankInserted").with("n", n))))
+    })
+}
+
 // ================================================ 元数据清除
 
 /// PDF 里常见的身份字段。
@@ -1023,6 +1365,34 @@ pub async fn pdf_extract_images(
     tauri::async_runtime::spawn_blocking(move || pdf_extract_images_blocking(app, paths, minPx))
         .await
         .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_nup(
+    app: AppHandle,
+    paths: Vec<String>,
+    layout: String,
+    gap: u32,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        pdf_nup_blocking(app, paths, layout, gap.min(60) as f32)
+    })
+    .await
+    .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_blank(
+    app: AppHandle,
+    paths: Vec<String>,
+    after: String,
+    count: u32,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        pdf_blank_blocking(app, paths, after, count.clamp(1, 10))
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[tauri::command]

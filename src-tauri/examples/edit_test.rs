@@ -182,7 +182,7 @@ fn main() {
     let mid = tmp.join("mid.png");
     RgbImage::from_pixel(40, 40, Rgb([120, 120, 120])).save(&mid).unwrap();
 
-    let bright = adjust_file(&mid, 50, 0, 0, false).unwrap();
+    let bright = adjust_file(&mid, 50, 0, 0, "none").unwrap();
     let bi = image::open(&bright).unwrap();
     check(
         "提亮确实变亮",
@@ -192,7 +192,7 @@ fn main() {
 
     let colored = tmp.join("colored.png");
     RgbImage::from_pixel(40, 40, Rgb([200, 60, 60])).save(&colored).unwrap();
-    let gray = adjust_file(&colored, 0, 0, 0, true).unwrap();
+    let gray = adjust_file(&colored, 0, 0, 0, "gray").unwrap();
     let gi = image::open(&gray).unwrap().to_rgb8();
     let gp = gi.get_pixel(20, 20).0;
     check(
@@ -201,7 +201,7 @@ fn main() {
         format!("RGB({}, {}, {})", gp[0], gp[1], gp[2]),
     );
 
-    let desat = adjust_file(&colored, 0, 0, -100, false).unwrap();
+    let desat = adjust_file(&colored, 0, 0, -100, "none").unwrap();
     let di = image::open(&desat).unwrap().to_rgb8();
     let dp = di.get_pixel(20, 20).0;
     check(

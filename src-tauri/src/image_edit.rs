@@ -400,6 +400,211 @@ pub async fn img_frame(
     .unwrap_or_default()
 }
 
+// ================================================================ 按比例裁切
+
+/// 统一裁成同一个画幅比例。
+///
+/// 电商主图要 1:1、视频封面要 16:9、小红书要 3:4——一批照片来自不同设备，
+/// 比例参差不齐，上传后被平台自动裁一刀，裁掉的往往正是主体。
+/// 自己先按中心裁好，至少知道保住了什么。
+pub fn aspect_file(src: &Path, ratio: &str) -> AppResult<(PathBuf, u32, u32, u32, u32)> {
+    let img = load(src)?;
+    let (w, h) = img.dimensions();
+
+    let (rw, rh): (f32, f32) = match ratio {
+        "1:1" => (1.0, 1.0),
+        "4:3" => (4.0, 3.0),
+        "3:4" => (3.0, 4.0),
+        "16:9" => (16.0, 9.0),
+        "9:16" => (9.0, 16.0),
+        _ => (1.0, 1.0),
+    };
+    let target = rw / rh;
+    let current = w as f32 / h as f32;
+
+    // 只裁不填：补白条等于把画面推小，多数人要的是裁
+    let (nw, nh) = if current > target {
+        ((h as f32 * target).round() as u32, h)
+    } else {
+        (w, (w as f32 / target).round() as u32)
+    };
+    let (nw, nh) = (nw.max(1).min(w), nh.max(1).min(h));
+
+    let cropped = img.crop_imm((w - nw) / 2, (h - nh) / 2, nw, nh);
+    let fmt = OutFmt::Keep.resolve(src);
+    let data = encode(&cropped, fmt, 92)?;
+    let dst = write_out(src, fmt, &data)?;
+    Ok((dst, w, h, nw, nh))
+}
+
+#[tauri::command]
+pub async fn img_aspect(app: AppHandle, paths: Vec<String>, ratio: String) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let (dst, w, h, nw, nh) = aspect_file(src, &ratio)?;
+            Ok((
+                dst,
+                Some(
+                    Note::new("note.aspect")
+                        .with("w", w)
+                        .with("h", h)
+                        .with("nw", nw)
+                        .with("nh", nh),
+                ),
+            ))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 主色调提取
+
+/// 数出图里最主要的几个颜色。
+///
+/// 做配图、选背景色、给相册分色时要用。按 5 位精度分桶统计——
+/// 全精度统计等于每个像素一个桶，照片上根本聚不出「主色」。
+pub fn palette_of(src: &Path, count: usize) -> AppResult<Vec<(String, f32)>> {
+    let img = load(src)?;
+    // 大图先缩小，主色调跟分辨率无关，全尺寸统计纯属浪费
+    let small = img.thumbnail(200, 200).to_rgb8();
+
+    let mut buckets: std::collections::HashMap<(u8, u8, u8), u32> = std::collections::HashMap::new();
+    let mut total = 0u32;
+    for p in small.pixels() {
+        // 每通道压到 32 级，相近的颜色才会落进同一个桶
+        let key = (p.0[0] >> 3, p.0[1] >> 3, p.0[2] >> 3);
+        *buckets.entry(key).or_insert(0) += 1;
+        total += 1;
+    }
+
+    let mut list: Vec<((u8, u8, u8), u32)> = buckets.into_iter().collect();
+    list.sort_by(|a, b| b.1.cmp(&a.1));
+
+    Ok(list
+        .into_iter()
+        .take(count)
+        .map(|((r, g, b), n)| {
+            // 回到桶的中心值，直接左移会让所有颜色都偏暗
+            let (r, g, b) = ((r << 3) | 4, (g << 3) | 4, (b << 3) | 4);
+            (
+                format!("#{r:02X}{g:02X}{b:02X}"),
+                n as f32 * 100.0 / total.max(1) as f32,
+            )
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub async fn img_palette(app: AppHandle, paths: Vec<String>, count: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let n = count.clamp(1, 12) as usize;
+        let total = paths.len();
+        let mut out = Vec::with_capacity(total);
+        crate::batch::reset_cancel();
+
+        for (index, p) in paths.iter().enumerate() {
+            let src = PathBuf::from(p);
+            if crate::batch::cancelled() {
+                let o = FileOutcome::skipped(&src, "run.cancelledSkip");
+                crate::batch::emit(&app, index, total, &o);
+                out.push(o);
+                continue;
+            }
+            let o = match palette_of(&src, n) {
+                Ok(list) => {
+                    let text = list
+                        .iter()
+                        .map(|(hex, pct)| format!("{hex}  {pct:.1}%"))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+                    FileOutcome::text_only(
+                        &src,
+                        text,
+                        Some(Note::new("note.paletteFound").with("n", list.len())),
+                    )
+                }
+                Err(e) => FileOutcome::fail(&src, e),
+            };
+            crate::batch::emit(&app, index, total, &o);
+            out.push(o);
+        }
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 转 Base64
+
+/// 图片转 data URI。
+///
+/// 写网页时把小图直接内联进 HTML/CSS，省一次请求；也常用于把图贴进
+/// 只接受文本的地方。产物同时落一份 txt，因为几十 KB 的字符串
+/// 没法靠界面里那个框读完。
+pub fn base64_of(src: &Path) -> AppResult<(PathBuf, String, usize)> {
+    use base64::Engine;
+    let bytes = std::fs::read(long_path(src))?;
+    let mime = match src
+        .extension()
+        .map(|e| e.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default()
+        .as_str()
+    {
+        "png" => "image/png",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        "bmp" => "image/bmp",
+        "tif" | "tiff" => "image/tiff",
+        _ => "image/jpeg",
+    };
+    let uri = format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&bytes)
+    );
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &stem_of(src), "txt");
+    std::fs::write(long_path(&dst), uri.as_bytes())?;
+    Ok((dst, uri, bytes.len()))
+}
+
+#[tauri::command]
+pub async fn img_base64(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let total = paths.len();
+        let mut out = Vec::with_capacity(total);
+        crate::batch::reset_cancel();
+
+        for (index, p) in paths.iter().enumerate() {
+            let src = PathBuf::from(p);
+            if crate::batch::cancelled() {
+                let o = FileOutcome::skipped(&src, "run.cancelledSkip");
+                crate::batch::emit(&app, index, total, &o);
+                out.push(o);
+                continue;
+            }
+            let o = match base64_of(&src) {
+                Ok((dst, uri, _)) => {
+                    let mut o = FileOutcome::text_only(
+                        &src,
+                        uri.clone(),
+                        Some(Note::new("note.base64").with("kb", uri.len() / 1024)),
+                    );
+                    o.out_path = Some(dst.to_string_lossy().to_string());
+                    o
+                }
+                Err(e) => FileOutcome::fail(&src, e),
+            };
+            crate::batch::emit(&app, index, total, &o);
+            out.push(o);
+        }
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 生成 ICO
 
 /// 网站图标和 Windows 程序图标要的都是一个 .ico 里装多个尺寸。
@@ -484,7 +689,7 @@ pub fn adjust_file(
     brightness: i32,
     contrast: i32,
     saturation: i32,
-    gray: bool,
+    filter: &str,
 ) -> AppResult<PathBuf> {
     let img = load(src)?;
     let mut work = img;
@@ -495,15 +700,41 @@ pub fn adjust_file(
     if contrast != 0 {
         work = work.adjust_contrast(contrast as f32);
     }
-    if gray {
-        work = DynamicImage::ImageLuma8(work.to_luma8());
-    } else if saturation != 0 {
-        work = apply_saturation(&work, saturation);
+
+    match filter {
+        "gray" => work = DynamicImage::ImageLuma8(work.to_luma8()),
+        "sepia" => work = apply_sepia(&work),
+        "invert" => {
+            let mut rgba = work.to_rgba8();
+            for p in rgba.pixels_mut() {
+                for i in 0..3 {
+                    p.0[i] = 255 - p.0[i];
+                }
+            }
+            work = DynamicImage::ImageRgba8(rgba);
+        }
+        _ => {
+            if saturation != 0 {
+                work = apply_saturation(&work, saturation);
+            }
+        }
     }
 
     let fmt = OutFmt::Keep.resolve(src);
     let data = encode(&work, fmt, 92)?;
     write_out(src, fmt, &data)
+}
+
+/// 棕褐色调。系数用的是通行的那组，效果跟老照片的观感对得上。
+fn apply_sepia(img: &DynamicImage) -> DynamicImage {
+    let mut rgba = img.to_rgba8();
+    for p in rgba.pixels_mut() {
+        let (r, g, b) = (p.0[0] as f32, p.0[1] as f32, p.0[2] as f32);
+        p.0[0] = (0.393 * r + 0.769 * g + 0.189 * b).min(255.0) as u8;
+        p.0[1] = (0.349 * r + 0.686 * g + 0.168 * b).min(255.0) as u8;
+        p.0[2] = (0.272 * r + 0.534 * g + 0.131 * b).min(255.0) as u8;
+    }
+    DynamicImage::ImageRgba8(rgba)
 }
 
 /// image crate 没有饱和度调节，按亮度做线性插值即可：
@@ -522,27 +753,27 @@ fn apply_saturation(img: &DynamicImage, amount: i32) -> DynamicImage {
 }
 
 #[tauri::command]
-#[allow(non_snake_case)]
 pub async fn img_adjust(
     app: AppHandle,
     paths: Vec<String>,
     brightness: i32,
     contrast: i32,
     saturation: i32,
-    grayscale: bool,
+    filter: String,
 ) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || {
         run_batch(&app, paths, move |src| {
-            let dst = adjust_file(src, brightness, contrast, saturation, grayscale)?;
+            let dst = adjust_file(src, brightness, contrast, saturation, &filter)?;
             Ok((
                 dst,
-                Some(if grayscale {
-                    Note::new("note.grayscaled")
-                } else {
-                    Note::new("note.adjusted")
+                Some(match filter.as_str() {
+                    "gray" => Note::new("note.grayscaled"),
+                    "sepia" => Note::new("note.sepia"),
+                    "invert" => Note::new("note.inverted"),
+                    _ => Note::new("note.adjusted")
                         .with("b", brightness)
                         .with("c", contrast)
-                        .with("s", saturation)
+                        .with("s", saturation),
                 }),
             ))
         })

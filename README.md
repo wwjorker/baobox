@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 43 of 44 tools work
+> ## 🚧 Preview — 51 of 52 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -43,7 +43,8 @@ into it.
 | Watermark | ✅ Chinese included, tiled or single |
 | **Split into a grid** | ✅ Crops to a centre square first, numbers the pieces in posting order |
 | **Stitch into one long image** | ✅ Widths matched to the narrowest, scaling down only |
-| Trim solid borders · Rounded corners · Adjust colour · Build an ICO | ✅ |
+| Trim solid borders · Rounded corners · Crop to a ratio | ✅ |
+| Adjust colour · Build an ICO · Dominant colours · Base64 | ✅ |
 
 ### OCR — free, offline, no subscription
 
@@ -69,6 +70,7 @@ so this costs nothing and adds no bytes.
 | Reverse page order · Delete or keep pages | ✅ Ranges like `1,3,5-8` |
 | **Strip metadata** | ✅ /Info and the separate XMP copy |
 | Trim page margins | ✅ Changes the crop box only, so it is reversible |
+| N pages per sheet · Insert blank pages | ✅ |
 | **PDF→image** | ✅ Uses the Windows rendering engine, so no 11 MB pdfium DLL |
 | **Chinese watermark & page numbers** | ✅ Font subsetting: 19.7 MB font → 13.5 KB embedded |
 | Unlock restrictions | ✅ Clears print/copy locks; open passwords need the password |
@@ -85,7 +87,7 @@ so this costs nothing and adds no bytes.
 | **QR codes** | ✅ Generate one per line of a file; read them back out of images |
 | Find and replace · Directory tree | ✅ Regex supported; encoding detected |
 | Split and rejoin large files | ✅ Byte-identical round trip, verified |
-| Dedupe, sort, count lines | ✅ |
+| Dedupe, sort, count lines · CSV ↔ JSON · Shift timestamps | ✅ |
 | File checksum | ✅ SHA-256 or BLAKE3, read in chunks |
 
 ## Measured, not estimated
@@ -126,7 +128,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 44 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 52 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -218,7 +220,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 44 个工具中 43 个可用
+> ## 🚧 预览版 —— 52 个工具中 51 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。

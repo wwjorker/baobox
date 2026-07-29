@@ -1,4 +1,4 @@
-﻿/** 简体中文文案。key 的层级与界面结构对应，新增功能时就近插入。 */
+/** 简体中文文案。key 的层级与界面结构对应，新增功能时就近插入。 */
 export default {
   app: {
     name: "百宝箱",
@@ -30,10 +30,10 @@ export default {
     file: "文件",
     recent: "最近",
     tools: "工具",
-    imageDesc: "压缩、转格式、缩放、抹隐私、打码，还有九宫格切图和长图拼接。全部批量，原图一律不动。",
+    imageDesc: "压缩、转格式、缩放、抹隐私、打码、九宫格、长图拼接、比例裁切、取主色。全部批量，原图一律不动。",
     ocrDesc: "用 Windows 自带的识别引擎，离线且免费。截图取字按 Ctrl+Shift+S 随时唤起。",
-    pdfDesc: "合并、拆分、压缩、转图片、加中文水印页码、解除限制。不需要 Docker。",
-    fileDesc: "按内容找重复、批量改名可撤销、GBK 乱码修复、哈希校验。删除一律走回收站。",
+    pdfDesc: "合并拆分、压缩、扫描件转可搜索、拼版省纸、清元数据、加中文水印页码。不需要 Docker。",
+    fileDesc: "找重复、批量改名、乱码修复、简繁转换、二维码、分卷、CSV↔JSON。删除一律走回收站。",
     readyCount: "{ready}/{total} 可用",
   },
 
@@ -76,6 +76,18 @@ export default {
         name: "圆角与边框",
         desc: "加圆角、加外边框。圆角靠透明通道实现，所以一律输出 PNG——存成 JPEG 圆角会被填成实色，等于白做。",
       },
+      aspect: {
+        name: "按比例裁切",
+        desc: "统一裁成 1:1、16:9、3:4 这类画幅。一批照片来自不同设备比例参差，上传后被平台自动裁一刀，裁掉的往往正是主体——自己先按中心裁好，至少知道保住了什么。",
+      },
+      palette: {
+        name: "主色调提取",
+        desc: "数出图里最主要的几个颜色，给出十六进制值和占比。做配图、选背景色、给相册分色时用得上。",
+      },
+      base64: {
+        name: "转 Base64",
+        desc: "转成 data URI，写网页时可以把小图直接内联进 HTML 或 CSS，省一次请求。同时落一份 txt，因为几十 KB 的字符串没法在界面里读完。",
+      },
       ico: {
         name: "生成 ICO 图标",
         desc: "一个 .ico 里装 16 到 256 六种尺寸，网站 favicon 和 Windows 程序图标都能用。先按中心裁成正方形，不然图标是压扁的。原图不够大的尺寸会跳过，不放大糊图。",
@@ -93,7 +105,7 @@ export default {
       },
       screen: {
         name: "截图取字",
-        desc: "抓下整个桌面，框选任意区域直接取字。抓屏前百宝箱会先自己让开，不会截到自己。（全局热键还没做，目前需从这里手动触发）",
+        desc: "在任何软件里按 Ctrl+Shift+S 都能唤起：窗口自己弹到最前，抓下整个桌面，框选任意区域直接取字。抓屏前百宝箱会先让开，不会截到自己。",
       },
     },
     pdf: {
@@ -122,6 +134,14 @@ export default {
         desc: "把 PDF 里的图原样抠出来，不重新编码——渲染整页再截图会掉一轮画质，而你要的往往正是原始像素。可以设最小尺寸，滤掉图标和分隔线。",
       },
       reverse: { name: "反转页序", desc: "整份倒过来。扫描仪倒着进纸是很常见的事故。" },
+      nup: {
+        name: "N 合 1 拼版",
+        desc: "把多页缩排到一页上打印，讲义和代码打出来大半是页边空白，2 合 1 直接省一半纸。每页原样缩放贴上去，字体和矢量都不用重排。",
+      },
+      blank: {
+        name: "插入空白页",
+        desc: "双面打印时常要在章节之间补一张白页，好让下一章从正面开始。页码留空就是每页后面都插一张。",
+      },
       "clean-meta": {
         name: "清除元数据",
         desc: "Word 导出的 PDF 会把你的电脑用户名写进作者字段，投标文件里常留着上一版的作者。跟图片的 EXIF 是同一类问题，只是没人注意。XMP 那份独立副本也一起清——只清作者字段的话，属性面板看着干净了，里面还留着一整份 XML。",
@@ -173,6 +193,14 @@ export default {
       join: {
         name: "分卷合并",
         desc: "把 .001 .002 拼回原文件。只接受第一卷——从中间某一卷开始拼出来的是残文件，而且照样打得开，你不会立刻发现。",
+      },
+      data: {
+        name: "CSV ↔ JSON",
+        desc: "按扩展名自动判方向。编码走统一检测，Excel 导出的 GBK 的 CSV 也能直接吃；转回 CSV 时带 BOM，免得中文列名在 Excel 里又乱一遍。",
+      },
+      touch: {
+        name: "批量改时间",
+        desc: "相机时区设错、导出工具把时间全写成当下——照片按时间排序全乱掉，这是唯一的修法。注意：这个工具直接改原文件的时间属性（内容一个字节不动），因为复制一份出来改时间毫无意义。",
       },
       hash: {
         name: "文件哈希校验",
@@ -282,6 +310,16 @@ export default {
     zhConverted: "转换 {n} 个字",
     zhNoChange: "一个字都没变——方向可能选反了",
     ocrLayer: "{pages} 页 · 盖上 {words} 段文字",
+    nup: "{total} 页 → {sheets} 张 · 每张 {per} 页",
+    blankInserted: "插入 {n} 张空白页",
+    aspect: "{w}×{h} → {nw}×{nh}",
+    paletteFound: "{n} 个主色",
+    base64: "约 {kb} KB 的字符串",
+    sepia: "已转棕褐色调",
+    inverted: "已转负片",
+    toJson: "{n} 条记录 → JSON",
+    toCsv: "{n} 条记录 → CSV",
+    timeShifted: "时间平移 {h} 小时",
     metaCleaned: "清掉 {n} 项：{list}",
     metaNone: "本来就没有可清的元数据",
     cropped: "{total} 页 · 裁了 {n} 页",
@@ -350,6 +388,19 @@ export default {
     lineSort: "排序",
     lineCount: "改成统计词频",
     partSize: "每卷",
+    nupLayout: "版式",
+    nupGap: "页间距",
+    blankAfter: "在哪几页之后插",
+    blankAfterHint: "留空 = 每页之后都插",
+    blankCount: "每处插几张",
+    aspectRatio: "画幅比例",
+    paletteCount: "取几个颜色",
+    filter: "滤镜",
+    filterNone: "不加",
+    sepia: "棕褐",
+    invert: "负片",
+    prettyJson: "JSON 缩进排版",
+    shiftHours: "平移小时数",
   },
 
   redact: {
@@ -467,6 +518,11 @@ export default {
     nothingToCrop: "每一页的白边都很窄，没什么可裁的。",
     smallerThanPart: "这个文件比一卷还小，不需要分割。",
     notFirstPart: "请选第一卷（.001）。从中间开始拼出来的是残文件。",
+    nupTooSmall: "这个版式一张只放一页，等于什么都没做。",
+    csvNoRows: "没有可转换的数据行。",
+    badJson: "这不是合法的 JSON。",
+    jsonNotArray: "需要一个由对象组成的 JSON 数组才能转成表格。",
+    timeBeforeEpoch: "平移后的时间早于 1970 年，超出了可表示范围。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

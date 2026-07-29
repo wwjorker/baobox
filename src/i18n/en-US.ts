@@ -1,4 +1,4 @@
-﻿import type zhCN from "./zh-CN";
+import type zhCN from "./zh-CN";
 
 /** English copy. Must stay structurally identical to zh-CN.ts — the type below enforces it. */
 const enUS: typeof zhCN = {
@@ -32,10 +32,10 @@ const enUS: typeof zhCN = {
     file: "Files",
     recent: "Recent",
     tools: "Tools",
-    imageDesc: "Compress, convert, resize, strip metadata, redact, plus grid splitting and long-image stitching. All batch, originals untouched.",
+    imageDesc: "Compress, convert, resize, strip metadata, redact, grid splitting, long-image stitching, ratio cropping, palettes. All batch, originals untouched.",
     ocrDesc: "Uses the recognition engine Windows already ships — offline and free. Ctrl+Shift+S grabs the screen from anywhere.",
-    pdfDesc: "Merge, split, compress, render to image, stamp, unlock. No Docker required.",
-    fileDesc: "Find duplicates by content, bulk rename with undo, repair mojibake, verify checksums. Deletions go to the Recycle Bin.",
+    pdfDesc: "Merge, split, compress, make scans searchable, N-up for printing, strip metadata, stamp. No Docker required.",
+    fileDesc: "Duplicates, bulk rename, mojibake repair, Simplified/Traditional, QR codes, split and join, CSV↔JSON. Deletions go to the Recycle Bin.",
     readyCount: "{ready}/{total} working",
   },
 
@@ -72,6 +72,18 @@ const enUS: typeof zhCN = {
         name: "Rounded corners & border",
         desc: "Round the corners, add a border. Corners need transparency, so output is always PNG — a JPEG would fill them with solid colour and undo the whole thing.",
       },
+      aspect: {
+        name: "Crop to a ratio",
+        desc: "Bring a batch to 1:1, 16:9, 3:4 and so on. Photos from different devices arrive at different ratios and the platform crops them for you on upload — usually straight through the subject. Cropping from the centre yourself at least tells you what survived.",
+      },
+      palette: {
+        name: "Dominant colours",
+        desc: "The main colours in an image, as hex values with their share. For picking a background, matching artwork, or sorting an album by colour.",
+      },
+      base64: {
+        name: "Convert to Base64",
+        desc: "A data URI, for inlining a small image directly into HTML or CSS and saving a request. Also written to a .txt, because tens of kilobytes of string cannot be read out of a panel.",
+      },
       ico: {
         name: "Build an ICO",
         desc: "One .ico holding six sizes from 16 to 256, for a site favicon or a Windows application icon. Cropped to a centre square first, or the icon comes out squashed. Sizes larger than the source are skipped rather than upscaled into mush.",
@@ -93,7 +105,7 @@ const enUS: typeof zhCN = {
       },
       screen: {
         name: "Screen capture OCR",
-        desc: "Grabs the whole desktop so you can drag over any part of it and get the text. Baobox minimises itself first, so it never captures its own window. (No global hotkey yet — trigger it from here.)",
+        desc: "Press Ctrl+Shift+S in any application: the window comes forward, the desktop is captured, and you drag over any part of it to get the text. Baobox minimises itself first, so it never captures its own window.",
       },
     },
     pdf: {
@@ -128,6 +140,14 @@ const enUS: typeof zhCN = {
         desc: "Pull the pictures out exactly as stored, without re-encoding — rendering a page and screenshotting it costs a generation of quality, and the original pixels are usually the point. Set a minimum size to skip icons and rules.",
       },
       reverse: { name: "Reverse page order", desc: "Flip the whole document. Scanners feeding pages backwards is a common accident." },
+      nup: {
+        name: "N pages per sheet",
+        desc: "Print several pages on one. Handouts and code come out mostly margin, and 2-up halves the paper immediately. Each page is scaled and placed as it is, so nothing has to be re-laid-out.",
+      },
+      blank: {
+        name: "Insert blank pages",
+        desc: "Duplex printing often needs a blank between chapters so the next one starts on a front face. Leave the page numbers empty to insert after every page.",
+      },
       "clean-meta": {
         name: "Strip metadata",
         desc: "A PDF exported from Word carries your computer's account name in the author field, and tender documents often still name whoever wrote the previous draft. Same class of problem as photo EXIF, just less noticed. The separate XMP copy goes too — removing only the author field leaves the properties panel looking clean with a whole XML block still inside.",
@@ -179,6 +199,14 @@ const enUS: typeof zhCN = {
       join: {
         name: "Join parts back",
         desc: "Reassemble .001, .002 into the original. Only the first part is accepted — starting from the middle produces a truncated file that still opens, so you would not notice straight away.",
+      },
+      data: {
+        name: "CSV ↔ JSON",
+        desc: "Direction follows the file extension. Encoding is detected, so a GBK CSV out of Excel works directly; converting back writes a BOM so Chinese column names do not come out as garbage in Excel.",
+      },
+      touch: {
+        name: "Shift file timestamps",
+        desc: "A camera set to the wrong timezone, or an export tool that stamps everything with the current moment, ruins sorting by date — this is the only fix. Note that this edits the timestamps of your original files in place (the contents are untouched), because copying a file to change its date achieves nothing.",
       },
       hash: {
         name: "File checksum",
@@ -286,6 +314,16 @@ const enUS: typeof zhCN = {
     zhConverted: "{n} characters converted",
     zhNoChange: "nothing changed — the direction may be the wrong way round",
     ocrLayer: "{pages} pages · {words} text runs laid over",
+    nup: "{total} pages → {sheets} sheets · {per} per sheet",
+    blankInserted: "{n} blank pages inserted",
+    aspect: "{w}×{h} → {nw}×{nh}",
+    paletteFound: "{n} dominant colours",
+    base64: "about {kb} KB of string",
+    sepia: "sepia applied",
+    inverted: "inverted",
+    toJson: "{n} records → JSON",
+    toCsv: "{n} records → CSV",
+    timeShifted: "shifted by {h} hours",
     metaCleaned: "{n} removed: {list}",
     metaNone: "no metadata to remove",
     cropped: "{total} pages · {n} trimmed",
@@ -354,6 +392,19 @@ const enUS: typeof zhCN = {
     lineSort: "Sort",
     lineCount: "Count occurrences instead",
     partSize: "Part size",
+    nupLayout: "Layout",
+    nupGap: "Gap",
+    blankAfter: "Insert after pages",
+    blankAfterHint: "empty = after every page",
+    blankCount: "Blanks each time",
+    aspectRatio: "Ratio",
+    paletteCount: "How many colours",
+    filter: "Filter",
+    filterNone: "None",
+    sepia: "Sepia",
+    invert: "Invert",
+    prettyJson: "Indent the JSON",
+    shiftHours: "Shift by",
   },
 
   redact: {
@@ -471,6 +522,11 @@ const enUS: typeof zhCN = {
     nothingToCrop: "Every page already has narrow margins — nothing worth trimming.",
     smallerThanPart: "This file is smaller than one part; splitting it would achieve nothing.",
     notFirstPart: "Choose the first part (.001). Starting from the middle produces a truncated file.",
+    nupTooSmall: "That layout puts one page per sheet, which changes nothing.",
+    csvNoRows: "No data rows to convert.",
+    badJson: "That is not valid JSON.",
+    jsonNotArray: "A JSON array of objects is needed to make a table.",
+    timeBeforeEpoch: "The shifted time lands before 1970, outside the representable range.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",

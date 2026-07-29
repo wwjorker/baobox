@@ -108,6 +108,13 @@ pub fn run() {
             textfile::file_split,
             textfile::file_join,
             textfile::text_lines,
+            textfile::data_convert,
+            textfile::file_touch,
+            pdf_ops::pdf_nup,
+            pdf_ops::pdf_blank,
+            image_edit::img_aspect,
+            image_edit::img_palette,
+            image_edit::img_base64,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

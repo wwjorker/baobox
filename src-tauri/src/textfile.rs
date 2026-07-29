@@ -572,6 +572,264 @@ pub async fn text_lines(
     .unwrap_or_default()
 }
 
+// ================================================================ CSV ↔ JSON
+
+/// 表格和 JSON 互转。
+///
+/// 编码走统一检测，所以 Excel 导出的 GBK 的 CSV 也能直接吃。
+/// 自己解析而不是拉一个 csv 库：需要的只是「引号、逗号、换行」三条规则，
+/// 而且要能容忍不规范的文件——真实世界的 CSV 极少严格合规。
+pub fn csv_to_json(src: &Path, pretty: bool) -> AppResult<(PathBuf, usize)> {
+    let bytes = std::fs::read(long_path(src))?;
+    let text = decode_text(&bytes);
+    let rows = parse_csv(&text);
+    if rows.len() < 2 {
+        return Err(AppError::new("err.csvNoRows"));
+    }
+
+    let head = &rows[0];
+    let items: Vec<serde_json::Value> = rows[1..]
+        .iter()
+        .filter(|r| r.iter().any(|c| !c.trim().is_empty()))
+        .map(|r| {
+            let mut m = serde_json::Map::new();
+            for (i, key) in head.iter().enumerate() {
+                let k = if key.trim().is_empty() {
+                    format!("列{}", i + 1)
+                } else {
+                    key.clone()
+                };
+                m.insert(k, serde_json::Value::String(r.get(i).cloned().unwrap_or_default()));
+            }
+            serde_json::Value::Object(m)
+        })
+        .collect();
+
+    let n = items.len();
+    let value = serde_json::Value::Array(items);
+    let out = if pretty {
+        serde_json::to_string_pretty(&value)
+    } else {
+        serde_json::to_string(&value)
+    }
+    .map_err(|e| AppError::unknown(e))?;
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &stem_of(src), "json");
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(out.as_bytes());
+    std::fs::write(long_path(&dst), &data)?;
+    Ok((dst, n))
+}
+
+/// JSON 数组转 CSV。列取所有对象键的并集，保持首次出现的顺序。
+pub fn json_to_csv(src: &Path) -> AppResult<(PathBuf, usize)> {
+    let bytes = std::fs::read(long_path(src))?;
+    let text = decode_text(&bytes);
+    let value: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| AppError::new("err.badJson").detail(e))?;
+    let serde_json::Value::Array(items) = value else {
+        return Err(AppError::new("err.jsonNotArray"));
+    };
+    if items.is_empty() {
+        return Err(AppError::new("err.csvNoRows"));
+    }
+
+    let mut cols: Vec<String> = Vec::new();
+    for it in &items {
+        if let serde_json::Value::Object(m) = it {
+            for k in m.keys() {
+                if !cols.contains(k) {
+                    cols.push(k.clone());
+                }
+            }
+        }
+    }
+    if cols.is_empty() {
+        return Err(AppError::new("err.jsonNotArray"));
+    }
+
+    let mut out = String::new();
+    out.push_str(&cols.iter().map(|c| csv_cell(c)).collect::<Vec<_>>().join(","));
+    out.push_str("\r\n");
+    for it in &items {
+        let row: Vec<String> = cols
+            .iter()
+            .map(|c| {
+                let v = it.get(c);
+                csv_cell(&match v {
+                    Some(serde_json::Value::String(s)) => s.clone(),
+                    Some(serde_json::Value::Null) | None => String::new(),
+                    Some(other) => other.to_string(),
+                })
+            })
+            .collect();
+        out.push_str(&row.join(","));
+        out.push_str("\r\n");
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &stem_of(src), "csv");
+    // Excel 靠 BOM 认 UTF-8，没有它中文列名又是一遍乱码
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(out.as_bytes());
+    std::fs::write(long_path(&dst), &data)?;
+    Ok((dst, items.len()))
+}
+
+/// 含逗号、引号或换行的单元格要用引号包起来，内部的引号双写
+fn csv_cell(s: &str) -> String {
+    if s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r') {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s.to_string()
+    }
+}
+
+/// 手写 CSV 解析：认引号包裹、双写转义、字段内换行。
+fn parse_csv(text: &str) -> Vec<Vec<String>> {
+    let mut rows = Vec::new();
+    let mut row = Vec::new();
+    let mut cell = String::new();
+    let mut quoted = false;
+    let mut chars = text.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if quoted {
+            if c == '"' {
+                if chars.peek() == Some(&'"') {
+                    chars.next();
+                    cell.push('"');
+                } else {
+                    quoted = false;
+                }
+            } else {
+                cell.push(c);
+            }
+            continue;
+        }
+        match c {
+            '"' => quoted = true,
+            ',' => row.push(std::mem::take(&mut cell)),
+            '\r' => {}
+            '\n' => {
+                row.push(std::mem::take(&mut cell));
+                rows.push(std::mem::take(&mut row));
+            }
+            _ => cell.push(c),
+        }
+    }
+    if !cell.is_empty() || !row.is_empty() {
+        row.push(cell);
+        rows.push(row);
+    }
+    rows
+}
+
+#[tauri::command]
+pub async fn data_convert(
+    app: AppHandle,
+    paths: Vec<String>,
+    pretty: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            // 按扩展名决定方向，用户不用再选一次——CSV 只可能转 JSON，反之亦然
+            let is_json = src
+                .extension()
+                .map(|e| e.to_string_lossy().to_ascii_lowercase() == "json")
+                .unwrap_or(false);
+            if is_json {
+                let (dst, n) = json_to_csv(src)?;
+                Ok((dst, Some(Note::new("note.toCsv").with("n", n))))
+            } else {
+                let (dst, n) = csv_to_json(src, pretty)?;
+                Ok((dst, Some(Note::new("note.toJson").with("n", n))))
+            }
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 修改时间戳
+
+/// 批量改文件时间。
+///
+/// 相机时区设错、导出工具把时间全写成当下、扫描件按处理顺序而不是
+/// 拍摄顺序排——照片按时间排序全乱掉，这是唯一的修法。
+///
+/// **这个工具会直接改原文件的时间属性**，因为「时间」不是内容，
+/// 复制一份出来改时间毫无意义。内容一个字节都不动。
+pub fn set_times(src: &Path, shift_hours: i64, set_to: Option<i64>) -> AppResult<i64> {
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    let meta = std::fs::metadata(long_path(src))?;
+    let current = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+
+    let target = match set_to {
+        Some(ts) => ts,
+        None => current + shift_hours * 3600,
+    };
+    if target < 0 {
+        return Err(AppError::new("err.timeBeforeEpoch"));
+    }
+
+    let t = SystemTime::UNIX_EPOCH + Duration::from_secs(target as u64);
+    let f = std::fs::OpenOptions::new()
+        .write(true)
+        .open(long_path(src))?;
+    f.set_modified(t)?;
+    Ok(target)
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn file_touch(
+    app: AppHandle,
+    paths: Vec<String>,
+    shiftHours: i64,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let total = paths.len();
+        let mut out = Vec::with_capacity(total);
+        crate::batch::reset_cancel();
+
+        for (index, p) in paths.iter().enumerate() {
+            let src = PathBuf::from(p);
+            if crate::batch::cancelled() {
+                let o = FileOutcome::skipped(&src, "run.cancelledSkip");
+                crate::batch::emit(&app, index, total, &o);
+                out.push(o);
+                continue;
+            }
+            let o = match set_times(&src, shiftHours, None) {
+                // 产物就是原文件本身，out_path 指回去，「打开输出文件夹」才有意义
+                Ok(_) => {
+                    let mut o = FileOutcome::ok(
+                        &src,
+                        src.clone(),
+                        Some(Note::new("note.timeShifted").with("h", shiftHours)),
+                    );
+                    o.out_bytes = o.in_bytes;
+                    o
+                }
+                Err(e) => FileOutcome::fail(&src, e),
+            };
+            crate::batch::emit(&app, index, total, &o);
+            out.push(o);
+        }
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 哈希校验
 
 /// 算文件哈希。
