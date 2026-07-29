@@ -135,6 +135,118 @@ fn recognize(path: &Path, lang: Option<&str>) -> AppResult<String> {
     Ok(lines.join("\n"))
 }
 
+/// 一个识别出来的词，带它在图上的位置。
+///
+/// 「扫描件转可搜索 PDF」靠的就是这些坐标——把文字按原位盖成不可见的一层，
+/// 搜索和选取才落在图上对的地方。只拿纯文本是做不出来的。
+#[derive(Clone, Debug)]
+pub struct OcrWord {
+    pub text: String,
+    /// 单位是输入图的像素，左上角为原点
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+pub struct OcrPage {
+    pub words: Vec<OcrWord>,
+    /// 输入图的尺寸，用来把像素坐标换算成 PDF 的点
+    pub img_w: u32,
+    pub img_h: u32,
+}
+
+/// 识别并保留每个词的位置。
+pub fn recognize_words(path: &Path, lang: Option<&str>) -> AppResult<OcrPage> {
+    ensure_com();
+    let p = path.to_string_lossy().to_string();
+    let file = StorageFile::GetFileFromPathAsync(&HSTRING::from(p.as_str()))
+        .and_then(|op| op.get())
+        .map_err(|e| AppError::new("err.notFound").detail(e))?;
+    let stream = file
+        .OpenAsync(FileAccessMode::Read)
+        .and_then(|op| op.get())
+        .map_err(|e| AppError::unknown(e))?;
+    let decoder = BitmapDecoder::CreateAsync(&stream)
+        .and_then(|op| op.get())
+        .map_err(|e| AppError::decode("图片", e))?;
+    let bitmap = decoder
+        .GetSoftwareBitmapAsync()
+        .and_then(|op| op.get())
+        .map_err(|e| AppError::decode("图片", e))?;
+
+    let img_w = bitmap.PixelWidth().unwrap_or(0).max(0) as u32;
+    let img_h = bitmap.PixelHeight().unwrap_or(0).max(0) as u32;
+
+    let engine = engine_for(lang)?;
+    let result = engine
+        .RecognizeAsync(&bitmap)
+        .and_then(|op| op.get())
+        .map_err(|e| AppError::unknown(e))?;
+
+    let mut words = Vec::new();
+    if let Ok(ls) = result.Lines() {
+        for line in ls {
+            let Ok(ws) = line.Words() else { continue };
+            // 中文按字给词，逐字盖一层文字会让选取碎成一个个字。
+            // 先按同一行、间距不大的原则并成连续片段再盖。
+            let mut run: Vec<(String, f32, f32, f32, f32)> = Vec::new();
+            for w in ws {
+                let (Ok(t), Ok(r)) = (w.Text(), w.BoundingRect()) else {
+                    continue;
+                };
+                let t = t.to_string();
+                if t.is_empty() {
+                    continue;
+                }
+                run.push((t, r.X, r.Y, r.Width, r.Height));
+            }
+            words.extend(merge_run(run));
+        }
+    }
+
+    Ok(OcrPage {
+        words,
+        img_w,
+        img_h,
+    })
+}
+
+/// 把一行里挨得很近的词并成一段。
+///
+/// WinRT 把每个汉字当一个词，不合并的话「百宝箱」会盖成三段互不相连的文字，
+/// 在阅读器里拖选是一个字一个字跳的，跨词搜索也搜不到。
+/// 间距超过一个字宽就认为是真的分开了，保持原样。
+fn merge_run(items: Vec<(String, f32, f32, f32, f32)>) -> Vec<OcrWord> {
+    let mut out: Vec<OcrWord> = Vec::new();
+    for (text, x, y, w, h) in items {
+        if let Some(prev) = out.last_mut() {
+            let gap = x - (prev.x + prev.w);
+            let same_line = (y - prev.y).abs() < prev.h * 0.5;
+            if same_line && gap < prev.h * 0.6 {
+                // 拉丁词之间要留空格，中日韩之间不留（同 join_words 的规则）
+                let need_space = !is_cjk_edge(&prev.text, &text) && gap > prev.h * 0.15;
+                if need_space {
+                    prev.text.push(' ');
+                }
+                prev.text.push_str(&text);
+                prev.w = x + w - prev.x;
+                prev.h = prev.h.max(h);
+                continue;
+            }
+        }
+        out.push(OcrWord { text, x, y, w, h });
+    }
+    out
+}
+
+/// 两段文字的接缝处是不是中日韩字符——是的话不该插空格
+fn is_cjk_edge(left: &str, right: &str) -> bool {
+    let a = left.chars().last();
+    let b = right.chars().next();
+    matches!((a, b), (Some(a), Some(b)) if is_cjk(a) || is_cjk(b))
+}
+
 /// 供验收测试直接调用的识别入口，不经过批量层和 AppHandle
 pub fn recognize_for_test(path: &Path) -> AppResult<String> {
     recognize(path, None)

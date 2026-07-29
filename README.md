@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 36 of 37 tools work
+> ## 🚧 Preview — 37 of 38 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -56,12 +56,14 @@ so this costs nothing and adds no bytes.
 | Extract text from image | ✅ 77 ms per image |
 | Batch OCR to one transcript | ✅ |
 | Screen-capture OCR | ✅ `Ctrl+Shift+S` from any application — raises the window, grabs the desktop, drag to pick a region |
+| **Scanned PDF → searchable** | ✅ Under PDF. The page looks identical; the words go underneath it |
 
 ### PDF
 
 | Tool | |
 |---|---|
 | Merge · Split · Rotate · Extract text · Image→PDF | ✅ |
+| **Make a scan searchable** | ✅ Invisible text layer over the page — search, select, copy |
 | **Compress** | ✅ 33% off a 148 MB sample of real coursework |
 | **Extract embedded images** | ✅ Copied out as stored, not re-encoded |
 | Reverse page order · Delete or keep pages | ✅ Ranges like `1,3,5-8` |
@@ -120,7 +122,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 37 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 38 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -172,7 +174,7 @@ registry settings.
 | | |
 |---|---|
 | Installer | **3.2 MB** |
-| Installed | 10.5 MB |
+| Installed | 10.6 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -212,7 +214,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 37 个工具中 36 个可用
+> ## 🚧 预览版 —— 38 个工具中 37 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。

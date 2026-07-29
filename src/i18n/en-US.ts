@@ -115,6 +115,10 @@ const enUS: typeof zhCN = {
         desc: "Add an open password to a PDF. Not built yet — see the note below.",
       },
       stamp: { name: "Page numbers & watermark", desc: "Stamp every page with a watermark and page numbers, Chinese included. Only the glyphs actually used get embedded, so a 19.7 MB font costs about 13 KB." },
+      "ocr-layer": {
+        name: "Make a scan searchable",
+        desc: "A scanned PDF is just pictures — nothing to search, nothing to copy. This reads every page and lays the words back over the image as an invisible layer. The page looks identical, but it can now be searched, selected and copied. iLovePDF and Smallpdf keep this behind a subscription.",
+      },
       "extract-images": {
         name: "Extract embedded images",
         desc: "Pull the pictures out exactly as stored, without re-encoding — rendering a page and screenshotting it costs a generation of quality, and the original pixels are usually the point. Set a minimum size to skip icons and rules.",
@@ -257,6 +261,7 @@ const enUS: typeof zhCN = {
     qrFound: "{n} codes read",
     zhConverted: "{n} characters converted",
     zhNoChange: "nothing changed — the direction may be the wrong way round",
+    ocrLayer: "{pages} pages · {words} text runs laid over",
   },
 
   opt: {
@@ -424,6 +429,7 @@ const enUS: typeof zhCN = {
     badRegex: "That regular expression isn't valid.",
     qrTooLong: "This line is too long to fit in a QR code.",
     qrNotFound: "No QR code found in this image.",
+    ocrNothingFound: "No text was recognised on any page — blank pages, an image too blurred to read, or a missing language pack.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",

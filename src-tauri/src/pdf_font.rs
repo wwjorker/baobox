@@ -185,13 +185,59 @@ pub fn embed(doc: &mut Document, font: &EmbeddedFont) -> ObjectId {
     descendant.set("CIDToGIDMap", Object::Name(b"Identity".to_vec()));
     let descendant_id = doc.add_object(Object::Dictionary(descendant));
 
+    let to_unicode_id = embed_to_unicode(doc, font);
+
     let mut font_dict = Dictionary::new();
     font_dict.set("Type", "Font");
     font_dict.set("Subtype", "Type0");
     font_dict.set("BaseFont", Object::Name(b"BAOBOX+Subset".to_vec()));
     font_dict.set("Encoding", Object::Name(b"Identity-H".to_vec()));
     font_dict.set("DescendantFonts", vec![Object::Reference(descendant_id)]);
+    font_dict.set("ToUnicode", to_unicode_id);
     doc.add_object(Object::Dictionary(font_dict))
+}
+
+/// 字形编号 → Unicode 的反查表。
+///
+/// Identity-H 的字符串里放的是字形编号，跟字符本身没有任何关系。
+/// 没有这张表，阅读器就没办法把它变回文字——**搜不到、也复制不出来**。
+///
+/// 做水印时无所谓（那本来就只是画上去看的），但扫描件的文字层整个
+/// 意义就在于能搜能选，缺了它等于盖了一层谁也读不了的隐形字。
+fn embed_to_unicode(doc: &mut Document, font: &EmbeddedFont) -> ObjectId {
+    let mut body = String::from(
+        "/CIDInit /ProcSet findresource begin\n\
+         12 dict begin\n\
+         begincmap\n\
+         /CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n\
+         /CMapName /Adobe-Identity-UCS def\n\
+         /CMapType 2 def\n\
+         1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n",
+    );
+
+    let entries: Vec<(u16, char)> = font.gid_of.iter().map(|(c, g)| (*g, *c)).collect();
+    // 规范规定每个 bfchar 块最多 100 条
+    for chunk in entries.chunks(100) {
+        body.push_str(&format!("{} beginbfchar\n", chunk.len()));
+        for (gid, ch) in chunk {
+            // 值是 UTF-16BE；BMP 之外的字符要写成代理对
+            let mut buf = [0u16; 2];
+            let utf16 = ch.encode_utf16(&mut buf);
+            let hex: String = utf16.iter().map(|u| format!("{u:04X}")).collect();
+            body.push_str(&format!("<{gid:04X}> <{hex}>\n"));
+        }
+        body.push_str("endbfchar\n");
+    }
+
+    body.push_str(
+        "endcmap\n\
+         CMapName currentdict /CMap defineresource pop\n\
+         end\nend\n",
+    );
+
+    let mut stream = Stream::new(Dictionary::new(), body.into_bytes());
+    let _ = stream.compress();
+    doc.add_object(Object::Stream(stream))
 }
 
 /// 半透明用的图形状态。水印必须能透出底下的内容，否则就是涂抹而不是水印。

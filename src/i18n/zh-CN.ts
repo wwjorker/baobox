@@ -109,6 +109,10 @@ export default {
         desc: "给 PDF 加上打开密码。暂未实现——见下方说明。",
       },
       stamp: { name: "页码与水印", desc: "给每页加中文水印和页码。字体只嵌入用到的那几十个字形，19.7 MB 的字体最终只占十几 KB。" },
+      "ocr-layer": {
+        name: "扫描件转可搜索",
+        desc: "扫描出来的 PDF 只是一堆图，搜不了也复制不了。这个把每页认一遍，把文字按原位盖成不可见的一层——页面外观分毫不变，但能搜、能选、能复制。iLovePDF 和 Smallpdf 把这个功能锁在付费订阅里。",
+      },
       "extract-images": {
         name: "提取内嵌图片",
         desc: "把 PDF 里的图原样抠出来，不重新编码——渲染整页再截图会掉一轮画质，而你要的往往正是原始像素。可以设最小尺寸，滤掉图标和分隔线。",
@@ -253,6 +257,7 @@ export default {
     qrFound: "读出 {n} 个二维码",
     zhConverted: "转换 {n} 个字",
     zhNoChange: "一个字都没变——方向可能选反了",
+    ocrLayer: "{pages} 页 · 盖上 {words} 段文字",
   },
 
   opt: {
@@ -420,6 +425,7 @@ export default {
     badRegex: "正则写得不对，请检查。",
     qrTooLong: "这条内容太长，二维码装不下。",
     qrNotFound: "这张图里没找到二维码。",
+    ocrNothingFound: "每一页都没认出文字。可能是空白页、图太糊，或者缺对应语言的识别包。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

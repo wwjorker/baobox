@@ -7,6 +7,7 @@ pub mod ocr;
 pub mod paths;
 pub mod pdf_font;
 pub mod pdf_img;
+pub mod pdf_ocr;
 pub mod pdf_ops;
 pub mod pdf_render;
 pub mod qr;
@@ -100,6 +101,7 @@ pub fn run() {
             pdf_ops::pdf_pages,
             qr::qr_generate,
             qr::qr_decode,
+            pdf_ocr::pdf_ocr_layer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -366,6 +366,19 @@ export const TOOLS: ToolDef[] = [
     notReadyReason: "status.encryptWhy",
     options: [{ kind: "text", id: "password", label: "opt.password", def: "" }],
   },
+  // 放在 PDF 而不是 OCR 支柱下：手里有扫描件的人是奔着 PDF 来的，
+  // 首页拖一份 PDF 进来也是翻到这里。
+  {
+    id: "pdf.ocr-layer",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_ocr_layer",
+    status: "ready",
+    highlight: true,
+    options: [
+      { kind: "dynamic-choice", id: "lang", label: "opt.ocrLang", source: "ocrLanguages", def: "" },
+    ],
+  },
   {
     id: "pdf.extract-images",
     pillar: "pdf",
