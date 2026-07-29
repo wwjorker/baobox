@@ -605,6 +605,193 @@ pub async fn img_base64(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> 
     .unwrap_or_default()
 }
 
+// ================================================================ 画布扩展
+
+/// 补边而不裁，把画面撑到指定比例。
+///
+/// 跟「按比例裁切」正好相反：那个会切掉画面，这个一个像素都不丢，
+/// 靠加边补齐。发商品图、做幻灯片配图时常要求统一尺寸又不许裁到主体。
+pub fn expand_file(src: &Path, ratio: &str, dark: bool) -> AppResult<(PathBuf, u32, u32)> {
+    let img = load(src)?;
+    let (w, h) = img.dimensions();
+
+    let (rw, rh): (f32, f32) = match ratio {
+        "1:1" => (1.0, 1.0),
+        "4:3" => (4.0, 3.0),
+        "3:4" => (3.0, 4.0),
+        "16:9" => (16.0, 9.0),
+        "9:16" => (9.0, 16.0),
+        _ => (1.0, 1.0),
+    };
+    let target = rw / rh;
+    let current = w as f32 / h as f32;
+
+    // 只加不减：哪个方向不够就补哪个方向
+    let (nw, nh) = if current > target {
+        (w, (w as f32 / target).round() as u32)
+    } else {
+        ((h as f32 * target).round() as u32, h)
+    };
+    let (nw, nh) = (nw.max(w), nh.max(h));
+
+    let fill = if dark {
+        Rgba([20, 17, 9, 255])
+    } else {
+        Rgba([255, 255, 255, 255])
+    };
+    let mut canvas = RgbaImage::from_pixel(nw, nh, fill);
+    canvas
+        .copy_from(&img.to_rgba8(), (nw - w) / 2, (nh - h) / 2)
+        .map_err(|e| AppError::unknown(e))?;
+
+    let out = DynamicImage::ImageRgba8(canvas);
+    let fmt = OutFmt::Keep.resolve(src);
+    let data = encode(&out, fmt, 92)?;
+    let dst = write_out(src, fmt, &data)?;
+    Ok((dst, nw, nh))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn img_expand(
+    app: AppHandle,
+    paths: Vec<String>,
+    ratio: String,
+    fillDark: bool,
+) -> Vec<FileOutcome> {
+    let dark = fillDark;
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let (dst, nw, nh) = expand_file(src, &ratio, dark)?;
+            Ok((dst, Some(Note::new("note.expanded").with("nw", nw).with("nh", nh))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ GIF 拆帧
+
+/// 把动图拆成一张张图片。
+///
+/// 想拿其中某一帧做封面、或者只改动图里的一帧再拼回去，都得先拆开。
+pub fn gif_frames(src: &Path, every: u32) -> AppResult<(PathBuf, usize, usize)> {
+    use image::AnimationDecoder;
+
+    let file = std::fs::File::open(long_path(src))?;
+    let decoder = image::codecs::gif::GifDecoder::new(std::io::BufReader::new(file))
+        .map_err(|e| AppError::decode("GIF", e))?;
+    let frames: Vec<_> = decoder
+        .into_frames()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| AppError::decode("GIF", e))?;
+    if frames.is_empty() {
+        return Err(AppError::new("err.gifNoFrames"));
+    }
+
+    let dir = output_dir_for(src)?;
+    let stem = stem_of(src);
+    let step = every.max(1) as usize;
+    let mut saved = 0usize;
+    let mut last = dir.clone();
+
+    for (i, frame) in frames.iter().enumerate() {
+        if i % step != 0 {
+            continue;
+        }
+        let buf = frame.buffer();
+        let dyn_img = DynamicImage::ImageRgba8(buf.clone());
+        // 帧可能带透明，一律存 PNG
+        let data = encode(&dyn_img, OutFmt::Png, 100)?;
+        let dst = unique_path(&dir, &format!("{stem}_帧{:03}", i + 1), "png");
+        std::fs::write(long_path(&dst), &data)?;
+        last = dst;
+        saved += 1;
+    }
+    Ok((last, frames.len(), saved))
+}
+
+#[tauri::command]
+pub async fn gif_split(app: AppHandle, paths: Vec<String>, every: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let (last, total, saved) = gif_frames(src, every)?;
+            Ok((
+                last,
+                Some(Note::new("note.gifSplit").with("total", total).with("saved", saved)),
+            ))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ GIF 制作
+
+/// 一批图做成动图。
+///
+/// 顺序就是列表顺序。所有帧统一到第一张的尺寸——GIF 规范要求所有帧
+/// 共用一个画布，尺寸不一致的话要么报错要么错位。
+pub fn make_gif(srcs: &[PathBuf], delay_ms: u32) -> AppResult<(PathBuf, usize)> {
+    use image::codecs::gif::{GifEncoder, Repeat};
+    use image::Delay;
+
+    if srcs.len() < 2 {
+        return Err(AppError::new("err.gifNeedTwo"));
+    }
+    let first = load(&srcs[0])?;
+    let (w, h) = first.dimensions();
+
+    let dir = output_dir_for(&srcs[0])?;
+    let dst = unique_path(&dir, &format!("{} 等 {} 帧", stem_of(&srcs[0]), srcs.len()), "gif");
+
+    let out = std::fs::File::create(long_path(&dst))?;
+    let mut enc = GifEncoder::new_with_speed(std::io::BufWriter::new(out), 10);
+    enc.set_repeat(Repeat::Infinite)
+        .map_err(|e| AppError::unknown(e))?;
+
+    let delay = Delay::from_numer_denom_ms(delay_ms.clamp(20, 5000), 1);
+    let mut n = 0usize;
+    for p in srcs {
+        let img = load(p)?;
+        let sized = if img.dimensions() == (w, h) {
+            img
+        } else {
+            img.resize_exact(w, h, image::imageops::FilterType::Lanczos3)
+        };
+        let frame = image::Frame::from_parts(sized.to_rgba8(), 0, 0, delay);
+        enc.encode_frame(frame).map_err(|e| AppError::unknown(e))?;
+        n += 1;
+    }
+    drop(enc);
+    Ok((dst, n))
+}
+
+#[tauri::command]
+pub async fn gif_make(app: AppHandle, paths: Vec<String>, delay: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if paths.is_empty() {
+            return Vec::new();
+        }
+        let srcs: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+        let total = srcs.len();
+        let o = match make_gif(&srcs, delay) {
+            Ok((dst, n)) => {
+                FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.gifMade").with("n", n)))
+            }
+            Err(e) => FileOutcome::fail(&srcs[0], e),
+        };
+        // 同拼接：产物一份挂第一个，其余各发一条「已并入」
+        let outcomes = crate::batch::fold_outcomes(o, &srcs[1..]);
+        for (i, o) in outcomes.iter().enumerate() {
+            crate::batch::emit(&app, i, total, o);
+        }
+        outcomes
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 生成 ICO
 
 /// 网站图标和 Windows 程序图标要的都是一个 .ico 里装多个尺寸。

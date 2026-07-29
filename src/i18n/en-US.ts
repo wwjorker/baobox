@@ -84,6 +84,18 @@ const enUS: typeof zhCN = {
         name: "Convert to Base64",
         desc: "A data URI, for inlining a small image directly into HTML or CSS and saving a request. Also written to a .txt, because tens of kilobytes of string cannot be read out of a panel.",
       },
+      expand: {
+        name: "Expand the canvas",
+        desc: "The opposite of cropping to a ratio: nothing is cut, the frame is padded out instead. For product shots and slide artwork, where a uniform size is required but cropping into the subject is not acceptable.",
+      },
+      "gif-split": {
+        name: "Split a GIF into frames",
+        desc: "Every frame as a PNG. Needed before using one frame as a cover, or editing a frame and putting it back. Take every Nth frame when there are a lot of them.",
+      },
+      "gif-make": {
+        name: "Build a GIF",
+        desc: "A batch of images into an animation, in the list order you set. All frames are matched to the size of the first — the format requires every frame to share a single canvas.",
+      },
       ico: {
         name: "Build an ICO",
         desc: "One .ico holding six sizes from 16 to 256, for a site favicon or a Windows application icon. Cropped to a centre square first, or the icon comes out squashed. Sizes larger than the source are skipped rather than upscaled into mush.",
@@ -140,6 +152,10 @@ const enUS: typeof zhCN = {
         desc: "Pull the pictures out exactly as stored, without re-encoding — rendering a page and screenshotting it costs a generation of quality, and the original pixels are usually the point. Set a minimum size to skip icons and rules.",
       },
       reverse: { name: "Reverse page order", desc: "Flip the whole document. Scanners feeding pages backwards is a common accident." },
+      repair: {
+        name: "Repair a broken PDF",
+        desc: "Of 1070 real PDFs surveyed, 40 would not open — usually not because the content is damaged but because the index of byte offsets at the end of the file no longer matches. Rebuilding that index recovers the file intact. Only if it is still unreadable does it fall back to rendering each page as an image, which loses the text layer and turns the document into a scan — so that path is a last resort, and the result says plainly when it was taken.",
+      },
       nup: {
         name: "N pages per sheet",
         desc: "Print several pages on one. Handouts and code come out mostly margin, and 2-up halves the paper immediately. Each page is scaled and placed as it is, so nothing has to be re-laid-out.",
@@ -207,6 +223,14 @@ const enUS: typeof zhCN = {
       touch: {
         name: "Shift file timestamps",
         desc: "A camera set to the wrong timezone, or an export tool that stamps everything with the current moment, ruins sorting by date — this is the only fix. Note that this edits the timestamps of your original files in place (the contents are untouched), because copying a file to change its date achieves nothing.",
+      },
+      unzip: {
+        name: "Extract (repairing mangled names)",
+        desc: "WinRAR and older versions of Explorer store Chinese filenames in a zip as GBK bytes. On another machine they come out as garbage — the names are destroyed with no warning at all, and Windows'' own extractor does exactly this. Here the encoding is detected and decoded properly. Each archive also gets its own folder, and entries that try to write outside it are refused.",
+      },
+      mkdirs: {
+        name: "Create folders from a list",
+        desc: "One name per line in a text file. Thirty student folders at the start of term, or twelve monthly archive folders — nobody enjoys clicking thirty times. Nested names like 2026/01 work; .. does not.",
       },
       hash: {
         name: "File checksum",
@@ -324,6 +348,17 @@ const enUS: typeof zhCN = {
     toJson: "{n} records → JSON",
     toCsv: "{n} records → CSV",
     timeShifted: "shifted by {h} hours",
+    repaired: "{n} pages · index rebuilt",
+    repairRaster: "{n} pages · fell back to images, text layer lost",
+    expanded: "padded to {nw}×{nh}",
+    gifSplit: "{total} frames · {saved} exported",
+    gifMade: "{n} frame animation",
+    unzipped: "{n} files extracted",
+    unzipFixedNames: "{n} mangled names repaired",
+    unzipRejected: "{n} unsafe paths refused",
+    unzipSkipped: "{n} skipped (encrypted or unsupported method)",
+    dirsMade: "{n} folders created",
+    dirsSkipped: "{n} skipped (already there or an invalid name)",
     metaCleaned: "{n} removed: {list}",
     metaNone: "no metadata to remove",
     cropped: "{total} pages · {n} trimmed",
@@ -405,6 +440,10 @@ const enUS: typeof zhCN = {
     invert: "Invert",
     prettyJson: "Indent the JSON",
     shiftHours: "Shift by",
+    fillDark: "Dark padding",
+    everyNth: "Take every Nth frame",
+    frameDelay: "Frame delay",
+    zipPwHint: "only if it has one",
   },
 
   redact: {
@@ -527,6 +566,13 @@ const enUS: typeof zhCN = {
     badJson: "That is not valid JSON.",
     jsonNotArray: "A JSON array of objects is needed to make a table.",
     timeBeforeEpoch: "The shifted time lands before 1970, outside the representable range.",
+    repairFailed: "This file is damaged beyond recovery — even the rendering engine cannot read a single page.",
+    gifNoFrames: "This GIF contains no frames.",
+    gifNeedTwo: "An animation needs at least two images.",
+    badArchive: "Can''t open this archive — it may be damaged or not a zip at all.",
+    archiveUnsupported: "Every entry uses an unsupported compression method, or needs a password. Only the common deflate method is supported.",
+    archiveEmpty: "This archive is empty.",
+    noDirsMade: "No folders were created — the list may be empty, or they all exist already.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",

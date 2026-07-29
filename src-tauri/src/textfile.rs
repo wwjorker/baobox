@@ -830,6 +830,85 @@ pub async fn file_touch(
     .unwrap_or_default()
 }
 
+// ================================================================ 批量新建文件夹
+
+/// 按一份清单批量建文件夹。
+///
+/// 开学建三十个学生目录、按月份建十二个归档目录——手点三十次没人乐意。
+/// 支持一层嵌套（`2026/01` 这种写法），但不许 `..`，
+/// 否则一份清单就能往上级目录乱建。
+pub fn make_dirs(src: &Path) -> AppResult<(PathBuf, usize, usize)> {
+    let bytes = std::fs::read(long_path(src))?;
+    let text = decode_text(&bytes);
+
+    // 建在源清单旁边，而不是输出目录里——建目录的意图通常是「就地组织」
+    let base = src.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+    let mut made = 0usize;
+    let mut skipped = 0usize;
+
+    for line in text.lines() {
+        let name = line.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let normalized = name.replace('\\', "/");
+        if normalized.split('/').any(|p| p == ".." || p.trim() == ".") {
+            skipped += 1;
+            continue;
+        }
+        // Windows 不允许的字符换成下划线，否则整条建不出来
+        let safe: PathBuf = normalized
+            .split('/')
+            .filter(|p| !p.trim().is_empty())
+            .map(|p| {
+                p.chars()
+                    .map(|c| {
+                        if matches!(c, ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                            '_'
+                        } else {
+                            c
+                        }
+                    })
+                    .collect::<String>()
+            })
+            .collect();
+        if safe.as_os_str().is_empty() {
+            skipped += 1;
+            continue;
+        }
+        let target = base.join(&safe);
+        if long_path(&target).exists() {
+            skipped += 1;
+            continue;
+        }
+        match std::fs::create_dir_all(long_path(&target)) {
+            Ok(_) => made += 1,
+            Err(_) => skipped += 1,
+        }
+    }
+
+    if made == 0 {
+        return Err(AppError::new("err.noDirsMade"));
+    }
+    Ok((base, made, skipped))
+}
+
+#[tauri::command]
+pub async fn dirs_create(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, |src| {
+            let (dir, made, skipped) = make_dirs(src)?;
+            let mut note = Note::new("note.dirsMade").with("n", made);
+            if skipped > 0 {
+                note = note.plus("note.dirsSkipped").with("n", skipped);
+            }
+            Ok((dir, Some(note)))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 哈希校验
 
 /// 算文件哈希。

@@ -88,6 +88,18 @@ export default {
         name: "转 Base64",
         desc: "转成 data URI，写网页时可以把小图直接内联进 HTML 或 CSS，省一次请求。同时落一份 txt，因为几十 KB 的字符串没法在界面里读完。",
       },
+      expand: {
+        name: "画布扩展",
+        desc: "跟按比例裁切正好相反：一个像素都不切，靠加边把画面撑到指定比例。发商品图、做幻灯片配图时常要求统一尺寸又不许裁到主体。",
+      },
+      "gif-split": {
+        name: "GIF 拆帧",
+        desc: "把动图拆成一张张 PNG。想拿其中某一帧做封面，或者改一帧再拼回去，都得先拆开。帧多的话可以隔几帧取一张。",
+      },
+      "gif-make": {
+        name: "GIF 制作",
+        desc: "一批图做成动图，顺序就是列表顺序，可上下调整。所有帧会统一到第一张的尺寸——GIF 规范要求所有帧共用一个画布。",
+      },
       ico: {
         name: "生成 ICO 图标",
         desc: "一个 .ico 里装 16 到 256 六种尺寸，网站 favicon 和 Windows 程序图标都能用。先按中心裁成正方形，不然图标是压扁的。原图不够大的尺寸会跳过，不放大糊图。",
@@ -134,6 +146,10 @@ export default {
         desc: "把 PDF 里的图原样抠出来，不重新编码——渲染整页再截图会掉一轮画质，而你要的往往正是原始像素。可以设最小尺寸，滤掉图标和分隔线。",
       },
       reverse: { name: "反转页序", desc: "整份倒过来。扫描仪倒着进纸是很常见的事故。" },
+      repair: {
+        name: "修复损坏的 PDF",
+        desc: "实测 1070 份真实 PDF 里有 40 份打不开，多半不是内容坏了，而是文件末尾那张「对象在第几字节」的索引失效了。先尝试重建索引原样救回；实在读不动才退一步逐页渲染成图——那样会丢掉文字层，变成扫描件，所以只在没办法时才用，而且结果里会明说降级了。",
+      },
       nup: {
         name: "N 合 1 拼版",
         desc: "把多页缩排到一页上打印，讲义和代码打出来大半是页边空白，2 合 1 直接省一半纸。每页原样缩放贴上去，字体和矢量都不用重排。",
@@ -201,6 +217,14 @@ export default {
       touch: {
         name: "批量改时间",
         desc: "相机时区设错、导出工具把时间全写成当下——照片按时间排序全乱掉，这是唯一的修法。注意：这个工具直接改原文件的时间属性（内容一个字节不动），因为复制一份出来改时间毫无意义。",
+      },
+      unzip: {
+        name: "解压（修中文名乱码）",
+        desc: "WinRAR 和早年的资源管理器打包时，中文名是按 GBK 存进 zip 的。到别的机器上解开就成了「鏂囦欢澶?」这种东西——文件名彻底毁掉，而且没有任何提示，Windows 自带的解压就是这么坏的。这里会自己判编码再解。同时自动建同名文件夹，并拦掉写向上级目录的恶意条目。",
+      },
+      mkdirs: {
+        name: "按清单建文件夹",
+        desc: "一份 txt 一行一个名字，批量建出来。开学建三十个学生目录、按月份建十二个归档目录，手点三十次没人乐意。支持 2026/01 这样的嵌套写法，但不许 ..。",
       },
       hash: {
         name: "文件哈希校验",
@@ -320,6 +344,17 @@ export default {
     toJson: "{n} 条记录 → JSON",
     toCsv: "{n} 条记录 → CSV",
     timeShifted: "时间平移 {h} 小时",
+    repaired: "{n} 页 · 重建索引救回",
+    repairRaster: "{n} 页 · 已降级为图片，文字层丢失",
+    expanded: "补边到 {nw}×{nh}",
+    gifSplit: "共 {total} 帧 · 导出 {saved} 张",
+    gifMade: "{n} 帧动图",
+    unzipped: "解出 {n} 个文件",
+    unzipFixedNames: "修正了 {n} 个乱码文件名",
+    unzipRejected: "拦掉 {n} 个不安全路径",
+    unzipSkipped: "跳过 {n} 个（加密或不支持的压缩方式）",
+    dirsMade: "建了 {n} 个文件夹",
+    dirsSkipped: "跳过 {n} 个（已存在或名字非法）",
     metaCleaned: "清掉 {n} 项：{list}",
     metaNone: "本来就没有可清的元数据",
     cropped: "{total} 页 · 裁了 {n} 页",
@@ -401,6 +436,10 @@ export default {
     invert: "负片",
     prettyJson: "JSON 缩进排版",
     shiftHours: "平移小时数",
+    fillDark: "填深色边",
+    everyNth: "每隔几帧取一张",
+    frameDelay: "每帧停留",
+    zipPwHint: "有密码才填",
   },
 
   redact: {
@@ -523,6 +562,13 @@ export default {
     badJson: "这不是合法的 JSON。",
     jsonNotArray: "需要一个由对象组成的 JSON 数组才能转成表格。",
     timeBeforeEpoch: "平移后的时间早于 1970 年，超出了可表示范围。",
+    repairFailed: "这份文件损坏得太厉害，连渲染引擎也读不出任何一页。",
+    gifNoFrames: "这个 GIF 里没有帧。",
+    gifNeedTwo: "做动图至少需要两张图。",
+    badArchive: "打不开这个压缩包，它可能已损坏或不是 zip 格式。",
+    archiveUnsupported: "包里的条目都用了不支持的压缩方式（或需要密码）。目前只支持最常见的 deflate。",
+    archiveEmpty: "这个压缩包是空的。",
+    noDirsMade: "一个文件夹都没建成——清单可能是空的，或者要建的都已存在。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

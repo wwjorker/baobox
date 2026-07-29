@@ -298,6 +298,51 @@ export const TOOLS: ToolDef[] = [
   },
   { id: "image.base64", pillar: "image", accepts: IMG, command: "img_base64", status: "ready", output: "text", options: [] },
   {
+    id: "image.expand",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_expand",
+    status: "ready",
+    options: [
+      {
+        kind: "choice",
+        id: "ratio",
+        label: "opt.aspectRatio",
+        def: "1:1",
+        choices: [
+          { value: "1:1", label: "1:1" },
+          { value: "4:3", label: "4:3" },
+          { value: "3:4", label: "3:4" },
+          { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" },
+        ],
+      },
+      { kind: "toggle", id: "fillDark", label: "opt.fillDark", def: false },
+    ],
+  },
+  {
+    id: "image.gif-split",
+    pillar: "image",
+    accepts: ["gif"],
+    command: "gif_split",
+    status: "ready",
+    options: [
+      { kind: "number", id: "every", label: "opt.everyNth", min: 1, max: 20, step: 1, def: 1 },
+    ],
+  },
+  {
+    id: "image.gif-make",
+    pillar: "image",
+    accepts: IMG,
+    command: "gif_make",
+    status: "ready",
+    aggregate: true,
+    ordered: true,
+    options: [
+      { kind: "number", id: "delay", label: "opt.frameDelay", min: 20, max: 2000, step: 20, def: 200, unit: "ms" },
+    ],
+  },
+  {
     id: "image.ico",
     pillar: "image",
     accepts: IMG,
@@ -443,6 +488,14 @@ export const TOOLS: ToolDef[] = [
     ],
   },
   { id: "pdf.reverse", pillar: "pdf", accepts: PDF, command: "pdf_reverse", status: "ready", options: [] },
+  {
+    id: "pdf.repair",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_repair",
+    status: "ready",
+    options: [],
+  },
   {
     id: "pdf.nup",
     pillar: "pdf",
@@ -639,6 +692,25 @@ export const TOOLS: ToolDef[] = [
     options: [
       { kind: "number", id: "shiftHours", label: "opt.shiftHours", min: -240, max: 240, step: 1, def: 0, unit: "h" },
     ],
+  },
+  {
+    id: "file.unzip",
+    pillar: "file",
+    accepts: ["zip"],
+    command: "zip_extract",
+    status: "ready",
+    highlight: true,
+    options: [
+      { kind: "text", id: "password", label: "opt.password", def: "", placeholder: "opt.zipPwHint" },
+    ],
+  },
+  {
+    id: "file.mkdirs",
+    pillar: "file",
+    accepts: ["txt", "csv"],
+    command: "dirs_create",
+    status: "ready",
+    options: [],
   },
   {
     id: "file.hash",

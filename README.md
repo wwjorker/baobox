@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 51 of 52 tools work
+> ## 🚧 Preview — 58 of 59 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -45,6 +45,7 @@ into it.
 | **Stitch into one long image** | ✅ Widths matched to the narrowest, scaling down only |
 | Trim solid borders · Rounded corners · Crop to a ratio | ✅ |
 | Adjust colour · Build an ICO · Dominant colours · Base64 | ✅ |
+| Expand the canvas · GIF split and build | ✅ |
 
 ### OCR — free, offline, no subscription
 
@@ -71,6 +72,7 @@ so this costs nothing and adds no bytes.
 | **Strip metadata** | ✅ /Info and the separate XMP copy |
 | Trim page margins | ✅ Changes the crop box only, so it is reversible |
 | N pages per sheet · Insert blank pages | ✅ |
+| **Repair a broken PDF** | ✅ Rebuilds the index; falls back to images only as a last resort, and says so |
 | **PDF→image** | ✅ Uses the Windows rendering engine, so no 11 MB pdfium DLL |
 | **Chinese watermark & page numbers** | ✅ Font subsetting: 19.7 MB font → 13.5 KB embedded |
 | Unlock restrictions | ✅ Clears print/copy locks; open passwords need the password |
@@ -88,6 +90,8 @@ so this costs nothing and adds no bytes.
 | Find and replace · Directory tree | ✅ Regex supported; encoding detected |
 | Split and rejoin large files | ✅ Byte-identical round trip, verified |
 | Dedupe, sort, count lines · CSV ↔ JSON · Shift timestamps | ✅ |
+| **Extract archives, repairing mangled names** | ✅ GBK entry names that Windows itself destroys |
+| Create folders from a list | ✅ |
 | File checksum | ✅ SHA-256 or BLAKE3, read in chunks |
 
 ## Measured, not estimated
@@ -128,7 +132,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 52 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 59 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -220,7 +224,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 52 个工具中 51 个可用
+> ## 🚧 预览版 —— 59 个工具中 58 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。

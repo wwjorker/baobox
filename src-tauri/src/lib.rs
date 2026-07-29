@@ -1,4 +1,5 @@
-﻿pub mod batch;
+﻿pub mod archive;
+pub mod batch;
 pub mod dedupe;
 pub mod err;
 pub mod image_edit;
@@ -115,6 +116,12 @@ pub fn run() {
             image_edit::img_aspect,
             image_edit::img_palette,
             image_edit::img_base64,
+            archive::zip_extract,
+            pdf_ops::pdf_repair,
+            image_edit::img_expand,
+            image_edit::gif_split,
+            image_edit::gif_make,
+            textfile::dirs_create,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

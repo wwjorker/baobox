@@ -73,6 +73,8 @@ windows = { version = "0.58", features = [
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_System_Threading",
   "Win32_Foundation",
+  # 解压时判文件名编码要读系统 ANSI 代码页（见 archive.rs）
+  "Win32_Globalization",
   # 系统自带的 PDF 渲染。有了它 PDF 转图片就不用 pdfium，
   # 省下约 11 MB 的动态库，安装包能保持在 6 MB 量级。
   "Data_Pdf",
@@ -108,6 +110,10 @@ rqrr = "0.10"
 # 返回 Err（见 pdf_img.rs 的说明），所以内嵌图片这条路必须自己走。
 # flate2 已经被 lopdf 依赖，直接声明不增加体积。
 flate2 = "1"
+# 解压。只开 deflate——绝大多数 zip 用的就是它，
+# 默认特性会把 bzip2 / lzma / zstd / xz / ppmd 一并拉进来，
+# 为了极少数包让安装包胖一圈不值得。
+zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 # 简繁转换。用 MediaWiki 的转换表而不是逐字映射表——「头发/頭髮」和
 # 「发展/發展」共用一个简体字，只有按词转换才不会出错。
 # 取 ruzstd（纯 Rust 解压）而不是 zstd，避免为了一张表引入 C 工具链依赖。
