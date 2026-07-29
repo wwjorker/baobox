@@ -147,6 +147,7 @@ const enUS: typeof zhCN = {
     recycleNote: "Files go to the Recycle Bin, so anything deleted by mistake can be restored.",
     managedWhy: "This file belongs to a program or environment and each copy has to stay where it is. Deleting it would break that program, so it is left unchecked.",
     managedWarn: "{count} set(s) belong entirely to programs or environments — virtualenv runtimes, Git objects and the like. The contents match but each copy is depended on where it sits, so all of them are kept by default.",
+    cancelledWarn: "Scan was cancelled — these are only the results found so far, not the full picture.",
     confirmGo: "Delete",
   },
 

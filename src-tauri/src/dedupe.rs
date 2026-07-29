@@ -4,7 +4,24 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
+
+/// 取消标志。
+///
+/// 实测扫描整块 1.88 TB 的机械盘要 8.9 分钟，全文件哈希阶段是 IO 密集，
+/// 期间用户完全没法中断——只能等或者杀进程。一个跑十分钟又停不下来的
+/// 操作是不可接受的，所以三个阶段都要能随时退出。
+static CANCEL: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+pub fn cancel_scan() {
+    CANCEL.store(true, Ordering::Relaxed);
+}
+
+fn cancelled() -> bool {
+    CANCEL.load(Ordering::Relaxed)
+}
 
 /// 重复文件查找
 ///
@@ -88,6 +105,8 @@ pub struct DupReport {
     pub skipped_cloud: usize,
     /// 全组都归程序管辖、一份都不建议删的组数
     pub managed_groups: usize,
+    /// 用户中途取消。结果不完整，界面上必须说明，不能当成扫完了。
+    pub cancelled: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -157,6 +176,8 @@ fn scan_blocking(app: AppHandle, roots: Vec<String>) -> DupReport {
 /// 核心扫描逻辑，进度以回调形式给出，方便脱离 Tauri 直接做验收测试
 pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> DupReport {
     let emit = progress;
+    // 每次新扫描都清掉上一轮遗留的取消标志
+    CANCEL.store(false, Ordering::Relaxed);
 
     // ---- 阶段 ①：遍历并按体积分组 ----
     emit("walk", 0, 0);
@@ -167,6 +188,7 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
 
     for root in roots {
         for entry in jwalk::WalkDir::new(root).skip_hidden(false) {
+            if cancelled() { break; }
             let Ok(e) = entry else {
                 unreadable += 1;
                 continue;
@@ -211,6 +233,7 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     let mut by_quick: HashMap<(u64, [u8; 32]), Vec<PathBuf>> = HashMap::new();
     for (size, files) in candidates {
         for p in files {
+            if cancelled() { break; }
             done += 1;
             if done % 50 == 0 {
                 emit("quick", done, total_quick);
@@ -234,6 +257,7 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     let mut by_full: HashMap<(u64, [u8; 32]), Vec<PathBuf>> = HashMap::new();
     for (size, files) in finalists {
         for p in files {
+            if cancelled() { break; }
             done += 1;
             if done % 20 == 0 {
                 emit("full", done, total_full);
@@ -290,7 +314,7 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     groups.sort_by(|a, b| b.reclaimable.cmp(&a.reclaimable));
 
     emit("done", scanned, scanned);
-    DupReport { groups, scanned, total_reclaimable, unreadable, skipped_cloud, managed_groups }
+    DupReport { groups, scanned, total_reclaimable, unreadable, skipped_cloud, managed_groups, cancelled: cancelled() }
 }
 
 #[tauri::command]
@@ -304,6 +328,7 @@ pub async fn find_duplicates(app: AppHandle, roots: Vec<String>) -> DupReport {
             unreadable: 0,
             skipped_cloud: 0,
             managed_groups: 0,
+            cancelled: false,
         })
 }
 

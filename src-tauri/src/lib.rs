@@ -33,6 +33,7 @@ pub fn run() {
             pdf_render::pdf_to_image,
             dedupe::find_duplicates,
             dedupe::delete_to_trash,
+            dedupe::cancel_scan,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])

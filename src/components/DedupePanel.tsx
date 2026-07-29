@@ -37,6 +37,7 @@ interface DupReport {
   unreadable: number;
   skipped_cloud: number;
   managed_groups: number;
+  cancelled: boolean;
 }
 
 const PHASE_KEY: Record<string, string> = {
@@ -171,6 +172,13 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
             </span>
           </div>
 
+          {report.cancelled && (
+            <div className="notice">
+              <span className="notice__mark">!</span>
+              <span>{t("dedupe.cancelledWarn")}</span>
+            </div>
+          )}
+
           {report.managed_groups > 0 && (
             <div className="notice">
               <span className="notice__mark">!</span>
@@ -234,6 +242,12 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
               : t("dedupe.scanning")
             : t("dedupe.scan")}
         </button>
+        {/* 整盘扫描实测要 8.9 分钟，没有退出口是不可接受的 */}
+        {scanning && (
+          <button className="chip" onClick={() => invoke("cancel_scan")}>
+            {t("run.cancel")}
+          </button>
+        )}
         {doomedList.length > 0 && !scanning && (
           <button className="chip is-danger" onClick={() => setConfirming(true)}>
             {t("dedupe.deleteBtn", { count: doomedList.length, size: fmtSize(doomedBytes) })}
