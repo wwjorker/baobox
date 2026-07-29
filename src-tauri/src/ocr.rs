@@ -140,6 +140,11 @@ pub fn recognize_for_test(path: &Path) -> AppResult<String> {
     recognize(path, None)
 }
 
+/// 给截图取字用：识别单张图，可指定语言
+pub fn recognize_with_lang(path: &Path, lang: Option<&str>) -> AppResult<String> {
+    recognize(path, lang)
+}
+
 #[derive(Serialize, Clone)]
 pub struct OcrOutcome {
     pub path: String,

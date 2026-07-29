@@ -189,7 +189,7 @@ export const TOOLS: ToolDef[] = [
     output: "text",
     options: [{ kind: "dynamic-choice", id: "lang", label: "opt.ocrLang", source: "ocrLanguages", def: "" }],
   },
-  { id: "ocr.screen", pillar: "ocr", accepts: [], command: "ocr_screen", status: "planned", options: [] },
+  { id: "ocr.screen", pillar: "ocr", accepts: [], command: "ocr_region", status: "ready", highlight: true, options: [] },
 
   // ------------------------------------------------------------ PDF（8）
   { id: "pdf.merge", pillar: "pdf", accepts: PDF, command: "pdf_merge", status: "ready", options: [] },

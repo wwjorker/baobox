@@ -44,7 +44,10 @@ export default {
         name: "批量 OCR 合并导出",
         desc: "一叠扫描件一次识别完，合并成一份带文件名标题的文字稿。",
       },
-      screen: { name: "截图取字", desc: "全局热键框选屏幕任意区域，直接取字。" },
+      screen: {
+        name: "截图取字",
+        desc: "抓下整个桌面，框选任意区域直接取字。抓屏前百宝箱会先自己让开，不会截到自己。（全局热键还没做，目前需从这里手动触发）",
+      },
     },
     pdf: {
       merge: { name: "合并", desc: "多个 PDF 拖进来排好序，合成一份。" },
@@ -118,6 +121,15 @@ export default {
     pageNumbers: "加页码",
   },
 
+  screen: {
+    emptyTitle: "点下面的按钮开始截屏",
+    emptyHint: "抓屏前百宝箱会先自己让开，不然截到的就是它自己。抓完在图上框选要识别的区域。",
+    dragHint: "在下面的画面上按住拖动，框出要取字的区域。按 Esc 重来。",
+    selected: "已选 {w} × {h} 像素",
+    start: "开始截屏",
+    again: "重新截屏",
+    working: "处理中…",
+  },
   rename: {
     pick: "选择要重命名的文件",
     picked: "已选 {count} 个文件 · 点此增删",

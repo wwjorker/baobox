@@ -8,6 +8,7 @@ pub mod pdf_font;
 pub mod pdf_ops;
 pub mod pdf_render;
 pub mod rename;
+pub mod screen_ocr;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -38,6 +39,9 @@ pub fn run() {
             rename::rename_preview,
             rename::rename_apply,
             rename::rename_undo,
+            screen_ocr::capture_screen,
+            screen_ocr::ocr_region,
+            screen_ocr::cursor_pos,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])

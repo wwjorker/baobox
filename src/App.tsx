@@ -6,6 +6,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
+import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import "./styles/app.css";
@@ -56,7 +57,9 @@ export default function App() {
         />
 
         <main className="main">
-          {tool?.id === "file.rename" ? (
+          {tool?.id === "ocr.screen" ? (
+            <ScreenOcrPanel />
+          ) : tool?.id === "file.rename" ? (
             <RenamePanel />
           ) : tool?.id === "file.dedupe" ? (
             // 「扫描 → 分组 → 勾选 → 删除」和通用的「拖入 → 配置 → 执行」

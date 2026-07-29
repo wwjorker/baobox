@@ -66,6 +66,11 @@ windows = { version = "0.58", features = [
   "Foundation_Collections",
   # WinRT 调用要求线程先完成 COM 初始化，否则 IAsyncOperation::get() 会挂死
   "Win32_System_Com",
+  # 截图取字要抓整个虚拟桌面
+  "Win32_Graphics_Gdi",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_HiDpi",
+  "Win32_Foundation",
   # 系统自带的 PDF 渲染。有了它 PDF 转图片就不用 pdfium，
   # 省下约 11 MB 的动态库，安装包能保持在 6 MB 量级。
   "Data_Pdf",

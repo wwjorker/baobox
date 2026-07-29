@@ -44,7 +44,10 @@ const enUS: typeof zhCN = {
         name: "Batch OCR to one file",
         desc: "Read a stack of scans in one pass and merge them into a single transcript with filename headings.",
       },
-      screen: { name: "Screen capture OCR", desc: "Global hotkey, drag over any part of the screen, get the text." },
+      screen: {
+        name: "Screen capture OCR",
+        desc: "Grabs the whole desktop so you can drag over any part of it and get the text. Baobox minimises itself first, so it never captures its own window. (No global hotkey yet — trigger it from here.)",
+      },
     },
     pdf: {
       merge: { name: "Merge", desc: "Drop several PDFs in, order them, combine into one." },
@@ -124,6 +127,15 @@ const enUS: typeof zhCN = {
     pageNumbers: "Page numbers",
   },
 
+  screen: {
+    emptyTitle: "Press the button to grab the screen",
+    emptyHint: "Baobox minimises itself first — otherwise the shot is just its own window. Then drag over the part you want read.",
+    dragHint: "Drag across the image below to pick a region. Esc starts over.",
+    selected: "{w} × {h} pixels selected",
+    start: "Grab screen",
+    again: "Grab again",
+    working: "Working…",
+  },
   rename: {
     pick: "Choose files to rename",
     picked: "{count} file(s) selected · click to change",

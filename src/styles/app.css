@@ -659,6 +659,30 @@
   letter-spacing: -0.01em;
 }
 
+/* ----------------------------------------------------------- 截图取字 */
+.shotwrap {
+  position: relative;
+  border: var(--b1);
+  background: var(--paper);
+  box-shadow: var(--sh);
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+  line-height: 0;
+}
+.shotwrap__img {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}
+.shotwrap__sel {
+  position: absolute;
+  border: 2px solid var(--red);
+  background: rgba(255, 59, 24, 0.12);
+  pointer-events: none;
+}
+
 /* ------------------------------------------------------- 批量重命名 */
 .rules {
   display: flex;
