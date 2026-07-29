@@ -60,6 +60,11 @@ impl OutFmt {
 
 // ============================================================ 编码
 
+/// 单独暴露 JPEG 编码，PDF 压缩要用它重压内嵌图片
+pub fn encode_jpeg(img: &DynamicImage, quality: u8) -> AppResult<Vec<u8>> {
+    encode(img, OutFmt::Jpeg, quality)
+}
+
 fn encode(img: &DynamicImage, fmt: OutFmt, quality: u8) -> AppResult<Vec<u8>> {
     match fmt {
         OutFmt::Jpeg | OutFmt::Keep => {

@@ -24,6 +24,7 @@ pub fn run() {
             pdf_ops::pdf_split,
             pdf_ops::pdf_rotate,
             pdf_ops::pdf_from_image,
+            pdf_ops::pdf_compress,
             pdf_ops::pdf_to_text,
         ])
         .run(tauri::generate_context!())

@@ -286,6 +286,144 @@ fn pdf_from_image_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcom
     vec![o]
 }
 
+// ============================================================ 压缩
+
+/// 重新编码一张内嵌图片。返回 (原字节数, 新字节数)，不该动或压不小就返回 None。
+///
+/// 实测 300 份真实 PDF 的 6854 张内嵌图片：DCTDecode 3453 张 297 MB，
+/// FlateDecode 3358 张 407 MB。裸像素那类按体积反而更大，
+/// 所以两种都得处理，只做 JPEG 会漏掉一半以上的可压缩字节。
+fn recompress_image(stream: &mut lopdf::Stream, quality: u8) -> Option<(usize, usize)> {
+    // 有软掩码说明带透明通道，转成 JPEG 会把它丢掉
+    if stream.dict.get(b"SMask").is_ok() || stream.dict.get(b"Mask").is_ok() {
+        return None;
+    }
+    let w = stream.dict.get(b"Width").ok()?.as_i64().ok()? as u32;
+    let h = stream.dict.get(b"Height").ok()?.as_i64().ok()? as u32;
+    if w == 0 || h == 0 || w > 20000 || h > 20000 {
+        return None;
+    }
+    // 1 位的黑白位图转 JPEG 只会更大更糊，扫描件里这类不少
+    let bpc = stream
+        .dict
+        .get(b"BitsPerComponent")
+        .and_then(|o| o.as_i64())
+        .unwrap_or(8);
+    if bpc != 8 {
+        return None;
+    }
+
+    let filter = match stream.dict.get(b"Filter") {
+        Ok(Object::Name(n)) => String::from_utf8_lossy(n).to_string(),
+        Ok(Object::Array(a)) if a.len() == 1 => a[0]
+            .as_name()
+            .map(|n| String::from_utf8_lossy(n).to_string())
+            .unwrap_or_default(),
+        _ => return None,
+    };
+    let cs = match stream.dict.get(b"ColorSpace") {
+        Ok(Object::Name(n)) => String::from_utf8_lossy(n).to_string(),
+        _ => String::new(),
+    };
+
+    let before = stream.content.len();
+    let img: image::DynamicImage = match filter.as_str() {
+        "DCTDecode" => {
+            image::load_from_memory_with_format(&stream.content, image::ImageFormat::Jpeg).ok()?
+        }
+        "FlateDecode" => {
+            let raw = stream.decompressed_content().ok()?;
+            match cs.as_str() {
+                "DeviceRGB" => {
+                    let need = (w as usize) * (h as usize) * 3;
+                    if raw.len() < need {
+                        return None;
+                    }
+                    image::RgbImage::from_raw(w, h, raw[..need].to_vec())?.into()
+                }
+                "DeviceGray" => {
+                    let need = (w as usize) * (h as usize);
+                    if raw.len() < need {
+                        return None;
+                    }
+                    image::GrayImage::from_raw(w, h, raw[..need].to_vec())?.into()
+                }
+                // Indexed / ICCBased 等需要查调色板或色彩配置，改错了会变色，宁可不动
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+
+    let jpeg = crate::image_ops::encode_jpeg(&img, quality).ok()?;
+    // 压不小就保持原样——用户点「压缩」结果变大是说不过去的
+    if jpeg.len() >= before {
+        return None;
+    }
+
+    let gray = matches!(img, image::DynamicImage::ImageLuma8(_));
+    stream.set_plain_content(jpeg.clone());
+    stream.dict.set("Filter", Object::Name(b"DCTDecode".to_vec()));
+    stream.dict.set(
+        "ColorSpace",
+        Object::Name(if gray {
+            b"DeviceGray".to_vec()
+        } else {
+            b"DeviceRGB".to_vec()
+        }),
+    );
+    stream.dict.set("BitsPerComponent", 8i64);
+    stream.dict.remove(b"DecodeParms");
+    Some((before, jpeg.len()))
+}
+
+pub fn compress_file(src: &Path, quality: u8) -> AppResult<(PathBuf, usize, u64)> {
+    let mut doc = open(src)?;
+    let ids: Vec<lopdf::ObjectId> = doc
+        .objects
+        .iter()
+        .filter(|(_, o)| {
+            matches!(o, Object::Stream(s) if s
+                .dict
+                .get(b"Subtype")
+                .and_then(|x| x.as_name())
+                .map(|n| n == b"Image")
+                .unwrap_or(false))
+        })
+        .map(|(id, _)| *id)
+        .collect();
+
+    let mut touched = 0usize;
+    let mut saved: u64 = 0;
+    for id in ids {
+        if let Some(Object::Stream(s)) = doc.objects.get_mut(&id) {
+            if let Some((before, after)) = recompress_image(s, quality) {
+                touched += 1;
+                saved += (before - after) as u64;
+            }
+        }
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 压缩", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, touched, saved))
+}
+
+fn pdf_compress_blocking(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, touched, _) = compress_file(src, quality)?;
+        Ok((
+            dst,
+            Some(if touched == 0 {
+                "没有可重压的图片，仅优化了文档结构".into()
+            } else {
+                format!("重压 {touched} 张内嵌图片")
+            }),
+        ))
+    })
+}
+
 // ========================================================== PDF 转文本
 
 pub fn text_file(src: &Path) -> AppResult<(PathBuf, String)> {
@@ -348,6 +486,13 @@ pub async fn pdf_rotate(app: AppHandle, paths: Vec<String>, degrees: i64) -> Vec
 #[tauri::command]
 pub async fn pdf_from_image(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || pdf_from_image_blocking(app, paths))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_compress(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_compress_blocking(app, paths, quality))
         .await
         .unwrap_or_default()
 }

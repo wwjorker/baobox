@@ -213,7 +213,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "pdf",
     accepts: PDF,
     command: "pdf_compress",
-    status: "planned",
+    status: "ready",
     options: [{ kind: "number", id: "quality", label: "opt.quality", min: 1, max: 100, step: 1, def: 75 }],
   },
   {
