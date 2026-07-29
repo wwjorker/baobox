@@ -175,6 +175,11 @@ pub fn cursor_pos() -> (i32, i32) {
     }
 }
 
+/// 供其他模块复用的 base64 编码
+pub fn b64(data: &[u8]) -> String {
+    base64_encode(data)
+}
+
 fn base64_encode(data: &[u8]) -> String {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(data.len().div_ceil(3) * 4);

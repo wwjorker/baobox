@@ -36,7 +36,10 @@ const enUS: typeof zhCN = {
         desc: "Photos carry GPS coordinates and device details. Clear them before sharing.",
       },
       watermark: { name: "Add watermark", desc: "Text or image watermark with adjustable position and opacity." },
-      redact: { name: "Redact", desc: "Pixelate or black out ID numbers and phone numbers." },
+      redact: {
+        name: "Redact",
+        desc: "Cover ID numbers, phone numbers and the like. Pixels are overwritten, not covered over — the original content cannot be recovered. Regions are proportional, so one set of boxes applies across a batch.",
+      },
     },
     ocr: {
       image: { name: "Extract text from image", desc: "Uses the built-in Windows engine. Offline and free." },
@@ -127,6 +130,17 @@ const enUS: typeof zhCN = {
     pageNumbers: "Page numbers",
   },
 
+  redact: {
+    pick: "Choose images to redact",
+    picked: "{count} selected · click to change",
+    emptyTitle: "Pick an image to start",
+    emptyHint: "Drag over what should be covered. Regions are stored as proportions, so one set of boxes applies across a batch of same-layout screenshots.",
+    dragHint: "Drag on the image to draw a region. Draw as many as you need.",
+    count: "{n} region(s) drawn",
+    clear: "Clear",
+    appliesTo: "These regions apply to all {count} image(s).",
+    apply: "Redact {count} image(s)",
+  },
   screen: {
     emptyTitle: "Press the button to grab the screen",
     emptyHint: "Baobox minimises itself first — otherwise the shot is just its own window. Then drag over the part you want read.",

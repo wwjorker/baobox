@@ -153,7 +153,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_redact",
-    status: "planned",
+    status: "ready",
     highlight: true,
     options: [
       {

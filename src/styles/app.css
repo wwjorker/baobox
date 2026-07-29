@@ -676,6 +676,10 @@
   display: block;
   pointer-events: none;
 }
+.shotwrap__sel.is-solid {
+  background: rgba(255, 59, 24, 0.28);
+  border-width: 3px;
+}
 .shotwrap__sel {
   position: absolute;
   border: 2px solid var(--red);

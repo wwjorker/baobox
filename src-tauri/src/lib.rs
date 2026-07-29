@@ -7,6 +7,7 @@ pub mod paths;
 pub mod pdf_font;
 pub mod pdf_ops;
 pub mod pdf_render;
+pub mod redact;
 pub mod rename;
 pub mod screen_ocr;
 
@@ -42,6 +43,8 @@ pub fn run() {
             screen_ocr::capture_screen,
             screen_ocr::ocr_region,
             screen_ocr::cursor_pos,
+            redact::img_redact,
+            redact::image_preview,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])

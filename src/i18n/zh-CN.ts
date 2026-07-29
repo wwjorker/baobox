@@ -36,7 +36,10 @@ export default {
         desc: "照片里藏着拍摄地点的 GPS 坐标和设备型号。发出去之前清掉。",
       },
       watermark: { name: "添加水印", desc: "文字或图片水印，位置与透明度可调。" },
-      redact: { name: "打码遮挡", desc: "给身份证号、手机号打马赛克或涂黑。" },
+      redact: {
+        name: "打码遮挡",
+        desc: "框选身份证号、手机号这类内容打码。像素是真被改写的，不是盖一层——原始内容无法还原。选区按比例记录，一组框能套用到整批同版式的截图上。",
+      },
     },
     ocr: {
       image: { name: "图片提取文字", desc: "用 Windows 内置引擎识别，离线、免费。" },
@@ -121,6 +124,17 @@ export default {
     pageNumbers: "加页码",
   },
 
+  redact: {
+    pick: "选择要打码的图片",
+    picked: "已选 {count} 张 · 点此增删",
+    emptyTitle: "选张图片开始",
+    emptyHint: "在图上框出要遮掉的地方。选区按比例记录，所以同一组框能套用到整批同版式的截图上。",
+    dragHint: "在图上按住拖动画出遮挡区域，可以画多个。",
+    count: "已画 {n} 个区域",
+    clear: "清空重画",
+    appliesTo: "这组选区会套用到全部 {count} 张图上。",
+    apply: "处理 {count} 张",
+  },
   screen: {
     emptyTitle: "点下面的按钮开始截屏",
     emptyHint: "抓屏前百宝箱会先自己让开，不然截到的就是它自己。抓完在图上框选要识别的区域。",

@@ -7,6 +7,7 @@ import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
 import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
+import { RedactPanel } from "./components/RedactPanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import "./styles/app.css";
@@ -57,7 +58,9 @@ export default function App() {
         />
 
         <main className="main">
-          {tool?.id === "ocr.screen" ? (
+          {tool?.id === "image.redact" ? (
+            <RedactPanel />
+          ) : tool?.id === "ocr.screen" ? (
             <ScreenOcrPanel />
           ) : tool?.id === "file.rename" ? (
             <RenamePanel />
