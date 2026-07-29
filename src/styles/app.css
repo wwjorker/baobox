@@ -659,6 +659,134 @@
   letter-spacing: -0.01em;
 }
 
+/* ------------------------------------------------- 重复文件：分组结果 */
+.dupgroup {
+  border-bottom: var(--b2);
+}
+.dupgroup:last-child {
+  border-bottom: none;
+}
+.dupgroup__head {
+  padding: 6px 11px;
+  background: var(--bg-soft);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border-bottom: var(--b3);
+}
+.dupfile {
+  display: grid;
+  grid-template-columns: 18px minmax(120px, 1fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 11px;
+  font-size: 12px;
+  border-bottom: var(--b3);
+  cursor: pointer;
+}
+.dupfile:last-child {
+  border-bottom: none;
+}
+.dupfile:hover {
+  background: var(--paper-hover);
+}
+.dupfile input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--red);
+  cursor: pointer;
+}
+.dupfile__name {
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dupfile__path {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+.chip.is-danger {
+  background: var(--bad);
+  color: #fff;
+}
+
+/* ------------------------------------------------- 删除确认（安全红线） */
+.confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(10, 8, 4, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+.confirm__box {
+  width: min(680px, 92%);
+  max-height: 82vh;
+  background: var(--paper);
+  border: var(--b1);
+  box-shadow: var(--sh-lg);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.confirm__title {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: 21px;
+}
+.confirm__lead {
+  margin: 0;
+  font-size: 14px;
+}
+.confirm__warn {
+  margin: 0;
+  padding: 8px 11px;
+  background: var(--bad);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.confirm__list {
+  flex: 1;
+  overflow-y: auto;
+  border: var(--b2);
+  background: var(--bg-soft);
+  padding: 7px 9px;
+  min-height: 80px;
+}
+.confirm__row {
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  line-height: 1.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.confirm__safe {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.confirm__actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.confirm__actions .go {
+  flex: 1;
+}
+
 /* ------------------------------------------------------------ 命令面板 */
 .palette {
   position: fixed;

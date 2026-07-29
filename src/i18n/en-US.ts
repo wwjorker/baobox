@@ -124,6 +124,30 @@ const enUS: typeof zhCN = {
     pageNumbers: "Page numbers",
   },
 
+  dedupe: {
+    pickFolder: "Choose folders to scan",
+    roots: "{count} folder(s) · {list} · click to change",
+    emptyTitle: "Pick a folder to start",
+    emptyHint:
+      "Compares actual content, so renamed copies still match. Files under 64 KB are skipped — duplicates that small aren't worth reclaiming.",
+    scan: "Scan",
+    scanning: "Scanning…",
+    phaseWalk: "Walking files",
+    phaseQuick: "Quick compare",
+    phaseFull: "Exact compare",
+    phaseDone: "Collecting",
+    summary: "Scanned {scanned} files, found {groups} duplicate sets, {size} reclaimable",
+    skippedCloud: "skipped {count} cloud placeholders (reading them would trigger downloads)",
+    groupHead: "{count} identical · {each} each · {save} reclaimable",
+    deleteBtn: "Delete {count} selected ({size})",
+    confirmTitle: "Delete these?",
+    confirmLead: "About to delete {count} files, {size} in total.",
+    confirmWipe: "Note: {count} set(s) are fully selected — no copy of that content will remain.",
+    andMore: "…and {count} more not listed",
+    recycleNote: "Files go to the Recycle Bin, so anything deleted by mistake can be restored.",
+    confirmGo: "Delete",
+  },
+
   status: {
     ready: "Ready",
     wip: "In progress",

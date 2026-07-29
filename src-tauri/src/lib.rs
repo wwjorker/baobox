@@ -1,4 +1,5 @@
 ﻿pub mod batch;
+pub mod dedupe;
 pub mod err;
 pub mod image_ops;
 pub mod ocr;
@@ -30,6 +31,9 @@ pub fn run() {
             pdf_ops::pdf_decrypt,
             pdf_ops::pdf_stamp,
             pdf_render::pdf_to_image,
+            dedupe::find_duplicates,
+            dedupe::delete_to_trash,
+            dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])
         .run(tauri::generate_context!())
