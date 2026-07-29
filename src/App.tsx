@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useI18n } from "./i18n";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
@@ -19,6 +20,20 @@ export default function App() {
   const [recent, setRecent] = useState<string[]>([]);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { saved, addSaved } = useSaved();
+  /** 热键触发的计数器，变化即表示要立刻开抓 */
+  const [hotkeyTick, setHotkeyTick] = useState(0);
+
+  // 全局热键：把窗口拉起来、跳到截图取字、立刻抓屏
+  useEffect(() => {
+    const un = getCurrentWebview().listen("baobox://hotkey-screen-ocr", () => {
+      setPillar("ocr");
+      setToolId("ocr.screen");
+      setHotkeyTick((n) => n + 1);
+    });
+    return () => {
+      un.then((f) => f());
+    };
+  }, []);
 
   const tool = toolId ? findTool(toolId) : undefined;
 
@@ -61,7 +76,7 @@ export default function App() {
           {tool?.id === "image.redact" ? (
             <RedactPanel />
           ) : tool?.id === "ocr.screen" ? (
-            <ScreenOcrPanel />
+            <ScreenOcrPanel autoStart={hotkeyTick} />
           ) : tool?.id === "file.rename" ? (
             <RenamePanel />
           ) : tool?.id === "file.dedupe" ? (

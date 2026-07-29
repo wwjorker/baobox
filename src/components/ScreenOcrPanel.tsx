@@ -27,7 +27,7 @@ interface Rect {
   h: number;
 }
 
-export function ScreenOcrPanel() {
+export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
   const { t } = useI18n();
   const [shot, setShot] = useState<ScreenShot | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -51,10 +51,17 @@ export function ScreenOcrPanel() {
       setShot(s);
     } finally {
       await win.unminimize();
-      await win.setFocus();
+      // Tauri 的 setFocus() 在 Windows 上常常抢不回前台，窗口会卡在
+      // 别人后面。走 Win32 的正规流程才可靠。
+      await invoke("restore_and_focus").catch(() => win.setFocus());
       setBusy(false);
     }
   }, []);
+
+  // 全局热键触发时直接开抓，用户按完 Ctrl+Shift+S 不该还要再点一下
+  useEffect(() => {
+    if (autoStart) capture();
+  }, [autoStart, capture]);
 
   // 把界面上的坐标换算回屏幕的物理像素
   const toScreen = (clientX: number, clientY: number) => {

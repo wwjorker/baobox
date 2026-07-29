@@ -36,18 +36,30 @@ pub fn output_dir_for(src: &Path) -> AppResult<PathBuf> {
     Ok(dir)
 }
 
-/// 在输出目录里取一个不冲突的文件名。
+/// 在输出目录里取文件名。
 ///
-/// 即使是输出目录里的已有文件也不覆盖——用户可能跑了两次，
-/// 第二次的结果不该悄悄吃掉第一次的。
+/// 「绝不覆盖」这条红线守的是**用户的原文件**，不是我们自己上一次的产物。
+/// 早先一律加 (2)(3) 后缀，结果同一批文件跑三遍就堆出三份，输出目录很快
+/// 变成垃圾场，而用户想要的几乎总是最新那份。
+///
+/// 所以现在：`Baobox_output` 里我们自己产出的同名文件直接覆盖；
+/// 目录之外的任何东西一律不碰。真要留旧结果，重命名或移走即可。
 pub fn unique_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
-    let mut candidate = dir.join(format!("{stem}.{ext}"));
+    let candidate = dir.join(format!("{stem}.{ext}"));
+    // 只有当它确实位于我们的输出目录里时才允许覆盖
+    let ours = dir.file_name().map(|n| n == OUTPUT_DIR).unwrap_or(false);
+    if ours || !long_path(&candidate).exists() {
+        return candidate;
+    }
+    // 不在输出目录里（理论上不该发生）——退回加后缀，宁可多一份也不覆盖
     let mut n = 2;
-    while long_path(&candidate).exists() {
-        candidate = dir.join(format!("{stem} ({n}).{ext}"));
+    loop {
+        let alt = dir.join(format!("{stem} ({n}).{ext}"));
+        if !long_path(&alt).exists() {
+            return alt;
+        }
         n += 1;
     }
-    candidate
 }
 
 pub fn stem_of(p: &Path) -> String {

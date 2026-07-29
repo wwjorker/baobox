@@ -12,11 +12,38 @@ pub mod rename;
 pub mod screen_ocr;
 pub mod watermark;
 
+/// 截图取字的全局热键。
+///
+/// 这个功能一半的价值在于「正在别的软件里看东西，随手一按就取字」。
+/// 必须先切回百宝箱的话，那一半就没了。
+const SCREEN_OCR_HOTKEY: &str = "Ctrl+Shift+S";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    // 只认按下，不然一次按键会触发两遍
+                    if event.state() != tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        return;
+                    }
+                    use tauri::Emitter;
+                    let _ = app.emit("baobox://hotkey-screen-ocr", ());
+                })
+                .build(),
+        )
+        .setup(|app| {
+            use tauri_plugin_global_shortcut::GlobalShortcutExt;
+            // 热键可能被别的软件占用。抢不到就静默让步——
+            // 弹个报错打断启动，比少一个快捷方式糟糕得多。
+            if let Err(e) = app.global_shortcut().register(SCREEN_OCR_HOTKEY) {
+                eprintln!("全局热键 {SCREEN_OCR_HOTKEY} 注册失败（可能已被占用）: {e}");
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             image_ops::img_compress_target,
             image_ops::img_compress,
@@ -44,6 +71,7 @@ pub fn run() {
             screen_ocr::capture_screen,
             screen_ocr::ocr_region,
             screen_ocr::cursor_pos,
+            screen_ocr::restore_and_focus,
             redact::img_redact,
             redact::image_preview,
             watermark::img_watermark,

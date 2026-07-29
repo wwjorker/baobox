@@ -70,6 +70,8 @@ windows = { version = "0.58", features = [
   "Win32_Graphics_Gdi",
   "Win32_UI_WindowsAndMessaging",
   "Win32_UI_HiDpi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_System_Threading",
   "Win32_Foundation",
   # 系统自带的 PDF 渲染。有了它 PDF 转图片就不用 pdfium，
   # 省下约 11 MB 的动态库，安装包能保持在 6 MB 量级。
@@ -87,4 +89,5 @@ image = "0.25"
 oxipng = { version = "9", default-features = false, features = ["parallel"] }
 regex = "1.13.1"
 ab_glyph = "0.2.32"
+tauri-plugin-global-shortcut = "2.3.2"
 

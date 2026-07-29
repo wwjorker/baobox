@@ -13,6 +13,9 @@
     "core:window:allow-close",
     "core:window:allow-start-dragging",
     "dialog:allow-open",
-    "opener:allow-reveal-item-in-dir"
+    "opener:allow-reveal-item-in-dir",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered"
   ]
 }

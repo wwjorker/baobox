@@ -165,6 +165,48 @@ pub async fn ocr_region(
     .map_err(|e| AppError::unknown(e))?
 }
 
+/// 把窗口恢复并真正抢回前台。
+///
+/// Tauri 的 `setFocus()` 在 Windows 上常常不起作用：系统禁止非前台进程
+/// 随意抢焦点，除非它跟当前前台窗口共享输入队列。抓屏时我们先最小化了
+/// 自己，恢复后窗口就卡在别人后面，用户还得去点任务栏。
+///
+/// 标准解法是临时把自己的线程挂到前台窗口的输入队列上，
+/// 让系统认为这次抢焦点是「同一个输入上下文里的操作」，用完立刻解除。
+#[tauri::command]
+pub fn restore_and_focus(window: tauri::Window) {
+    use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+    use windows::Win32::UI::Input::KeyboardAndMouse::SetFocus;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowThreadProcessId, SetForegroundWindow, ShowWindow, SW_RESTORE,
+    };
+
+    let Ok(handle) = window.hwnd() else { return };
+    let hwnd = HWND(handle.0 as _);
+
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_RESTORE);
+
+        let fg = GetForegroundWindow();
+        if fg.0.is_null() || fg == hwnd {
+            let _ = SetForegroundWindow(hwnd);
+            return;
+        }
+        let fg_thread = GetWindowThreadProcessId(fg, None);
+        let me = GetCurrentThreadId();
+
+        if fg_thread != me {
+            let _ = AttachThreadInput(me, fg_thread, true);
+            let _ = SetForegroundWindow(hwnd);
+            let _ = SetFocus(hwnd);
+            // 一定要解除，否则两个线程的输入队列会一直绑在一起
+            let _ = AttachThreadInput(me, fg_thread, false);
+        } else {
+            let _ = SetForegroundWindow(hwnd);
+        }
+    }
+}
+
 /// 光标位置，用于遮罩层打开时把放大镜对准鼠标
 #[tauri::command]
 pub fn cursor_pos() -> (i32, i32) {
