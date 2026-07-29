@@ -55,14 +55,14 @@ export default {
       "from-image": { name: "图片转 PDF", desc: "多张图片合成一份 PDF，页面尺寸自动跟随图片。" },
       "to-text": { name: "PDF 提取文字", desc: "把本身带文本层的 PDF 转成纯文本。扫描件请用 OCR 那边。" },
       decrypt: {
-        name: "移除 PDF 密码",
-        desc: "填入你知道的密码，导出一份无密码的副本，之后就能正常编辑打印。需要正确密码，不做破解。",
+        name: "解除 PDF 限制",
+        desc: "有些 PDF 能直接打开，却禁止打印和复制文字——去掉这类权限限制不需要密码。若设了打开密码，则需你填入正确密码。解锁后其他工具才能处理它。",
       },
       encrypt: {
         name: "设置 PDF 密码",
         desc: "给 PDF 加上打开密码。暂未实现——见下方说明。",
       },
-      stamp: { name: "页码与水印", desc: "添加页码、文字水印或图片水印。" },
+      stamp: { name: "页码与水印", desc: "给每页加中文水印和页码。字体只嵌入用到的那几十个字形，19.7 MB 的字体最终只占十几 KB。" },
     },
     file: {
       rename: { name: "批量重命名", desc: "规则可叠加，实时预览，改错了能一键撤销。" },
@@ -115,6 +115,7 @@ export default {
     ocrLang: "识别语言",
     ocrLangAuto: "自动",
     rotate: "旋转角度",
+    pageNumbers: "加页码",
   },
 
   status: {
@@ -138,7 +139,7 @@ export default {
   err: {
     // 错误必须说人话并给出下一步，不能直接抛技术堆栈（风险 19）
     decode: "无法读取这个文件，它可能已损坏或不是真正的 {format} 文件。",
-    encrypted: "这份 PDF 有密码保护。请先用「移除 PDF 密码」工具解锁。",
+    encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",

@@ -135,6 +135,11 @@ fn recognize(path: &Path, lang: Option<&str>) -> AppResult<String> {
     Ok(lines.join("\n"))
 }
 
+/// 供验收测试直接调用的识别入口，不经过批量层和 AppHandle
+pub fn recognize_for_test(path: &Path) -> AppResult<String> {
+    recognize(path, None)
+}
+
 #[derive(Serialize, Clone)]
 pub struct OcrOutcome {
     pub path: String,

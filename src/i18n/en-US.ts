@@ -61,14 +61,14 @@ const enUS: typeof zhCN = {
         desc: "Pull plain text out of PDFs that already have a text layer. Use OCR for scans.",
       },
       decrypt: {
-        name: "Remove PDF password",
-        desc: "Enter the password you already know and get an unlocked copy you can edit and print. Requires the correct password — this is not a cracker.",
+        name: "Unlock PDF restrictions",
+        desc: "Some PDFs open fine but block printing and copying — clearing those permission restrictions needs no password. If an open password is set, you'll need to supply it. Unlocking also lets the other tools process the file.",
       },
       encrypt: {
         name: "Set PDF password",
         desc: "Add an open password to a PDF. Not built yet — see the note below.",
       },
-      stamp: { name: "Page numbers & watermark", desc: "Add page numbers, text or an image watermark." },
+      stamp: { name: "Page numbers & watermark", desc: "Stamp every page with a watermark and page numbers, Chinese included. Only the glyphs actually used get embedded, so a 19.7 MB font costs about 13 KB." },
     },
     file: {
       rename: { name: "Batch rename", desc: "Stackable rules, live preview, and one-click undo." },
@@ -121,6 +121,7 @@ const enUS: typeof zhCN = {
     ocrLang: "Recognition language",
     ocrLangAuto: "Auto",
     rotate: "Rotation",
+    pageNumbers: "Page numbers",
   },
 
   status: {
@@ -143,7 +144,7 @@ const enUS: typeof zhCN = {
 
   err: {
     decode: "Can't read this file — it may be damaged or not actually a {format} file.",
-    encrypted: "This PDF is password protected. Unlock it with the Remove PDF password tool first.",
+    encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",

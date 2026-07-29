@@ -3,7 +3,9 @@ pub mod err;
 pub mod image_ops;
 pub mod ocr;
 pub mod paths;
+pub mod pdf_font;
 pub mod pdf_ops;
+pub mod pdf_render;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,6 +28,8 @@ pub fn run() {
             pdf_ops::pdf_from_image,
             pdf_ops::pdf_compress,
             pdf_ops::pdf_decrypt,
+            pdf_ops::pdf_stamp,
+            pdf_render::pdf_to_image,
             pdf_ops::pdf_to_text,
         ])
         .run(tauri::generate_context!())

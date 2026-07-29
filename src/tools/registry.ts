@@ -227,7 +227,7 @@ export const TOOLS: ToolDef[] = [
     pillar: "pdf",
     accepts: PDF,
     command: "pdf_to_image",
-    status: "planned",
+    status: "ready",
     options: [{ kind: "number", id: "dpi", label: "opt.dpi", min: 72, max: 600, step: 24, def: 150, unit: "DPI" }],
   },
   { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "ready", options: [] },
@@ -262,8 +262,13 @@ export const TOOLS: ToolDef[] = [
     pillar: "pdf",
     accepts: PDF,
     command: "pdf_stamp",
-    status: "planned",
-    options: [{ kind: "text", id: "text", label: "opt.watermarkText", def: "" }],
+    status: "ready",
+    highlight: true,
+    options: [
+      { kind: "text", id: "text", label: "opt.watermarkText", def: "", placeholder: "opt.watermarkPlaceholder" },
+      { kind: "toggle", id: "pageNumbers", label: "opt.pageNumbers", def: true },
+      { kind: "number", id: "opacity", label: "opt.opacity", min: 5, max: 100, step: 5, def: 25, unit: "%" },
+    ],
   },
 
   // ----------------------------------------------------------- 文件（2）

@@ -460,6 +460,126 @@ fn pdf_compress_blocking(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec
     })
 }
 
+// ==================================================== 页码与水印
+
+/// 取页面尺寸。MediaBox 可能带非零原点，直接当成宽高会把文字画到页面外。
+fn page_box(doc: &Document, page_id: lopdf::ObjectId) -> (f32, f32, f32, f32) {
+    let get = |key: &[u8]| -> Option<Vec<f32>> {
+        let d = doc.get_object(page_id).ok()?.as_dict().ok()?;
+        let arr = match d.get(key).ok()? {
+            Object::Array(a) => a.clone(),
+            Object::Reference(r) => doc.get_object(*r).ok()?.as_array().ok()?.clone(),
+            _ => return None,
+        };
+        let v: Vec<f32> = arr
+            .iter()
+            .filter_map(|o| o.as_f32().ok().or_else(|| o.as_i64().ok().map(|i| i as f32)))
+            .collect();
+        (v.len() == 4).then_some(v)
+    };
+    // 页面自己没有 MediaBox 时是从父节点继承的，这里退回 A4
+    let b = get(b"MediaBox").unwrap_or_else(|| vec![0.0, 0.0, 595.0, 842.0]);
+    (b[0], b[1], b[2], b[3])
+}
+
+pub struct StampOptions {
+    /// 水印文字，空则不加水印
+    pub watermark: String,
+    /// 是否添加页码
+    pub page_numbers: bool,
+    /// 水印透明度 0–1
+    pub opacity: f32,
+}
+
+pub fn stamp_file(src: &Path, opt: &StampOptions) -> AppResult<(PathBuf, usize, usize)> {
+    let mut doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    let total = pages.len();
+
+    // 先把所有会用到的字符收集齐，一次性子集化。
+    // 页码要用到的数字和「第页共」这几个字也得算进去。
+    let mut needed = opt.watermark.clone();
+    if opt.page_numbers {
+        needed.push_str("第页共 0123456789");
+        needed.push_str(&total.to_string());
+    }
+    let font = crate::pdf_font::prepare(&needed)?;
+    let font_size_saved = font.source_bytes;
+    let subset_size = font.data.len();
+
+    let font_id = crate::pdf_font::embed(&mut doc, &font);
+    let gs_id = (!opt.watermark.is_empty() && opt.opacity < 1.0)
+        .then(|| crate::pdf_font::add_alpha_state(&mut doc, opt.opacity));
+
+    let page_ids: Vec<(u32, lopdf::ObjectId)> = pages.into_iter().collect();
+    for (page_no, page_id) in &page_ids {
+        let (x0, y0, x1, y1) = page_box(&doc, *page_id);
+        let (w, h) = (x1 - x0, y1 - y0);
+        let mut ops = String::new();
+
+        if !opt.watermark.is_empty() {
+            let size = (w.min(h) / opt.watermark.chars().count().max(4) as f32 * 1.6).clamp(18.0, 72.0);
+            let text_w = font.width_of_text(&opt.watermark, size);
+            // 沿对角线居中放置，45 度
+            let (cx, cy) = (x0 + w / 2.0, y0 + h / 2.0);
+            let (cos, sin) = (0.7071_f32, 0.7071_f32);
+            let (dx, dy) = (-text_w / 2.0, -size / 3.0);
+            let (tx, ty) = (cx + dx * cos - dy * sin, cy + dx * sin + dy * cos);
+            ops.push_str("q\n");
+            if gs_id.is_some() {
+                ops.push_str("/BaoboxGS gs\n");
+            }
+            ops.push_str("0.45 0.45 0.45 rg\nBT\n");
+            ops.push_str(&format!("/BaoboxF {size:.1} Tf\n"));
+            ops.push_str(&format!("{cos:.4} {sin:.4} {:.4} {cos:.4} {tx:.2} {ty:.2} Tm\n", -sin));
+            ops.push_str(&format!("<{}> Tj\nET\nQ\n", font.encode(&opt.watermark)));
+        }
+
+        if opt.page_numbers {
+            let label = format!("第 {page_no} 页 共 {total} 页");
+            let size = 10.0_f32;
+            let tw = font.width_of_text(&label, size);
+            let (tx, ty) = (x0 + (w - tw) / 2.0, y0 + 24.0);
+            ops.push_str("q\n0.25 0.25 0.25 rg\nBT\n");
+            ops.push_str(&format!("/BaoboxF {size:.1} Tf\n"));
+            ops.push_str(&format!("1 0 0 1 {tx:.2} {ty:.2} Tm\n"));
+            ops.push_str(&format!("<{}> Tj\nET\nQ\n", font.encode(&label)));
+        }
+
+        if !ops.is_empty() {
+            crate::pdf_font::attach_resources(&mut doc, *page_id, font_id, gs_id);
+            doc.add_page_contents(*page_id, ops.into_bytes())
+                .map_err(|e| AppError::unknown(e))?;
+        }
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 加标记", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, total, font_size_saved - subset_size))
+}
+
+fn pdf_stamp_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    text: String,
+    page_numbers: bool,
+    opacity: u8,
+) -> Vec<FileOutcome> {
+    let opt = StampOptions {
+        watermark: text,
+        page_numbers,
+        opacity: (opacity as f32 / 100.0).clamp(0.05, 1.0),
+    };
+    run_batch(&app, paths, move |src| {
+        let (dst, pages, _) = stamp_file(src, &opt)?;
+        Ok((dst, Some(format!("{pages} 页已加标记"))))
+    })
+}
+
 // ========================================================== PDF 转文本
 
 pub fn text_file(src: &Path) -> AppResult<(PathBuf, String)> {
@@ -542,6 +662,21 @@ pub async fn pdf_compress(app: AppHandle, paths: Vec<String>, quality: u8) -> Ve
     tauri::async_runtime::spawn_blocking(move || pdf_compress_blocking(app, paths, quality))
         .await
         .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_stamp(
+    app: AppHandle,
+    paths: Vec<String>,
+    text: String,
+    page_numbers: bool,
+    opacity: u8,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        pdf_stamp_blocking(app, paths, text, page_numbers, opacity)
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[tauri::command]

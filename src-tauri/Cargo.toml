@@ -61,10 +61,17 @@ windows = { version = "0.58", features = [
   "Foundation_Collections",
   # WinRT 调用要求线程先完成 COM 初始化，否则 IAsyncOperation::get() 会挂死
   "Win32_System_Com",
+  # 系统自带的 PDF 渲染。有了它 PDF 转图片就不用 pdfium，
+  # 省下约 11 MB 的动态库，安装包能保持在 6 MB 量级。
+  "Data_Pdf",
 ] }
 # 风险 2：PDF 结构操作 + 中文字体子集化嵌入
 lopdf = { version = "0.34", features = ["embed_image"] }
 ttf-parser = "0.25"
+# 中文字体子集化（风险 2）。微软雅黑 18.8 MB 且受版权保护不得随包分发，
+# 只能读系统字体、把用到的那几十个字形抽出来嵌进 PDF。
+# typst 团队维护，MIT/Apache 双授权，不会有 GPL 传染。
+subsetter = "0.2"
 # 图片编解码主力
 image = "0.25"
 oxipng = { version = "9", default-features = false, features = ["parallel"] }
