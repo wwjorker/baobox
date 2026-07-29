@@ -22,6 +22,8 @@ interface DupFile {
   size: number;
   modified: number;
   keep: boolean;
+  /** 归某个程序/环境管辖，删了会把它弄坏 */
+  managed: string | null;
 }
 interface DupGroup {
   size: number;
@@ -34,6 +36,7 @@ interface DupReport {
   total_reclaimable: number;
   unreadable: number;
   skipped_cloud: number;
+  managed_groups: number;
 }
 
 const PHASE_KEY: Record<string, string> = {
@@ -168,6 +171,13 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
             </span>
           </div>
 
+          {report.managed_groups > 0 && (
+            <div className="notice">
+              <span className="notice__mark">!</span>
+              <span>{t("dedupe.managedWarn", { count: report.managed_groups })}</span>
+            </div>
+          )}
+
           <div className="filelist">
             {report.groups.map((g, gi) => (
               <div key={gi} className="dupgroup">
@@ -179,7 +189,10 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
                   })}
                 </div>
                 {g.files.map((f) => (
-                  <label key={f.path} className="dupfile">
+                  <label
+                    key={f.path}
+                    className={`dupfile${f.managed ? " is-managed" : ""}`}
+                  >
                     <input
                       type="checkbox"
                       checked={doomed.has(f.path)}
@@ -187,6 +200,11 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
                     />
                     <span className="dupfile__name" title={f.path}>
                       {f.name}
+                      {f.managed && (
+                        <span className="dupfile__tag" title={t("dedupe.managedWhy")}>
+                          {f.managed}
+                        </span>
+                      )}
                     </span>
                     <span className="dupfile__path" title={f.path}>
                       {f.path}

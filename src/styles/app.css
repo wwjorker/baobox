@@ -1,4 +1,4 @@
-/* ============================================================ 外壳布局 */
+﻿/* ============================================================ 外壳布局 */
 .shell {
   height: 100%;
   display: grid;
@@ -711,6 +711,25 @@
   text-overflow: ellipsis;
   direction: rtl;
   text-align: left;
+}
+
+.dupfile.is-managed {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    rgba(211, 19, 43, 0.05) 6px 12px
+  );
+}
+.dupfile__tag {
+  display: inline-block;
+  margin-left: 7px;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 1px 5px;
+  background: var(--bad);
+  color: #fff;
+  vertical-align: 1px;
 }
 
 .chip.is-danger {

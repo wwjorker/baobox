@@ -49,23 +49,32 @@ fn main() {
     println!("跳过云端占位文件 {} 个（读它们会触发下载）", report.skipped_cloud);
     println!("读取失败 {} 个", report.unreadable);
     println!(
-        "找到 {} 组重复，可回收 {}\n",
+        "找到 {} 组重复，其中 {} 组全部归程序/环境管辖（一份都不建议删）",
         report.groups.len(),
-        fmt(report.total_reclaimable)
+        report.managed_groups
     );
+    println!("真正建议删除的可回收量: {}\n", fmt(report.total_reclaimable));
 
-    println!("收益最高的前 8 组:");
-    for g in report.groups.iter().take(8) {
+    println!("收益最高的前 10 组:");
+    for g in report.groups.iter().take(10) {
+        let managed = g.files.iter().filter(|f| f.managed.is_some()).count();
+        let tag = if managed == g.files.len() {
+            format!("[全部归 {} 管辖]", g.files[0].managed.unwrap_or(""))
+        } else if managed > 0 {
+            format!("[{managed}/{} 份归程序管辖]", g.files.len())
+        } else {
+            String::new()
+        };
         println!(
-            "  {:>9} × {} 份 → 可省 {:>9}   {}",
+            "  {:>9} × {} 份 → 可省 {:>9}  {:<28} {}",
             fmt(g.size),
             g.files.len(),
             fmt(g.reclaimable),
             g.files
-                .iter()
-                .find(|f| f.keep)
-                .map(|f| f.name.chars().take(40).collect::<String>())
-                .unwrap_or_default()
+                .first()
+                .map(|f| f.name.chars().take(26).collect::<String>())
+                .unwrap_or_default(),
+            tag
         );
     }
 

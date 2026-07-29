@@ -30,6 +30,43 @@ pub struct DupFile {
     pub modified: i64,
     /// 建议保留。每组自动留一份，其余预选待删。
     pub keep: bool,
+    /// 归某个程序或环境管辖，删了会把它弄坏
+    pub managed: Option<&'static str>,
+}
+
+/// 这个文件是不是由某个程序 / 包管理器 / 版本库管辖的？
+///
+/// 实测全盘扫描时，收益最高的几组全是这类：conda 环境里的 CUDA 运行库、
+/// git 内部对象、模型缓存。它们字节完全相同，但**每一份都必须待在自己的
+/// 路径上**——删掉任何一份，那个环境就废了；git 对象删了直接损坏仓库。
+///
+/// 「内容相同」不等于「可以删」。这类一律不预勾选，并在界面上标明归属。
+fn managed_by(path: &str) -> Option<&'static str> {
+    let p = path.to_ascii_lowercase().replace('/', "\\");
+    const MARKERS: &[(&str, &str)] = &[
+        ("\\.git\\", "Git 仓库"),
+        ("\\site-packages\\", "Python 包"),
+        ("\\node_modules\\", "npm 依赖"),
+        ("\\.cargo\\", "Rust 依赖"),
+        ("\\.conda\\", "Conda 环境"),
+        ("\\anaconda", "Anaconda"),
+        ("\\miniconda", "Miniconda"),
+        ("\\venv\\", "虚拟环境"),
+        ("\\.venv\\", "虚拟环境"),
+        ("\\envs\\", "虚拟环境"),
+        ("\\.m2\\", "Maven 仓库"),
+        ("\\.gradle\\", "Gradle 缓存"),
+        ("\\target\\debug\\", "构建产物"),
+        ("\\target\\release\\", "构建产物"),
+        ("\\.nuget\\", "NuGet 包"),
+        ("\\appdata\\", "应用数据"),
+        ("\\program files", "已安装程序"),
+        ("\\windows\\", "系统文件"),
+        ("\\.cache\\", "缓存目录"),
+        ("\\.ollama\\", "模型缓存"),
+        ("\\huggingface\\", "模型缓存"),
+    ];
+    MARKERS.iter().find(|(m, _)| p.contains(m)).map(|(_, label)| *label)
 }
 
 #[derive(Serialize, Clone)]
@@ -49,6 +86,8 @@ pub struct DupReport {
     pub unreadable: usize,
     /// 跳过的云端占位文件数。读它们会触发下载，与腾空间的目的相悖。
     pub skipped_cloud: usize,
+    /// 全组都归程序管辖、一份都不建议删的组数
+    pub managed_groups: usize,
 }
 
 #[derive(Serialize, Clone)]
@@ -209,25 +248,41 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     // ---- 汇总 ----
     let mut groups: Vec<DupGroup> = Vec::new();
     let mut total_reclaimable = 0u64;
+    let mut managed_groups = 0usize;
     for ((size, _), paths) in by_full {
         if paths.len() < 2 {
             continue;
         }
         let mut files: Vec<DupFile> = paths
             .into_iter()
-            .map(|p| DupFile {
-                name: p.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
-                modified: modified_secs(&p),
-                path: p.to_string_lossy().to_string(),
-                size,
-                keep: false,
+            .map(|p| {
+                let path = p.to_string_lossy().to_string();
+                DupFile {
+                    name: p.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
+                    modified: modified_secs(&p),
+                    managed: managed_by(&path),
+                    path,
+                    size,
+                    keep: false,
+                }
             })
             .collect();
         // 保留最早的那份——它更可能是「原件」，后来的多半是复制品
         files.sort_by_key(|f| (f.modified, f.path.clone()));
         files[0].keep = true;
+        // 归程序管辖的一律标为保留，不进预选删除名单
+        files.iter_mut().for_each(|f| {
+            if f.managed.is_some() {
+                f.keep = true;
+            }
+        });
 
-        let reclaimable = size * (files.len() as u64 - 1);
+        // 只统计真正建议删除的那部分，别拿一个删了会出事的数字诱导用户
+        let deletable = files.iter().filter(|f| !f.keep).count() as u64;
+        let reclaimable = size * deletable;
+        if deletable == 0 {
+            managed_groups += 1;
+        }
         total_reclaimable += reclaimable;
         groups.push(DupGroup { size, files, reclaimable });
     }
@@ -235,7 +290,7 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     groups.sort_by(|a, b| b.reclaimable.cmp(&a.reclaimable));
 
     emit("done", scanned, scanned);
-    DupReport { groups, scanned, total_reclaimable, unreadable, skipped_cloud }
+    DupReport { groups, scanned, total_reclaimable, unreadable, skipped_cloud, managed_groups }
 }
 
 #[tauri::command]
@@ -248,6 +303,7 @@ pub async fn find_duplicates(app: AppHandle, roots: Vec<String>) -> DupReport {
             total_reclaimable: 0,
             unreadable: 0,
             skipped_cloud: 0,
+            managed_groups: 0,
         })
 }
 
