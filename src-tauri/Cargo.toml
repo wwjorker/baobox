@@ -86,4 +86,5 @@ subsetter = "0.2"
 image = "0.25"
 oxipng = { version = "9", default-features = false, features = ["parallel"] }
 regex = "1.13.1"
+ab_glyph = "0.2.32"
 

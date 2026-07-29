@@ -10,6 +10,7 @@ pub mod pdf_render;
 pub mod redact;
 pub mod rename;
 pub mod screen_ocr;
+pub mod watermark;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -45,6 +46,7 @@ pub fn run() {
             screen_ocr::cursor_pos,
             redact::img_redact,
             redact::image_preview,
+            watermark::img_watermark,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])

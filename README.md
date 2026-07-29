@@ -1,4 +1,4 @@
-# Baobox 百宝箱
+﻿# Baobox 百宝箱
 
 **A local file toolkit for Windows. No uploads, no limits, no network.**
 
@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 18 of 22 tools work
+> ## 🚧 Preview — 21 of 22 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -39,7 +39,8 @@ into it.
 | **Compress to a target size** | ✅ Binary-searches quality, falls back to downscaling. TinyPNG gives you quality presets; upload forms enforce bytes. |
 | **Strip EXIF privacy data** | ✅ Removes GPS and device metadata without re-encoding pixels |
 | Batch compress · Convert format · Batch resize | ✅ |
-| Watermark · Redact | ⏳ Needs an interactive region picker |
+| **Redact** | ✅ Overwrites pixels rather than covering them |
+| Watermark | ✅ Chinese included, tiled or single |
 
 ### OCR — free, offline, no subscription
 
@@ -51,7 +52,7 @@ so this costs nothing and adds no bytes.
 |---|---|
 | Extract text from image | ✅ 77 ms per image |
 | Batch OCR to one transcript | ✅ |
-| Screen-capture OCR | ⏳ Needs a global hotkey and overlay |
+| Screen-capture OCR | ✅ Grabs the desktop, drag to pick a region (no global hotkey yet) |
 
 ### PDF
 
@@ -130,8 +131,8 @@ registry settings.
 
 | | |
 |---|---|
-| Installer | **2.5 MB** |
-| Installed | 7.6 MB |
+| Installer | **3.0 MB** |
+| Installed | 9.4 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -142,8 +143,8 @@ the same feature set starts around 150 MB.
 - **No code signing.** SmartScreen will warn about an unknown publisher. A
   certificate costs several hundred dollars a year. Releases carry SHA-256
   checksums so you can at least verify what you downloaded.
-- **Antivirus false positives are likely.** A small Rust binary that does bulk
-  file operations and registers a global hotkey looks suspicious to heuristics.
+- **Antivirus false positives are likely.** A small Rust binary that reads and writes files in bulk
+  and captures the screen looks suspicious to heuristics.
 - **Windows only, on purpose.** OCR uses the WinRT engine and PDF rendering uses
   `Windows.Data.Pdf`. Neither has a cross-platform equivalent that stays this
   small.
@@ -171,7 +172,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 22 个工具中 18 个可用
+> ## 🚧 预览版 —— 22 个工具中 21 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。

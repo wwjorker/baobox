@@ -35,7 +35,10 @@ export default {
         name: "抹除 EXIF 隐私信息",
         desc: "照片里藏着拍摄地点的 GPS 坐标和设备型号。发出去之前清掉。",
       },
-      watermark: { name: "添加水印", desc: "文字或图片水印，位置与透明度可调。" },
+      watermark: {
+        name: "添加水印",
+        desc: "给图片打上中文水印。平铺模式斜向覆盖整张，最难被裁掉。字体从系统读取，不随包分发。",
+      },
       redact: {
         name: "打码遮挡",
         desc: "框选身份证号、手机号这类内容打码。像素是真被改写的，不是盖一层——原始内容无法还原。选区按比例记录，一组框能套用到整批同版式的截图上。",
@@ -122,6 +125,7 @@ export default {
     ocrLangAuto: "自动",
     rotate: "旋转角度",
     pageNumbers: "加页码",
+    tile: "平铺整张",
   },
 
   redact: {

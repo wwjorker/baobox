@@ -142,10 +142,11 @@ export const TOOLS: ToolDef[] = [
     pillar: "image",
     accepts: IMG,
     command: "img_watermark",
-    status: "planned",
+    status: "ready",
     options: [
       { kind: "text", id: "text", label: "opt.watermarkText", def: "", placeholder: "opt.watermarkPlaceholder" },
-      { kind: "number", id: "opacity", label: "opt.opacity", min: 5, max: 100, step: 5, def: 35, unit: "%" },
+      { kind: "number", id: "opacity", label: "opt.opacity", min: 5, max: 100, step: 5, def: 30, unit: "%" },
+      { kind: "toggle", id: "tile", label: "opt.tile", def: true },
     ],
   },
   {

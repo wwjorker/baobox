@@ -35,7 +35,10 @@ const enUS: typeof zhCN = {
         name: "Strip EXIF privacy data",
         desc: "Photos carry GPS coordinates and device details. Clear them before sharing.",
       },
-      watermark: { name: "Add watermark", desc: "Text or image watermark with adjustable position and opacity." },
+      watermark: {
+        name: "Add watermark",
+        desc: "Stamp text across an image, Chinese included. Tiling covers the whole frame diagonally so it survives cropping. The font is read from the system, not bundled.",
+      },
       redact: {
         name: "Redact",
         desc: "Cover ID numbers, phone numbers and the like. Pixels are overwritten, not covered over — the original content cannot be recovered. Regions are proportional, so one set of boxes applies across a batch.",
@@ -128,6 +131,7 @@ const enUS: typeof zhCN = {
     ocrLangAuto: "Auto",
     rotate: "Rotation",
     pageNumbers: "Page numbers",
+    tile: "Tile across",
   },
 
   redact: {
