@@ -76,6 +76,10 @@ export default {
         name: "圆角与边框",
         desc: "加圆角、加外边框。圆角靠透明通道实现，所以一律输出 PNG——存成 JPEG 圆角会被填成实色，等于白做。",
       },
+      ico: {
+        name: "生成 ICO 图标",
+        desc: "一个 .ico 里装 16 到 256 六种尺寸，网站 favicon 和 Windows 程序图标都能用。先按中心裁成正方形，不然图标是压扁的。原图不够大的尺寸会跳过，不放大糊图。",
+      },
       adjust: {
         name: "调色",
         desc: "亮度、对比度、饱和度、转灰度。四个放在一个工具里，因为实际用起来几乎总是一起调的，拆开等于逼你跑四遍、编码四次。",
@@ -118,6 +122,14 @@ export default {
         desc: "把 PDF 里的图原样抠出来，不重新编码——渲染整页再截图会掉一轮画质，而你要的往往正是原始像素。可以设最小尺寸，滤掉图标和分隔线。",
       },
       reverse: { name: "反转页序", desc: "整份倒过来。扫描仪倒着进纸是很常见的事故。" },
+      "clean-meta": {
+        name: "清除元数据",
+        desc: "Word 导出的 PDF 会把你的电脑用户名写进作者字段，投标文件里常留着上一版的作者。跟图片的 EXIF 是同一类问题，只是没人注意。XMP 那份独立副本也一起清——只清作者字段的话，属性面板看着干净了，里面还留着一整份 XML。",
+      },
+      crop: {
+        name: "裁掉页边空白",
+        desc: "扫描件和网页导出的 PDF 常带着极宽的白边，打印出来正文只占中间一小块。只改显示区域不动内容，裁错了也能还原。",
+      },
       pages: {
         name: "删除或保留指定页",
         desc: "填 1,3,5-8 这样的页码。默认是删掉它们，打开开关就变成只留它们。中文逗号、区间倒着写都认。",
@@ -149,6 +161,18 @@ export default {
       "qr-read": {
         name: "二维码识别",
         desc: "从图片里读出二维码内容。一张图里有好几个也能分别读出来，其中一两个模糊解不出来的不影响其余。",
+      },
+      lines: {
+        name: "按行去重排序",
+        desc: "去重、排序、统计词频。三件事放一个工具里，因为拿到一份名单或日志要做的往往就是这几步的组合，拆开等于跑三遍存三份中间文件。",
+      },
+      split: {
+        name: "大文件分割",
+        desc: "切成固定大小的分卷。邮件附件上限、网盘单文件上限、U 盘的 FAT32 四 GB 上限，这几个场景至今没消失。命名用 .001 .002，跟常见压缩软件一致。",
+      },
+      join: {
+        name: "分卷合并",
+        desc: "把 .001 .002 拼回原文件。只接受第一卷——从中间某一卷开始拼出来的是残文件，而且照样打得开，你不会立刻发现。",
       },
       hash: {
         name: "文件哈希校验",
@@ -258,6 +282,14 @@ export default {
     zhConverted: "转换 {n} 个字",
     zhNoChange: "一个字都没变——方向可能选反了",
     ocrLayer: "{pages} 页 · 盖上 {words} 段文字",
+    metaCleaned: "清掉 {n} 项：{list}",
+    metaNone: "本来就没有可清的元数据",
+    cropped: "{total} 页 · 裁了 {n} 页",
+    icoMade: "装入 {n} 种尺寸",
+    splitParts: "切成 {n} 卷 · 每卷 {mb} MB",
+    joinedParts: "{n} 卷已拼回",
+    lineResult: "{before} 行 → {after} 行",
+    lineFreq: "{n} 个不同的行，按出现次数排序",
   },
 
   opt: {
@@ -312,6 +344,12 @@ export default {
     zhTarget: "转成",
     zhToHant: "繁体",
     zhToHans: "简体",
+    keepDates: "保留时间字段",
+    keepMargin: "留白",
+    lineDedupe: "去掉重复行",
+    lineSort: "排序",
+    lineCount: "改成统计词频",
+    partSize: "每卷",
   },
 
   redact: {
@@ -426,6 +464,9 @@ export default {
     qrTooLong: "这条内容太长，二维码装不下。",
     qrNotFound: "这张图里没找到二维码。",
     ocrNothingFound: "每一页都没认出文字。可能是空白页、图太糊，或者缺对应语言的识别包。",
+    nothingToCrop: "每一页的白边都很窄，没什么可裁的。",
+    smallerThanPart: "这个文件比一卷还小，不需要分割。",
+    notFirstPart: "请选第一卷（.001）。从中间开始拼出来的是残文件。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

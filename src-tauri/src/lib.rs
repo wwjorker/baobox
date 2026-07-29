@@ -102,6 +102,12 @@ pub fn run() {
             qr::qr_generate,
             qr::qr_decode,
             pdf_ocr::pdf_ocr_layer,
+            pdf_ops::pdf_clean_meta,
+            pdf_ops::pdf_crop,
+            image_edit::img_ico,
+            textfile::file_split,
+            textfile::file_join,
+            textfile::text_lines,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

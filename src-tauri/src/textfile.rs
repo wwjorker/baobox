@@ -365,6 +365,213 @@ pub async fn dir_tree(
     .unwrap_or_default()
 }
 
+// ================================================================ 大文件分割与合并
+
+/// 分割成固定大小的分卷。
+///
+/// 邮件附件上限、网盘单文件上限、U 盘的 FAT32 四 GB 上限——
+/// 这几个场景至今没消失。命名用 `.001 .002`，跟常见压缩软件一致，
+/// 别人拿到手知道怎么处理。
+pub fn split_file(src: &Path, part_mb: u64) -> AppResult<(PathBuf, usize)> {
+    use std::io::{Read, Write};
+
+    let size = std::fs::metadata(long_path(src))?.len();
+    let chunk = part_mb.max(1) * 1024 * 1024;
+    if size <= chunk {
+        return Err(AppError::new("err.smallerThanPart"));
+    }
+
+    let dir = output_dir_for(src)?;
+    let name = crate::paths::file_name_of(src);
+    let mut f = std::fs::File::open(long_path(src))?;
+    let mut buf = vec![0u8; 1 << 20];
+    let mut part = 0usize;
+    let mut last;
+
+    loop {
+        part += 1;
+        // 分卷名保留原文件的完整名字（含扩展名），合并时才拼得回去
+        let dst = dir.join(format!("{name}.{part:03}"));
+        let mut out = std::fs::File::create(long_path(&dst))?;
+        let mut written = 0u64;
+        while written < chunk {
+            let want = ((chunk - written) as usize).min(buf.len());
+            let n = f.read(&mut buf[..want])?;
+            if n == 0 {
+                break;
+            }
+            out.write_all(&buf[..n])?;
+            written += n as u64;
+        }
+        out.flush()?;
+        last = dst;
+        if written == 0 {
+            // 正好整除时最后会多建一个空分卷，删掉
+            let _ = std::fs::remove_file(long_path(&last));
+            part -= 1;
+            break;
+        }
+        if written < chunk {
+            break;
+        }
+    }
+    Ok((last, part))
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn file_split(app: AppHandle, paths: Vec<String>, partMb: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mb = partMb.max(1) as u64;
+        run_batch(&app, paths, move |src| {
+            let (last, n) = split_file(src, mb)?;
+            Ok((last, Some(Note::new("note.splitParts").with("n", n).with("mb", mb))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+/// 把分卷拼回去。传入第一卷（`.001`），自动往后找。
+pub fn join_file(first: &Path) -> AppResult<(PathBuf, usize, u64)> {
+    use std::io::Write;
+
+    let name = crate::paths::file_name_of(first);
+    // 必须以 .001 结尾——从中间某一卷开始拼出来的是残文件，
+    // 而且同样打得开，用户不会立刻发现
+    let Some(stem) = name.strip_suffix(".001") else {
+        return Err(AppError::new("err.notFirstPart"));
+    };
+    let parent = first.parent().unwrap_or_else(|| Path::new("."));
+
+    let dir = output_dir_for(first)?;
+    let dst = unique_path(
+        &dir,
+        Path::new(stem)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| stem.to_string())
+            .as_str(),
+        &Path::new(stem)
+            .extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_else(|| "bin".into()),
+    );
+
+    let mut out = std::fs::File::create(long_path(&dst))?;
+    let mut n = 0usize;
+    let mut total = 0u64;
+    loop {
+        let part = parent.join(format!("{stem}.{:03}", n + 1));
+        if !long_path(&part).exists() {
+            break;
+        }
+        let data = std::fs::read(long_path(&part))?;
+        out.write_all(&data)?;
+        total += data.len() as u64;
+        n += 1;
+    }
+    out.flush()?;
+
+    if n == 0 {
+        let _ = std::fs::remove_file(long_path(&dst));
+        return Err(AppError::new("err.notFirstPart"));
+    }
+    Ok((dst, n, total))
+}
+
+#[tauri::command]
+pub async fn file_join(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, |src| {
+            let (dst, n, _) = join_file(src)?;
+            Ok((dst, Some(Note::new("note.joinedParts").with("n", n))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 按行处理
+
+/// 去重 / 排序 / 词频。
+///
+/// 三件事共用一个工具：拿到一份名单或日志要做的往往就是这几步的组合，
+/// 拆成三个工具等于让人跑三遍、存三份中间文件。
+pub fn process_lines(
+    src: &Path,
+    dedupe: bool,
+    sort: bool,
+    count: bool,
+) -> AppResult<(PathBuf, usize, usize)> {
+    let bytes = std::fs::read(long_path(src))?;
+    let text = decode_text(&bytes);
+    let lines: Vec<&str> = text.lines().map(|l| l.trim_end()).collect();
+    let before = lines.len();
+
+    let out_text = if count {
+        // 词频模式：按出现次数排，同频按字母序，输出「次数<TAB>内容」
+        let mut freq: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+        for l in lines.iter().filter(|l| !l.trim().is_empty()) {
+            *freq.entry(l).or_insert(0) += 1;
+        }
+        let mut pairs: Vec<(&str, usize)> = freq.into_iter().collect();
+        pairs.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+        pairs
+            .iter()
+            .map(|(l, c)| format!("{c}\t{l}"))
+            .collect::<Vec<_>>()
+            .join("\r\n")
+    } else {
+        let mut work: Vec<&str> = lines.clone();
+        if dedupe {
+            let mut seen = std::collections::HashSet::new();
+            work.retain(|l| seen.insert(*l));
+        }
+        if sort {
+            work.sort_unstable();
+        }
+        work.join("\r\n")
+    };
+
+    let after = out_text.lines().count();
+    let dir = output_dir_for(src)?;
+    let ext = src
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+        .unwrap_or_else(|| "txt".into());
+    let dst = unique_path(&dir, &stem_of(src), &ext);
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(out_text.as_bytes());
+    std::fs::write(long_path(&dst), &data)?;
+    Ok((dst, before, after))
+}
+
+#[tauri::command]
+pub async fn text_lines(
+    app: AppHandle,
+    paths: Vec<String>,
+    dedupe: bool,
+    sort: bool,
+    count: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let (dst, before, after) = process_lines(src, dedupe, sort, count)?;
+            Ok((
+                dst,
+                Some(if count {
+                    Note::new("note.lineFreq").with("n", after)
+                } else {
+                    Note::new("note.lineResult").with("before", before).with("after", after)
+                }),
+            ))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 哈希校验
 
 /// 算文件哈希。

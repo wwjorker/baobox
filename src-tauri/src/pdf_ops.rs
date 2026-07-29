@@ -655,6 +655,198 @@ fn pdf_pages_blocking(
     })
 }
 
+// ================================================ 元数据清除
+
+/// PDF 里常见的身份字段。
+///
+/// 跟图片的 EXIF 是同一类问题，只是没人注意：Word 导出的 PDF 会把
+/// 你的**电脑用户名**写进 /Author，扫描件里写着设备型号，投标文件里
+/// 留着上一版的作者。发出去之前该清掉。
+const META_KEYS: [&[u8]; 8] = [
+    b"Title",
+    b"Author",
+    b"Subject",
+    b"Keywords",
+    b"Creator",
+    b"Producer",
+    b"CreationDate",
+    b"ModDate",
+];
+
+/// 清掉文档信息与 XMP。返回产物路径和清掉的字段名（供界面如实告知）。
+pub fn clean_metadata(src: &Path, keep_dates: bool) -> AppResult<(PathBuf, Vec<String>)> {
+    let mut doc = open(src)?;
+    let mut removed = Vec::new();
+
+    // /Info 字典
+    if let Ok(Object::Reference(info_id)) = doc.trailer.get(b"Info").cloned() {
+        if let Ok(Object::Dictionary(d)) = doc.get_object_mut(info_id) {
+            for key in META_KEYS {
+                if keep_dates && (key == b"CreationDate" || key == b"ModDate") {
+                    continue;
+                }
+                if let Ok(v) = d.get(key) {
+                    // 空值不值得报告成「清掉了什么」
+                    let text = match v {
+                        Object::String(s, _) => String::from_utf8_lossy(s).trim().to_string(),
+                        _ => String::new(),
+                    };
+                    if !text.is_empty() {
+                        removed.push(String::from_utf8_lossy(key).to_string());
+                    }
+                    d.remove(key);
+                }
+            }
+        }
+    }
+
+    // XMP 元数据流挂在 Catalog 上，是另一份独立的副本——
+    // 只清 /Info 的话，用属性面板看着干净了，里面还留着一整份 XML。
+    if let Ok(Object::Reference(root_id)) = doc.trailer.get(b"Root").cloned() {
+        let had_xmp = doc
+            .get_object(root_id)
+            .ok()
+            .and_then(|o| o.as_dict().ok())
+            .map(|d| d.get(b"Metadata").is_ok())
+            .unwrap_or(false);
+        if had_xmp {
+            if let Ok(Object::Dictionary(d)) = doc.get_object_mut(root_id) {
+                d.remove(b"Metadata");
+            }
+            removed.push("XMP".into());
+        }
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 已清元数据", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, removed))
+}
+
+fn pdf_clean_meta_blocking(app: AppHandle, paths: Vec<String>, keep_dates: bool) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, removed) = clean_metadata(src, keep_dates)?;
+        Ok((
+            dst,
+            Some(if removed.is_empty() {
+                Note::new("note.metaNone")
+            } else {
+                Note::new("note.metaCleaned")
+                    .with("n", removed.len())
+                    .with("list", removed.join(" / "))
+            }),
+        ))
+    })
+}
+
+// ================================================ 裁掉页边空白
+
+/// 自动裁掉页面四周的空白。
+///
+/// 扫描件和从网页导出的 PDF 常带着极宽的白边，打印出来正文只占中间一小块。
+/// 靠渲染成图找内容边界——PDF 里的「内容在哪」没法从结构上直接读出来，
+/// 文字、矢量、图片各有各的坐标系，渲染一遍反而是最可靠的。
+///
+/// 只改 CropBox，不动页面内容：裁错了把 CropBox 去掉就全回来了，
+/// 而真删内容是不可逆的。
+pub fn crop_file(src: &Path, margin_pt: f32) -> AppResult<(PathBuf, usize, usize)> {
+    let mut doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+
+    // 侦测用的分辨率不必高，找边界而已，低分辨率快得多
+    const PROBE_W: u32 = 600;
+    let mut cropped = 0usize;
+    let total = pages.len();
+    let ids: Vec<(u32, lopdf::ObjectId)> = pages.into_iter().collect();
+
+    for (i, (_, page_id)) in ids.iter().enumerate() {
+        let Ok(png) = crate::pdf_render::render_page(src, i as u32, PROBE_W) else {
+            continue;
+        };
+        let Ok(img) = image::load_from_memory(&png) else {
+            continue;
+        };
+        let Some((l, t, r, b)) = content_bounds(&img) else {
+            // 整页空白，保持原样——裁成 0 尺寸只会让阅读器打不开
+            continue;
+        };
+
+        let (bx, by, bw, bh) = page_box(&doc, *page_id);
+        let sx = bw / img.width() as f32;
+        let sy = bh / img.height() as f32;
+
+        // 图的 y 向下，PDF 的 y 向上，上下边界要换过来
+        let x0 = (bx + l as f32 * sx - margin_pt).max(bx);
+        let x1 = (bx + (r + 1) as f32 * sx + margin_pt).min(bx + bw);
+        let y0 = (by + bh - (b + 1) as f32 * sy - margin_pt).max(by);
+        let y1 = (by + bh - t as f32 * sy + margin_pt).min(by + bh);
+
+        // 收益太小就别改，免得产物页面尺寸参差不齐
+        if (x1 - x0) > bw * 0.98 && (y1 - y0) > bh * 0.98 {
+            continue;
+        }
+        if (x1 - x0) < 20.0 || (y1 - y0) < 20.0 {
+            continue;
+        }
+
+        if let Ok(Object::Dictionary(d)) = doc.get_object_mut(*page_id) {
+            d.set(
+                "CropBox",
+                vec![
+                    Object::Real(x0),
+                    Object::Real(y0),
+                    Object::Real(x1),
+                    Object::Real(y1),
+                ],
+            );
+        }
+        cropped += 1;
+    }
+
+    if cropped == 0 {
+        return Err(AppError::new("err.nothingToCrop"));
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 裁边", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, total, cropped))
+}
+
+/// 找出这一页上真正有内容的范围（像素坐标）
+fn content_bounds(img: &image::DynamicImage) -> Option<(u32, u32, u32, u32)> {
+    let gray = img.to_luma8();
+    let (w, h) = gray.dimensions();
+    // 扫描件的白底常带噪点，纯白判定会一点都裁不掉
+    const WHITE: u8 = 245;
+
+    let (mut l, mut t, mut r, mut b) = (u32::MAX, u32::MAX, 0u32, 0u32);
+    for y in 0..h {
+        for x in 0..w {
+            if gray.get_pixel(x, y).0[0] < WHITE {
+                l = l.min(x);
+                t = t.min(y);
+                r = r.max(x);
+                b = b.max(y);
+            }
+        }
+    }
+    (l != u32::MAX).then_some((l, t, r, b))
+}
+
+fn pdf_crop_blocking(app: AppHandle, paths: Vec<String>, margin: f32) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, total, cropped) = crop_file(src, margin)?;
+        Ok((
+            dst,
+            Some(Note::new("note.cropped").with("total", total).with("n", cropped)),
+        ))
+    })
+}
+
 // ==================================================== 页码与水印
 
 /// 取页面尺寸。MediaBox 可能带非零原点，直接当成宽高会把文字画到页面外。
@@ -831,6 +1023,27 @@ pub async fn pdf_extract_images(
     tauri::async_runtime::spawn_blocking(move || pdf_extract_images_blocking(app, paths, minPx))
         .await
         .unwrap_or_default()
+}
+
+#[tauri::command]
+#[allow(non_snake_case)]
+pub async fn pdf_clean_meta(
+    app: AppHandle,
+    paths: Vec<String>,
+    keepDates: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_clean_meta_blocking(app, paths, keepDates))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_crop(app: AppHandle, paths: Vec<String>, margin: u32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        pdf_crop_blocking(app, paths, margin.min(72) as f32)
+    })
+    .await
+    .unwrap_or_default()
 }
 
 #[tauri::command]

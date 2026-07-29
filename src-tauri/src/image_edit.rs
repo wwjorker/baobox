@@ -400,6 +400,79 @@ pub async fn img_frame(
     .unwrap_or_default()
 }
 
+// ================================================================ 生成 ICO
+
+/// 网站图标和 Windows 程序图标要的都是一个 .ico 里装多个尺寸。
+///
+/// 容器自己写：结构就是 6 字节文件头 + 每尺寸 16 字节目录项 + 各自的 PNG，
+/// 比为它去挑一个库更省事，也能确切控制装哪几个尺寸。
+/// 256 及以下全部用 PNG 载荷（Vista 起支持），不用老的 BMP 格式。
+const ICO_SIZES: [u32; 6] = [16, 32, 48, 64, 128, 256];
+
+pub fn ico_file(src: &Path) -> AppResult<(PathBuf, usize)> {
+    let img = load(src)?;
+    // 先按中心裁成正方形，否则图标会被压扁
+    let square = center_square(&img);
+
+    let mut payloads: Vec<(u32, Vec<u8>)> = Vec::new();
+    for size in ICO_SIZES {
+        // 只缩不放：原图比这个尺寸还小的话，放大出来是糊的
+        if square.width() < size && size != ICO_SIZES[0] {
+            continue;
+        }
+        let small = square.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
+        let mut buf = std::io::Cursor::new(Vec::new());
+        small
+            .write_to(&mut buf, image::ImageFormat::Png)
+            .map_err(|e| AppError::unknown(e))?;
+        payloads.push((size, buf.into_inner()));
+    }
+    if payloads.is_empty() {
+        return Err(AppError::new("err.decode").var("format", "图片"));
+    }
+
+    let n = payloads.len();
+    let mut out = Vec::new();
+    // 文件头：保留位 0、类型 1（图标）、图像数量
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&(n as u16).to_le_bytes());
+
+    let mut offset = 6 + 16 * n as u32;
+    for (size, data) in &payloads {
+        // 256 在这一字节里写 0——字段只有 8 位，装不下 256
+        out.push(if *size >= 256 { 0 } else { *size as u8 });
+        out.push(if *size >= 256 { 0 } else { *size as u8 });
+        out.push(0); // 调色板数
+        out.push(0); // 保留
+        out.extend_from_slice(&1u16.to_le_bytes()); // 颜色平面
+        out.extend_from_slice(&32u16.to_le_bytes()); // 位深
+        out.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        out.extend_from_slice(&offset.to_le_bytes());
+        offset += data.len() as u32;
+    }
+    for (_, data) in &payloads {
+        out.extend_from_slice(data);
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &stem_of(src), "ico");
+    std::fs::write(long_path(&dst), &out)?;
+    Ok((dst, n))
+}
+
+#[tauri::command]
+pub async fn img_ico(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, |src| {
+            let (dst, n) = ico_file(src)?;
+            Ok((dst, Some(Note::new("note.icoMade").with("n", n))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 调色
 
 /// 亮度 / 对比度 / 饱和度 / 灰度。

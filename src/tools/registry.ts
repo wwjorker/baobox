@@ -264,6 +264,14 @@ export const TOOLS: ToolDef[] = [
     ],
   },
   {
+    id: "image.ico",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_ico",
+    status: "ready",
+    options: [],
+  },
+  {
     id: "image.adjust",
     pillar: "image",
     accepts: IMG,
@@ -391,6 +399,25 @@ export const TOOLS: ToolDef[] = [
   },
   { id: "pdf.reverse", pillar: "pdf", accepts: PDF, command: "pdf_reverse", status: "ready", options: [] },
   {
+    id: "pdf.clean-meta",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_clean_meta",
+    status: "ready",
+    highlight: true,
+    options: [{ kind: "toggle", id: "keepDates", label: "opt.keepDates", def: false }],
+  },
+  {
+    id: "pdf.crop",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_crop",
+    status: "ready",
+    options: [
+      { kind: "number", id: "margin", label: "opt.keepMargin", min: 0, max: 72, step: 2, def: 8, unit: "pt" },
+    ],
+  },
+  {
     id: "pdf.pages",
     pillar: "pdf",
     accepts: PDF,
@@ -493,6 +520,29 @@ export const TOOLS: ToolDef[] = [
     output: "text",
     options: [],
   },
+  {
+    id: "file.lines",
+    pillar: "file",
+    accepts: ["txt", "csv", "log", "md"],
+    command: "text_lines",
+    status: "ready",
+    options: [
+      { kind: "toggle", id: "dedupe", label: "opt.lineDedupe", def: true },
+      { kind: "toggle", id: "sort", label: "opt.lineSort", def: false },
+      { kind: "toggle", id: "count", label: "opt.lineCount", def: false },
+    ],
+  },
+  {
+    id: "file.split",
+    pillar: "file",
+    accepts: [],
+    command: "file_split",
+    status: "ready",
+    options: [
+      { kind: "number", id: "partMb", label: "opt.partSize", min: 1, max: 2000, step: 1, def: 20, unit: "MB" },
+    ],
+  },
+  { id: "file.join", pillar: "file", accepts: [], command: "file_join", status: "ready", options: [] },
   {
     id: "file.hash",
     pillar: "file",

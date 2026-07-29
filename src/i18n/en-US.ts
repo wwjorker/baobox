@@ -72,6 +72,10 @@ const enUS: typeof zhCN = {
         name: "Rounded corners & border",
         desc: "Round the corners, add a border. Corners need transparency, so output is always PNG — a JPEG would fill them with solid colour and undo the whole thing.",
       },
+      ico: {
+        name: "Build an ICO",
+        desc: "One .ico holding six sizes from 16 to 256, for a site favicon or a Windows application icon. Cropped to a centre square first, or the icon comes out squashed. Sizes larger than the source are skipped rather than upscaled into mush.",
+      },
       adjust: {
         name: "Adjust colour",
         desc: "Brightness, contrast, saturation, greyscale. One tool rather than four, because in practice these get changed together and splitting them means four passes and four re-encodes.",
@@ -124,6 +128,14 @@ const enUS: typeof zhCN = {
         desc: "Pull the pictures out exactly as stored, without re-encoding — rendering a page and screenshotting it costs a generation of quality, and the original pixels are usually the point. Set a minimum size to skip icons and rules.",
       },
       reverse: { name: "Reverse page order", desc: "Flip the whole document. Scanners feeding pages backwards is a common accident." },
+      "clean-meta": {
+        name: "Strip metadata",
+        desc: "A PDF exported from Word carries your computer's account name in the author field, and tender documents often still name whoever wrote the previous draft. Same class of problem as photo EXIF, just less noticed. The separate XMP copy goes too — removing only the author field leaves the properties panel looking clean with a whole XML block still inside.",
+      },
+      crop: {
+        name: "Trim page margins",
+        desc: "Scans and pages exported from the web often carry enormous white margins, so printing puts the content in a small block in the middle. Only the display box changes; nothing is deleted, so a bad crop is reversible.",
+      },
       pages: {
         name: "Delete or keep pages",
         desc: "Give page numbers like 1,3,5-8. Deletes them by default; flip the switch to keep only those instead. Reversed ranges are understood.",
@@ -155,6 +167,18 @@ const enUS: typeof zhCN = {
       "qr-read": {
         name: "Read QR codes",
         desc: "Pull the contents out of an image. Several codes in one picture are read separately, and one that is too blurred to decode does not spoil the rest.",
+      },
+      lines: {
+        name: "Dedupe and sort lines",
+        desc: "Remove duplicates, sort, or count occurrences. One tool rather than three, because working through a list or a log is usually some combination of these, and separate tools mean three passes and three intermediate files.",
+      },
+      split: {
+        name: "Split a large file",
+        desc: "Into fixed-size parts. Mail attachment limits, per-file upload caps and the 4 GB FAT32 ceiling on USB sticks have not gone away. Named .001, .002 like the common archivers, so whoever receives them knows what to do.",
+      },
+      join: {
+        name: "Join parts back",
+        desc: "Reassemble .001, .002 into the original. Only the first part is accepted — starting from the middle produces a truncated file that still opens, so you would not notice straight away.",
       },
       hash: {
         name: "File checksum",
@@ -262,6 +286,14 @@ const enUS: typeof zhCN = {
     zhConverted: "{n} characters converted",
     zhNoChange: "nothing changed — the direction may be the wrong way round",
     ocrLayer: "{pages} pages · {words} text runs laid over",
+    metaCleaned: "{n} removed: {list}",
+    metaNone: "no metadata to remove",
+    cropped: "{total} pages · {n} trimmed",
+    icoMade: "{n} sizes packed in",
+    splitParts: "{n} parts · {mb} MB each",
+    joinedParts: "{n} parts reassembled",
+    lineResult: "{before} lines → {after}",
+    lineFreq: "{n} distinct lines, by frequency",
   },
 
   opt: {
@@ -316,6 +348,12 @@ const enUS: typeof zhCN = {
     zhTarget: "Convert to",
     zhToHant: "Traditional",
     zhToHans: "Simplified",
+    keepDates: "Keep the date fields",
+    keepMargin: "Margin to keep",
+    lineDedupe: "Remove duplicates",
+    lineSort: "Sort",
+    lineCount: "Count occurrences instead",
+    partSize: "Part size",
   },
 
   redact: {
@@ -430,6 +468,9 @@ const enUS: typeof zhCN = {
     qrTooLong: "This line is too long to fit in a QR code.",
     qrNotFound: "No QR code found in this image.",
     ocrNothingFound: "No text was recognised on any page — blank pages, an image too blurred to read, or a missing language pack.",
+    nothingToCrop: "Every page already has narrow margins — nothing worth trimming.",
+    smallerThanPart: "This file is smaller than one part; splitting it would achieve nothing.",
+    notFirstPart: "Choose the first part (.001). Starting from the middle produces a truncated file.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
