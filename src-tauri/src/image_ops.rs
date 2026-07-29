@@ -60,6 +60,37 @@ impl OutFmt {
 
 // ============================================================ 编码
 
+/// 这张图有没有真正用到透明通道？
+///
+/// 只看「是不是 RGBA」不够——大量 PNG 带 alpha 通道但全是不透明的。
+/// 要判断转 JPEG 会不会丢东西，得看有没有像素真的不是全不透明。
+pub fn has_transparency(img: &DynamicImage) -> bool {
+    match img {
+        DynamicImage::ImageRgba8(_) | DynamicImage::ImageLumaA8(_) => {
+            img.to_rgba8().pixels().any(|p| p.0[3] < 250)
+        }
+        _ => false,
+    }
+}
+
+/// 把带透明的图合成到白底再转 RGB。
+///
+/// JPEG 无法承载 alpha，直接丢弃会让透明区变成纯黑。合成到白底是
+/// 大多数工具的默认行为，也是用户看到结果时最不会觉得意外的那个。
+fn flatten_on_white(img: &DynamicImage) -> image::RgbImage {
+    if !has_transparency(img) {
+        return img.to_rgb8();
+    }
+    let src = img.to_rgba8();
+    let mut out = image::RgbImage::new(src.width(), src.height());
+    for (x, y, p) in src.enumerate_pixels() {
+        let a = p.0[3] as f32 / 255.0;
+        let blend = |c: u8| (c as f32 * a + 255.0 * (1.0 - a)).round() as u8;
+        out.put_pixel(x, y, image::Rgb([blend(p.0[0]), blend(p.0[1]), blend(p.0[2])]));
+    }
+    out
+}
+
 /// 单独暴露 JPEG 编码，PDF 压缩要用它重压内嵌图片
 pub fn encode_jpeg(img: &DynamicImage, quality: u8) -> AppResult<Vec<u8>> {
     encode(img, OutFmt::Jpeg, quality)
@@ -68,7 +99,10 @@ pub fn encode_jpeg(img: &DynamicImage, quality: u8) -> AppResult<Vec<u8>> {
 fn encode(img: &DynamicImage, fmt: OutFmt, quality: u8) -> AppResult<Vec<u8>> {
     match fmt {
         OutFmt::Jpeg | OutFmt::Keep => {
-            let rgb = img.to_rgb8();
+            // JPEG 没有透明通道。直接 to_rgb8() 会把完全透明的像素
+            // 变成纯黑——一张去了底的 logo 转出来就是个黑块，而软件
+            // 一声不吭。先合成到白底，这也是大多数工具的默认行为。
+            let rgb = flatten_on_white(img);
             let (w, h) = rgb.dimensions();
             // mozjpeg 在同等画质下比标准编码器小 10~20%，是压缩效果的关键
             let mut comp = mozjpeg::Compress::new(mozjpeg::ColorSpace::JCS_RGB);
@@ -334,9 +368,13 @@ fn img_compress_target_blocking(
 
         let img = load(src)?;
         let fmt = want.resolve(src);
+        let lost_alpha = fmt == OutFmt::Jpeg && has_transparency(&img);
         let r = compress_to_target(&img, fmt, target)?;
         let dst = write_out(src, fmt, &r.bytes)?;
         let mut note = format!("质量 {}", r.quality);
+        if lost_alpha {
+            note.push_str(" · 透明区已合成到白底（JPEG 不支持透明）");
+        }
         if r.scale_pct < 100 {
             note.push_str(&format!(" · 缩放 {}%", r.scale_pct));
         }
@@ -366,9 +404,14 @@ fn img_convert_blocking(app: AppHandle, paths: Vec<String>, format: String) -> V
     run_batch(&app, paths, move |src| {
         let img = load(src)?;
         let f = fmt.resolve(src);
+        let lost_alpha = f == OutFmt::Jpeg && has_transparency(&img);
         let data = encode(&img, f, 90)?;
         let dst = write_out(src, f, &data)?;
-        Ok((dst, Some(f.ext().to_uppercase())))
+        let mut note = f.ext().to_uppercase();
+        if lost_alpha {
+            note.push_str(" · 透明区已合成到白底（JPEG 不支持透明）");
+        }
+        Ok((dst, Some(note)))
     })
 }
 
