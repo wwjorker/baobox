@@ -350,6 +350,17 @@ export const TOOLS: ToolDef[] = [
     status: "ready",
     options: [],
   },
+  { id: "image.autolevel", pillar: "image", accepts: IMG, command: "img_autolevel", status: "ready", options: [] },
+  {
+    id: "image.sharpen",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_sharpen",
+    status: "ready",
+    options: [
+      { kind: "number", id: "amount", label: "opt.sharpenAmount", min: 0, max: 100, step: 5, def: 40 },
+    ],
+  },
   {
     id: "image.adjust",
     pillar: "image",
@@ -731,6 +742,17 @@ export const TOOLS: ToolDef[] = [
         ],
       },
     ],
+  },
+  // 文件粉碎放在最后：它是唯一不可逆销毁数据的功能，界面走独立面板
+  // （不经 ToolRunner），command 只是占位。放末尾也是刻意的——
+  // 不想让它出现在常用工具的视线中央。
+  {
+    id: "file.shred",
+    pillar: "file",
+    accepts: [],
+    command: "shred_files",
+    status: "ready",
+    options: [],
   },
 ];
 

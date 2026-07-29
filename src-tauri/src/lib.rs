@@ -15,6 +15,7 @@ pub mod qr;
 pub mod redact;
 pub mod rename;
 pub mod screen_ocr;
+pub mod shred;
 pub mod textfile;
 pub mod watermark;
 
@@ -121,7 +122,10 @@ pub fn run() {
             image_edit::img_expand,
             image_edit::gif_split,
             image_edit::gif_make,
+            image_edit::img_autolevel,
+            image_edit::img_sharpen,
             textfile::dirs_create,
+            shred::shred_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

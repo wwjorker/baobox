@@ -1231,6 +1231,75 @@
   color: #fff;
 }
 
+/* ---------------------------------------------------- 文件粉碎（安全红线） */
+/* 危险标记、危险主按钮、常驻警告条——刻意跟别的工具长得不一样，
+   让人一眼知道这个工具跟其它的不是一回事 */
+.badge.is-danger {
+  background: var(--bad);
+  color: #fff;
+  border-color: var(--ink);
+}
+.go.is-danger {
+  background: var(--bad);
+  border-color: var(--ink);
+}
+.shredwarn {
+  display: flex;
+  gap: 12px;
+  padding: 13px 15px;
+  border: var(--b2);
+  border-color: var(--bad);
+  background: #fff4f2;
+}
+.shredwarn__mark {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--bad);
+  flex: none;
+}
+.shredwarn__title {
+  margin: 0 0 4px;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--bad);
+}
+.shredwarn__body {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+.shredwarn__ssd {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+@media (prefers-color-scheme: dark) {
+  .shredwarn {
+    background: #2a1512;
+  }
+}
+:root[data-theme="dark"] .shredwarn {
+  background: #2a1512;
+}
+:root[data-theme="light"] .shredwarn {
+  background: #fff4f2;
+}
+/* 必须手动输入确认短语才能启用粉碎按钮 */
+.shredinput {
+  width: 100%;
+  padding: 9px 12px;
+  border: var(--b2);
+  border-color: var(--bad);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-mono);
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
 /* ------------------------------------------------- 删除确认（安全红线） */
 .confirm {
   position: fixed;

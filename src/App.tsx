@@ -11,6 +11,7 @@ import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
 import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
+import { ShredPanel } from "./components/ShredPanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
@@ -162,6 +163,10 @@ export default function App() {
 
           {tool?.id === "image.redact" ? (
             <RedactPanel />
+          ) : tool?.id === "file.shred" ? (
+            // 唯一不可逆销毁数据的功能，独立面板、独立确认流程，
+            // 绝不与普通删除共用任何组件（安全红线 3）
+            <ShredPanel />
           ) : tool?.id === "ocr.screen" ? (
             <ScreenOcrPanel autoStart={hotkeyTick} />
           ) : tool?.id === "file.rename" ? (

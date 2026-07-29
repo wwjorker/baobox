@@ -912,6 +912,103 @@ pub fn adjust_file(
     write_out(src, fmt, &data)
 }
 
+// ================================================================ 自动色阶
+
+/// 自动色阶：把最暗和最亮拉到纯黑纯白，中间线性铺开。
+///
+/// 阴天拍的、翻拍的、扫描的图往往灰蒙蒙一片没有对比。取每个通道的
+/// 直方图，掐掉两端各 0.5% 的极端像素（否则一个亮点就把白点顶满、
+/// 白拉不动），再把剩下的范围拉到 0–255。
+pub fn autolevel_file(src: &Path) -> AppResult<PathBuf> {
+    let img = load(src)?;
+    let mut rgba = img.to_rgba8();
+
+    // 逐通道算裁剪点。分开算而不是按灰度统一算——偏色的图
+    // （比如泛黄的旧照）分通道拉才能把色偏一并纠掉。
+    let (w, h) = rgba.dimensions();
+    let total = (w * h) as u32;
+    let clip = (total as f32 * 0.005) as u32; // 两端各掐 0.5%
+
+    let mut lut = [[0u8; 256]; 3];
+    for ch in 0..3 {
+        let mut hist = [0u32; 256];
+        for p in rgba.pixels() {
+            hist[p.0[ch] as usize] += 1;
+        }
+        // 从两头往中间累加，越过 clip 的位置就是新的黑点/白点
+        let mut lo = 0usize;
+        let mut acc = 0u32;
+        while lo < 255 && acc + hist[lo] <= clip {
+            acc += hist[lo];
+            lo += 1;
+        }
+        let mut hi = 255usize;
+        acc = 0;
+        while hi > lo && acc + hist[hi] <= clip {
+            acc += hist[hi];
+            hi -= 1;
+        }
+        let span = (hi - lo).max(1) as f32;
+        for (v, slot) in lut[ch].iter_mut().enumerate() {
+            let mapped = ((v as f32 - lo as f32) / span * 255.0).round();
+            *slot = mapped.clamp(0.0, 255.0) as u8;
+        }
+    }
+
+    for p in rgba.pixels_mut() {
+        for ch in 0..3 {
+            p.0[ch] = lut[ch][p.0[ch] as usize];
+        }
+    }
+
+    let out = DynamicImage::ImageRgba8(rgba);
+    let fmt = OutFmt::Keep.resolve(src);
+    let data = encode(&out, fmt, 92)?;
+    write_out(src, fmt, &data)
+}
+
+#[tauri::command]
+pub async fn img_autolevel(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, |src| {
+            let dst = autolevel_file(src)?;
+            Ok((dst, Some(Note::new("note.autoleveled"))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
+// ================================================================ 锐化
+
+/// 非锐化掩模：先高斯模糊，再按原图与模糊图的差值加回去。
+///
+/// 缩小后的图、扫描件常发虚，锐化能把边缘找回来。用非锐化掩模而不是
+/// 简单的卷积核，是因为它对噪点更温和——只强化真正的边，不放大平坦区的颗粒。
+pub fn sharpen_file(src: &Path, amount: i32) -> AppResult<PathBuf> {
+    let img = load(src)?;
+    // image 自带 unsharpen：sigma 固定，threshold 控制「差多少才算边」。
+    // amount 映射到 sigma 强度，0–100 → 0.5–3.0
+    let sigma = 0.5 + amount.clamp(0, 100) as f32 / 100.0 * 2.5;
+    let sharpened = img.unsharpen(sigma, 3);
+
+    let fmt = OutFmt::Keep.resolve(src);
+    let data = encode(&sharpened, fmt, 92)?;
+    write_out(src, fmt, &data)
+}
+
+#[tauri::command]
+pub async fn img_sharpen(app: AppHandle, paths: Vec<String>, amount: i32) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        run_batch(&app, paths, move |src| {
+            let dst = sharpen_file(src, amount)?;
+            Ok((dst, Some(Note::new("note.sharpened").with("n", amount))))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
 /// 棕褐色调。系数用的是通行的那组，效果跟老照片的观感对得上。
 fn apply_sepia(img: &DynamicImage) -> DynamicImage {
     let mut rgba = img.to_rgba8();

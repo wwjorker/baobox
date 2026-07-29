@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 58 of 59 tools work
+> ## 🚧 Preview — 61 of 62 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -46,6 +46,7 @@ into it.
 | Trim solid borders · Rounded corners · Crop to a ratio | ✅ |
 | Adjust colour · Build an ICO · Dominant colours · Base64 | ✅ |
 | Expand the canvas · GIF split and build | ✅ |
+| Auto levels · Sharpen | ✅ |
 
 ### OCR — free, offline, no subscription
 
@@ -92,6 +93,7 @@ so this costs nothing and adds no bytes.
 | Dedupe, sort, count lines · CSV ↔ JSON · Shift timestamps | ✅ |
 | **Extract archives, repairing mangled names** | ✅ GBK entry names that Windows itself destroys |
 | Create folders from a list | ✅ |
+| **Shred a file** | ✅ Overwrite-then-delete, its own panel with typed confirmation — separate from delete |
 | File checksum | ✅ SHA-256 or BLAKE3, read in chunks |
 
 ## Measured, not estimated
@@ -132,7 +134,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 59 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 62 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -141,7 +143,10 @@ inside any other application.
    SHA-256 comparison before and after every acceptance run.
 2. **Deletion goes to the Recycle Bin**, never an unlink. Confirmation lists
    every path, warns when a duplicate set would be wiped entirely, and starts
-   with focus on Cancel.
+   with focus on Cancel. The one exception is **Shred a file**, which exists to
+   destroy data permanently — it has its own panel, requires typing a
+   confirmation phrase, shares no code with ordinary delete, and both the panel
+   and the backend refuse to run without that phrase.
 3. **Identical is not the same as safe to delete.** A full-drive scan reported
    115 GB reclaimable, led by CUDA runtimes duplicated across conda
    environments and a Git object. Files owned by a package manager, virtualenv,
@@ -224,7 +229,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 59 个工具中 58 个可用
+> ## 🚧 预览版 —— 62 个工具中 61 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。

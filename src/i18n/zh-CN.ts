@@ -100,6 +100,14 @@ export default {
         name: "GIF 制作",
         desc: "一批图做成动图，顺序就是列表顺序，可上下调整。所有帧会统一到第一张的尺寸——GIF 规范要求所有帧共用一个画布。",
       },
+      autolevel: {
+        name: "自动色阶",
+        desc: "阴天拍的、翻拍的、扫描的图往往灰蒙蒙没有对比。自动把最暗和最亮拉到纯黑纯白，中间铺开。分通道处理，泛黄的旧照能顺带纠掉色偏。",
+      },
+      sharpen: {
+        name: "锐化",
+        desc: "缩小后发虚、扫描件模糊，用非锐化掩模把边缘找回来。它对噪点温和，只强化真正的边，不放大平坦区的颗粒。",
+      },
       ico: {
         name: "生成 ICO 图标",
         desc: "一个 .ico 里装 16 到 256 六种尺寸，网站 favicon 和 Windows 程序图标都能用。先按中心裁成正方形，不然图标是压扁的。原图不够大的尺寸会跳过，不放大糊图。",
@@ -225,6 +233,10 @@ export default {
       mkdirs: {
         name: "按清单建文件夹",
         desc: "一份 txt 一行一个名字，批量建出来。开学建三十个学生目录、按月份建十二个归档目录，手点三十次没人乐意。支持 2026/01 这样的嵌套写法，但不许 ..。",
+      },
+      shred: {
+        name: "文件粉碎",
+        desc: "多次覆写后永久删除，不进回收站、无法恢复。用来处理真正不想留痕的敏感文件。这是全软件唯一会不可逆销毁数据的功能，独立入口、要手动输入确认，跟「删除进回收站」彻底分开。",
       },
       hash: {
         name: "文件哈希校验",
@@ -355,6 +367,8 @@ export default {
     unzipSkipped: "跳过 {n} 个（加密或不支持的压缩方式）",
     dirsMade: "建了 {n} 个文件夹",
     dirsSkipped: "跳过 {n} 个（已存在或名字非法）",
+    autoleveled: "已拉伸色阶",
+    sharpened: "锐化强度 {n}",
     metaCleaned: "清掉 {n} 项：{list}",
     metaNone: "本来就没有可清的元数据",
     cropped: "{total} 页 · 裁了 {n} 页",
@@ -436,6 +450,7 @@ export default {
     invert: "负片",
     prettyJson: "JSON 缩进排版",
     shiftHours: "平移小时数",
+    sharpenAmount: "锐化强度",
     fillDark: "填深色边",
     everyNth: "每隔几帧取一张",
     frameDelay: "每帧停留",
@@ -518,6 +533,27 @@ export default {
     confirmGo: "确认删除",
   },
 
+  shred: {
+    danger: "危险",
+    warnTitle: "这个操作不可恢复",
+    warnBody: "被粉碎的文件会先被多次覆写、再永久删除，不进回收站，任何恢复软件都救不回来。请只对确实不想再留的文件使用。",
+    ssdNote: "注意：覆写在机械硬盘上能可靠销毁数据；固态硬盘（SSD）有磨损均衡，覆写可能落到别的物理区块，原数据未必被真正抹除。",
+    pick: "选择要粉碎的文件",
+    picked: "已选 {count} 个 · 共 {size}",
+    emptyTitle: "把要粉碎的文件拖进来",
+    emptyHint: "只处理单个文件，不会递归删除文件夹。",
+    passes: "覆写遍数",
+    passUnit: "遍",
+    start: "粉碎这 {count} 个文件",
+    running: "正在粉碎…",
+    gone: "已粉碎",
+    finished: "已粉碎 {count} 个文件，无法恢复。",
+    confirmTitle: "最后确认",
+    confirmWarn: "即将永久销毁 {count} 个文件（共 {size}）。不进回收站，无法恢复。",
+    confirmType: "确认请在下面输入「{phrase}」两个字：",
+    confirmGo: "永久粉碎",
+  },
+
   status: {
     ready: "可用",
     wip: "开发中",
@@ -569,6 +605,8 @@ export default {
     archiveUnsupported: "包里的条目都用了不支持的压缩方式（或需要密码）。目前只支持最常见的 deflate。",
     archiveEmpty: "这个压缩包是空的。",
     noDirsMade: "一个文件夹都没建成——清单可能是空的，或者要建的都已存在。",
+    shredNoDir: "粉碎只处理单个文件，不能对文件夹使用。",
+    shredNotConfirmed: "确认短语不对，已中止。没有任何文件被改动。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
