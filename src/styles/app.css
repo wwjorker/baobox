@@ -24,6 +24,8 @@
   font-size: 14.5px;
   letter-spacing: -0.01em;
 }
+/* 歪着的箱子。方块里放个字母 B 谁都能画，换成任何软件都成立——
+   这个是母题，截图发出去要能一眼认出来。 */
 .titlebar__mark {
   width: 23px;
   height: 23px;
@@ -31,10 +33,13 @@
   display: grid;
   place-items: center;
   background: #fff;
-  color: var(--red);
+  color: var(--ink);
   border: var(--b2);
-  font-family: var(--f-display);
-  font-size: 12px;
+  transform: rotate(-7deg);
+  transition: transform 0.28s var(--spring);
+}
+.titlebar__brand:hover .titlebar__mark {
+  transform: rotate(7deg) scale(1.06);
 }
 .titlebar__spacer {
   flex: 1;
@@ -868,6 +873,7 @@
   transform: rotate(-3deg);
   display: grid;
   place-items: center;
+  color: var(--ink);
   font-family: var(--f-display);
   font-size: 30px;
   color: var(--red);
@@ -919,8 +925,13 @@
   background: var(--green);
   flex: none;
 }
-.statusbar__push {
+/* 版本号。开源项目收 issue 时第一句永远是「你用的哪个版本」，
+   界面上找不到的话对方也答不上来。 */
+.statusbar__version {
   margin-left: auto;
+  font-size: 10px;
+  color: var(--dim);
+  opacity: 0.75;
 }
 
 /* 「全程离线」是这个产品最核心的一句承诺，之前却是全屏最灰的字，
@@ -965,7 +976,8 @@
 .statusbar__toggle:hover {
   color: var(--ink);
 }
-/* 「已省下 X」是最好的传播素材，做成标牌而不是角落灰字 */
+/* 「已省下 X」是最好的传播素材，做成标牌而不是角落灰字。
+   点开能看到这个数字到底算了什么、没算什么。 */
 .savedplate {
   display: flex;
   align-items: baseline;
@@ -973,6 +985,11 @@
   background: var(--ink);
   color: var(--bg);
   padding: 3px 10px;
+  border: 2px solid var(--ink);
+  transition: transform 0.14s var(--spring);
+}
+.savedplate:hover {
+  transform: translate(-1px, -1px);
 }
 .savedplate__label {
   font-size: 9.5px;
@@ -1202,7 +1219,9 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(10, 8, 4, 0.5);
+  /* 半透明的暗色压在饱和黄上会调出一片土褐，看着像界面坏了。
+     压深一点，反而读成「后面被调暗了」而不是「变色了」。 */
+  background: rgba(14, 11, 4, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1264,6 +1283,27 @@
 }
 .confirm__actions .go {
   flex: 1;
+}
+/* 说明性弹层：按钮靠右、正常大小。整条大红是给「别手滑」用的，
+   一个只是解释一件事的弹层用同样的分量，看着像出了事。 */
+.confirm__actions.is-end {
+  justify-content: flex-end;
+}
+.confirm__box.is-info {
+  width: min(560px, 92%);
+}
+/* 把真实的 CSP 原样贴出来 —— 声称和能验证是两回事 */
+.evidence {
+  margin: 0;
+  padding: 9px 11px;
+  background: var(--ink);
+  color: #ffe44d;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
 }
 
 /* ------------------------------------------------------------ 命令面板 */

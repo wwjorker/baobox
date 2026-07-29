@@ -309,6 +309,63 @@ pub struct FileMeta {
     pub exists: bool,
 }
 
+/// 一次拖进来的东西里，直接展开成能处理的文件清单。
+///
+/// 「批量压缩」的说明写着「一次压一整个文件夹」，可拖文件夹进来什么都不会发生
+/// ——扩展名过滤把目录本身筛掉了。文案承诺了的事就得做得到。
+///
+/// 两条规矩：
+///  · 跳过我们自己的输出目录。不然跑第二遍会把上一遍的产物再压一次，
+///    越压越糊，而用户完全不知道发生了什么。
+///  · 有上限。误拖一个 C:\ 进来不该让程序卡死在遍历上。
+#[tauri::command]
+pub async fn expand_inputs(paths: Vec<String>, accepts: Vec<String>) -> Vec<String> {
+    const MAX: usize = 20_000;
+    tauri::async_runtime::spawn_blocking(move || {
+        let matches = |p: &Path| -> bool {
+            if accepts.is_empty() {
+                return true;
+            }
+            p.extension()
+                .map(|e| accepts.contains(&e.to_string_lossy().to_lowercase()))
+                .unwrap_or(false)
+        };
+
+        let mut out = Vec::new();
+        for raw in paths {
+            let pb = PathBuf::from(&raw);
+            if !long_path(&pb).is_dir() {
+                if matches(&pb) {
+                    out.push(raw);
+                }
+                continue;
+            }
+            for entry in jwalk::WalkDir::new(long_path(&pb))
+                .skip_hidden(false)
+                .into_iter()
+                .flatten()
+            {
+                if out.len() >= MAX {
+                    break;
+                }
+                let p = entry.path();
+                if !entry.file_type().is_file() || !matches(&p) {
+                    continue;
+                }
+                // 别把上一轮的产物当输入再跑一遍
+                if p.components().any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR) {
+                    continue;
+                }
+                out.push(p.to_string_lossy().to_string());
+            }
+        }
+        out.sort();
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
 #[tauri::command]
 pub fn stat_files(paths: Vec<String>) -> Vec<FileMeta> {
     paths

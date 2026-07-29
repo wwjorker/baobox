@@ -122,6 +122,55 @@ fn main() {
         "3 条全部非成功".into(),
     );
 
+    println!("\n======== 文件夹展开 ========");
+
+    // 「一次压一整个文件夹」是说明里写着的，之前拖文件夹进来什么都不会发生
+    let root = tmp.join("一批照片");
+    let sub = root.join("子文件夹");
+    let mine = root.join("Baobox_output");
+    std::fs::create_dir_all(&sub).unwrap();
+    std::fs::create_dir_all(&mine).unwrap();
+    std::fs::write(root.join("a.jpg"), b"x").unwrap();
+    std::fs::write(root.join("b.PNG"), b"x").unwrap();
+    std::fs::write(root.join("说明.txt"), b"x").unwrap();
+    std::fs::write(sub.join("c.jpg"), b"x").unwrap();
+    std::fs::write(mine.join("上一轮的产物.jpg"), b"x").unwrap();
+
+    let accepts: Vec<String> = ["jpg", "jpeg", "png"].iter().map(|s| s.to_string()).collect();
+    let found = tauri::async_runtime::block_on(baobox_lib::image_ops::expand_inputs(
+        vec![root.to_string_lossy().to_string()],
+        accepts.clone(),
+    ));
+
+    check(
+        "递归收齐子目录",
+        found.len() == 3,
+        format!("找到 {} 个（a.jpg / b.PNG / 子文件夹里的 c.jpg）", found.len()),
+    );
+    check(
+        "扩展名大小写不敏感",
+        found.iter().any(|p| p.ends_with("b.PNG")),
+        "b.PNG 被收进来了".into(),
+    );
+    check(
+        "过滤掉不收的类型",
+        !found.iter().any(|p| p.ends_with(".txt")),
+        "说明.txt 没被收".into(),
+    );
+    // 这条最要紧：不跳过的话，跑第二遍会把上一遍的产物再压一次，越压越糊
+    check(
+        "跳过自己的输出目录",
+        !found.iter().any(|p| p.contains("Baobox_output")),
+        "上一轮的产物没被当成输入".into(),
+    );
+
+    // 直接给文件路径时该原样通过，别被目录逻辑带跑偏
+    let direct = tauri::async_runtime::block_on(baobox_lib::image_ops::expand_inputs(
+        vec![root.join("a.jpg").to_string_lossy().to_string()],
+        accepts,
+    ));
+    check("单个文件原样通过", direct.len() == 1, "1 个进 1 个出".into());
+
     let _ = std::fs::remove_dir_all(&tmp);
     println!("\n======== 通过 {pass} / 失败 {fail} ========");
     if fail > 0 {

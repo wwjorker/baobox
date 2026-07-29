@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n, type Locale } from "../i18n";
+import { BoxMark } from "./BoxMark";
 import { TOOLS } from "../tools/registry";
 
 /**
@@ -27,7 +28,9 @@ export function TitleBar({
   return (
     <header className="titlebar">
       <span className="titlebar__brand">
-        <span className="titlebar__mark">B</span>
+        <span className="titlebar__mark">
+          <BoxMark size={15} />
+        </span>
         {t("app.name")}
       </span>
 

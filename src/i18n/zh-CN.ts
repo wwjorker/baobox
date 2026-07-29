@@ -2,11 +2,17 @@
 export default {
   app: {
     name: "百宝箱",
-    tagline: "本地文件工作台",
     offline: "全程离线",
     offlineWhy: "这个程序里没有编入任何 HTTP 客户端，CSP 也不允许任何远程来源。不信可以拔掉网线试试——所有功能照常。",
     offlineMore: "为什么可以确定？",
+    offlineCsp: "上面这段是程序真实的内容安全策略，构建时从配置里读出来的，不是抄一份写在界面上。",
     gotIt: "知道了",
+    savedWhat:
+      "累计 {total}。只统计「产物能直接替换原件」的操作压掉的体积：压到指定体积、批量压缩、格式转换、批量缩放、抹除 EXIF、PDF 压缩，以及重复文件里真正删掉的那些。",
+    savedNotCounted:
+      "OCR、合并、拆分、加水印、打码、转图片都不计入——它们的产物不是原件的替换，算进来这个数字就是编的。另外：原图还在原地，这是「如果你用产物替掉原件能省多少」，不是磁盘已经空出来的量。同一批跑两遍会算两次。",
+    savedStale: "如果你在 2026-07-29 之前用过，那时候的口径把 OCR 也算了进去，老账没法追溯修正，建议归零重来。",
+    savedReset: "归零",
     noMatch: "没有匹配「{q}」的工具",
     soundOn: "完成提示音：开",
     soundOff: "完成提示音：关",
@@ -92,7 +98,8 @@ export default {
 
   run: {
     dropHere: "把文件拖到这里",
-    dropHint: "或点击选择 · 不限数量、不限体积",
+    dropHint: "或点击选择 · 整个文件夹也行 · 不限数量、不限体积",
+    pickFolder: "选个文件夹",
     homeDropTitle: "文件直接拖进来",
     homeDropHint: "拖 PDF 自动翻到 PDF、拖图片自动翻到图片，之后点哪个工具文件就跟到哪个。",
     homeDropUnknown: "不认识这类文件：{ext}。目前支持图片和 PDF。",

@@ -7,6 +7,7 @@ import { useI18n, type TVars } from "../i18n";
 import { fmtSize } from "../useSaved";
 import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
+import { BoxMark } from "./BoxMark";
 import type { OptionDef, ToolDef } from "../tools/registry";
 
 /**
@@ -115,9 +116,12 @@ export function ToolRunner({
 
   const addPaths = useCallback(
     async (paths: string[]) => {
-      const allowed = tool.accepts.length
-        ? paths.filter((p) => tool.accepts.includes(p.split(".").pop()?.toLowerCase() ?? ""))
-        : paths;
+      // 拖进来的可能是文件夹。「一次压一整个文件夹」是说明里写着的，
+      // 之前扩展名过滤直接把目录筛掉，拖进来什么都不会发生。
+      const allowed = await invoke<string[]>("expand_inputs", {
+        paths,
+        accepts: tool.accepts,
+      });
       if (allowed.length === 0) return;
 
       // 先问后端要真实体积，别让列表显示一排「0 B」
@@ -182,6 +186,13 @@ export function ToolRunner({
       multiple: true,
       filters: tool.accepts.length ? [{ name: "files", extensions: tool.accepts }] : undefined,
     });
+    if (Array.isArray(sel)) addPaths(sel);
+    else if (typeof sel === "string") addPaths([sel]);
+  };
+
+  /** 选文件夹，整个目录里合规的文件全收进来 */
+  const pickFolder = async () => {
+    const sel = await open({ directory: true, multiple: true });
     if (Array.isArray(sel)) addPaths(sel);
     else if (typeof sel === "string") addPaths([sel]);
   };
@@ -313,7 +324,10 @@ export function ToolRunner({
 
       {rows.length === 0 ? (
         <div className="empty">
-          <div className="empty__box">＋</div>
+          {/* 这是全软件最常看到的空状态，用品牌母题而不是一个通用的加号 */}
+          <div className="empty__box">
+            <BoxMark size={46} />
+          </div>
           <h2 className="empty__title">{t("run.emptyTitle")}</h2>
           <p className="empty__hint">{t("run.emptyHint", { formats: acceptsLabel })}</p>
           <button
@@ -323,6 +337,9 @@ export function ToolRunner({
           >
             <span className="dropzone__title">{t("run.dropHere")}</span>
             <span className="dropzone__hint">{t("run.dropHint")}</span>
+          </button>
+          <button className="chip" onClick={pickFolder}>
+            {t("run.pickFolder")}
           </button>
         </div>
       ) : (
@@ -334,6 +351,9 @@ export function ToolRunner({
                 count: rows.length,
                 size: fmtSize(rows.reduce((n, r) => n + (r.outcome?.in_bytes ?? r.bytes), 0)),
               })}
+            </button>
+            <button className="chip" disabled={running} onClick={pickFolder}>
+              {t("run.pickFolder")}
             </button>
             <button className="chip" disabled={running} onClick={() => setRows([])}>
               {t("run.clearAll")}

@@ -5,6 +5,7 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
 import { Crumb } from "./components/Crumb";
+import { Dialog } from "./components/Dialog";
 import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
@@ -25,6 +26,9 @@ const IMAGE_EXT = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"];
  * 只有他自己知道，直接跳进「合并」是自作聪明。省掉找菜单这一步就够了，
  * 剩下的一步让他点。
  */
+/** 一行太长，拆成几段贴出来才读得下去 */
+const CSP = __APP_CSP__.split("; ").join(";\n");
+
 function guessPillar(paths: string[]): Pillar | null {
   const exts = paths.map((p) => p.split(".").pop()?.toLowerCase() ?? "");
   if (exts.some((e) => e === "pdf")) return "pdf";
@@ -38,11 +42,12 @@ export default function App() {
   const [toolId, setToolId] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [offlineOpen, setOfflineOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
   const [dropHint, setDropHint] = useState<string | null>(null);
   const [over, setOver] = useState(false);
   /** 首页收下、还没送进任何工具的文件 */
   const [pending, setPending] = useState<string[] | null>(null);
-  const { saved, addSaved } = useSaved();
+  const { saved, addSaved, resetSaved } = useSaved();
   const { recent, push: pushRecent } = useRecent();
   const { chimeEnabled, toggleChime, chime } = useChime();
   /** 热键触发的计数器，变化即表示要立刻开抓 */
@@ -115,11 +120,12 @@ export default function App() {
       // Esc 层层后退：先关弹层，再退回支柱页
       if (paletteOpen) setPaletteOpen(false);
       else if (offlineOpen) setOfflineOpen(false);
+      else if (savedOpen) setSavedOpen(false);
       else if (toolId) setToolId(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [paletteOpen, offlineOpen, toolId]);
+  }, [paletteOpen, offlineOpen, savedOpen, toolId]);
 
   const tools = toolsOf(pillar);
 
@@ -243,26 +249,41 @@ export default function App() {
           {chimeEnabled ? t("app.soundOn") : t("app.soundOff")}
         </button>
 
-        <span className="statusbar__push">
-          <span className="savedplate">
-            <span className="savedplate__label">{t("app.saved")}</span>
-            <span className="savedplate__value">{fmtSize(saved)}</span>
-          </span>
-        </span>
+        <span className="statusbar__version">v{__APP_VERSION__}</span>
+
+        {/* 数字得说清楚是怎么来的，否则它只是个好看的牌子。
+            点开能看到口径，也能归零。 */}
+        <button className="savedplate" onClick={() => setSavedOpen(true)}>
+          <span className="savedplate__label">{t("app.saved")}</span>
+          <span className="savedplate__value">{fmtSize(saved)}</span>
+        </button>
       </footer>
 
       {offlineOpen && (
-        <div className="confirm" onMouseDown={() => setOfflineOpen(false)}>
-          <div className="confirm__box" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
-            <h2 className="confirm__title">{t("app.offline")}</h2>
-            <p className="confirm__lead">{t("app.offlineWhy")}</p>
-            <div className="confirm__actions">
-              <button className="go" autoFocus onClick={() => setOfflineOpen(false)}>
-                {t("app.gotIt")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Dialog title={t("app.offline")} onClose={() => setOfflineOpen(false)}>
+          <p className="confirm__lead">{t("app.offlineWhy")}</p>
+          <pre className="evidence">{CSP}</pre>
+          <p className="confirm__safe">{t("app.offlineCsp")}</p>
+        </Dialog>
+      )}
+
+      {savedOpen && (
+        <Dialog title={t("app.saved")} onClose={() => setSavedOpen(false)}>
+          <p className="confirm__lead">
+            {t("app.savedWhat", { total: fmtSize(saved) })}
+          </p>
+          <p className="confirm__safe">{t("app.savedNotCounted")}</p>
+          <p className="confirm__safe">{t("app.savedStale")}</p>
+          <button
+            className="chip is-danger"
+            onClick={() => {
+              resetSaved();
+              setSavedOpen(false);
+            }}
+          >
+            {t("app.savedReset")}
+          </button>
+        </Dialog>
       )}
 
       <CommandPalette

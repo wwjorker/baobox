@@ -78,6 +78,7 @@ pub fn run() {
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
             image_ops::thumbs,
+            image_ops::expand_inputs,
             paths::set_output_dir,
             batch::cancel_batch,
         ])

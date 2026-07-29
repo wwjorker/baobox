@@ -23,7 +23,11 @@ export function useSaved() {
     if (bytes > 0) setSaved((n) => n + bytes);
   }, []);
 
-  return { saved, addSaved };
+  /** 归零。之前的口径把 OCR 这类根本不省空间的操作也算了进来，
+      老账没法追溯修正，只能给一个清掉重来的入口。 */
+  const resetSaved = useCallback(() => setSaved(0), []);
+
+  return { saved, addSaved, resetSaved };
 }
 
 export function fmtSize(bytes: number): string {

@@ -4,11 +4,17 @@
 const enUS: typeof zhCN = {
   app: {
     name: "Baobox",
-    tagline: "Local file workbench",
     offline: "Fully offline",
     offlineWhy: "No HTTP client is compiled into this binary and the CSP permits no remote origins. Pull the network cable and everything still works.",
     offlineMore: "How can you tell?",
+    offlineCsp: "That is the binary's actual content security policy, read from the config at build time rather than retyped into this dialog.",
     gotIt: "Got it",
+    savedWhat:
+      "{total} in total. Counts only operations whose output can directly replace the original: compress to a target size, batch compress, convert, resize, strip EXIF, PDF compress, and duplicates actually deleted.",
+    savedNotCounted:
+      "OCR, merge, split, watermark, redact and render-to-image are excluded — their output does not replace anything, so counting them would make this number fiction. Also: your originals are still there. This is what you would save by replacing them, not space already freed. Running the same batch twice counts twice.",
+    savedStale: "If you used Baobox before 2026-07-29, the old accounting included OCR. That cannot be corrected retroactively — resetting is the honest option.",
+    savedReset: "Reset to zero",
     noMatch: "Nothing matches “{q}”",
     soundOn: "Done chime: on",
     soundOff: "Done chime: off",
@@ -98,7 +104,8 @@ const enUS: typeof zhCN = {
 
   run: {
     dropHere: "Drop files here",
-    dropHint: "or click to browse · no count or size limits",
+    dropHint: "or click to browse · whole folders work too · no count or size limits",
+    pickFolder: "Pick a folder",
     homeDropTitle: "Drop files anywhere here",
     homeDropHint: "PDFs flip to the PDF tools, images to the image tools — then whichever tool you pick gets the files.",
     homeDropUnknown: "Don't know what to do with {ext} yet. Images and PDFs are supported.",
