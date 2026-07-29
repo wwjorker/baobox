@@ -32,10 +32,10 @@ const enUS: typeof zhCN = {
     file: "Files",
     recent: "Recent",
     tools: "Tools",
-    imageDesc: "Compress, convert, resize, strip metadata, watermark, redact. All batch, originals untouched.",
+    imageDesc: "Compress, convert, resize, strip metadata, redact, plus grid splitting and long-image stitching. All batch, originals untouched.",
     ocrDesc: "Uses the recognition engine Windows already ships — offline and free. Ctrl+Shift+S grabs the screen from anywhere.",
     pdfDesc: "Merge, split, compress, render to image, stamp, unlock. No Docker required.",
-    fileDesc: "Find duplicates by content, rename in bulk with preview and undo. Deletions go to the Recycle Bin.",
+    fileDesc: "Find duplicates by content, bulk rename with undo, repair mojibake, verify checksums. Deletions go to the Recycle Bin.",
     readyCount: "{ready}/{total} working",
   },
 
@@ -55,6 +55,26 @@ const enUS: typeof zhCN = {
       watermark: {
         name: "Add watermark",
         desc: "Stamp text across an image, Chinese included. Tiling covers the whole frame diagonally so it survives cropping. The font is read from the system, not bundled.",
+      },
+      grid: {
+        name: "Split into a grid",
+        desc: "Cut one picture into nine for a photo grid post. Crops to a centre square first by default, otherwise the pieces do not line up. Numbered in posting order.",
+      },
+      stitch: {
+        name: "Stitch into one long image",
+        desc: "Join screenshots end to end — chat logs, long pages. Widths are matched to the narrowest one, only ever scaling down. Order follows the list below.",
+      },
+      trim: {
+        name: "Trim solid borders",
+        desc: "Cut away a uniform edge. Uses the corner pixel as the reference, so dark backgrounds work too. Raise the tolerance for noisy scans.",
+      },
+      frame: {
+        name: "Rounded corners & border",
+        desc: "Round the corners, add a border. Corners need transparency, so output is always PNG — a JPEG would fill them with solid colour and undo the whole thing.",
+      },
+      adjust: {
+        name: "Adjust colour",
+        desc: "Brightness, contrast, saturation, greyscale. One tool rather than four, because in practice these get changed together and splitting them means four passes and four re-encodes.",
       },
       redact: {
         name: "Redact",
@@ -99,6 +119,14 @@ const enUS: typeof zhCN = {
     file: {
       rename: { name: "Batch rename", desc: "Stackable rules, live preview, and one-click undo." },
       dedupe: { name: "Find duplicates", desc: "Compares actual content, not just file names." },
+      encoding: {
+        name: "Fix mojibake",
+        desc: "A text file saved as GBK opens as garbage on a UTF-8 machine. Detects the original encoding and converts to UTF-8, using Firefox's detector — it is reliable on GBK and Big5.",
+      },
+      hash: {
+        name: "File checksum",
+        desc: "SHA-256 or BLAKE3, to check against what a download page published. Read in chunks, so a huge file does not mean huge memory.",
+      },
     },
   },
 
@@ -181,6 +209,15 @@ const enUS: typeof zhCN = {
     decryptNotNeeded: "had no password — passed through unchanged",
     pdfRecompressed: "{n} embedded images recompressed",
     pdfStructOnly: "no recompressible images — only the document structure was optimised",
+    grid: "{rows}×{cols} · {n} pieces",
+    stitched: "{n} images joined into one",
+    trimmed: "{w}×{h} → {nw}×{nh}",
+    framed: "corner radius {px} px",
+    adjusted: "brightness {b} · contrast {c} · saturation {s}",
+    grayscaled: "converted to greyscale",
+    encFixed: "was {from} → UTF-8",
+    encAlready: "already UTF-8, content unchanged",
+    hashAlgo: "{algo}",
   },
 
   opt: {
@@ -203,6 +240,23 @@ const enUS: typeof zhCN = {
     rotate: "Rotation",
     pageNumbers: "Page numbers",
     tile: "Tile across",
+    gridRows: "Rows",
+    gridCols: "Columns",
+    squareFirst: "Crop to square first",
+    stitchDir: "Direction",
+    stitchVertical: "Vertical",
+    stitchHorizontal: "Horizontal",
+    stitchGap: "Gap between",
+    trimTolerance: "Colour tolerance",
+    cornerRadius: "Corner radius",
+    borderWidth: "Border width",
+    borderDark: "Dark border",
+    brightness: "Brightness",
+    contrast: "Contrast",
+    saturation: "Saturation",
+    grayscale: "Greyscale",
+    addBom: "Add BOM",
+    hashAlgo: "Algorithm",
   },
 
   redact: {
@@ -303,6 +357,11 @@ const enUS: typeof zhCN = {
   err: {
     decode: "Can't read this file — it may be damaged or not actually a {format} file.",
     outDirMissing: "That output folder is gone. Back to the default location.",
+    tooSmallToSplit: "This image is too small to cut into that many pieces.",
+    needAtLeastTwo: "Stitching needs at least two images.",
+    stitchTooLong: "The result would be {got} pixels long, over the {max} limit. Try it in batches.",
+    trimAllUniform: "The whole image is one colour — there is no border to trim.",
+    emptyFile: "This file is empty.",
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",

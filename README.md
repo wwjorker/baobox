@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 21 of 22 tools work
+> ## 🚧 Preview — 28 of 29 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -41,6 +41,9 @@ into it.
 | Batch compress · Convert format · Batch resize | ✅ Drop a whole folder; it recurses |
 | **Redact** | ✅ Overwrites pixels rather than covering them |
 | Watermark | ✅ Chinese included, tiled or single |
+| **Split into a grid** | ✅ Crops to a centre square first, numbers the pieces in posting order |
+| **Stitch into one long image** | ✅ Widths matched to the narrowest, scaling down only |
+| Trim solid borders · Rounded corners · Adjust colour | ✅ |
 
 ### OCR — free, offline, no subscription
 
@@ -71,6 +74,8 @@ so this costs nothing and adds no bytes.
 |---|---|
 | **Find duplicates** | ✅ Compares content, not names. Protects files a program depends on. |
 | **Batch rename** | ✅ Stackable rules, live preview, undo log |
+| **Fix mojibake** | ✅ Detects GBK/Big5 and converts to UTF-8, using Firefox's detector |
+| File checksum | ✅ SHA-256 or BLAKE3, read in chunks |
 
 ## Measured, not estimated
 
@@ -110,7 +115,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 22 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 29 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -162,7 +167,7 @@ registry settings.
 | | |
 |---|---|
 | Installer | **3.2 MB** |
-| Installed | 9.8 MB |
+| Installed | 9.9 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -202,7 +207,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 22 个工具中 21 个可用
+> ## 🚧 预览版 —— 29 个工具中 28 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。
@@ -225,7 +230,8 @@ iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文�
   比 Tesseract 更快更准，调它零成本、零体积。
 - **压到指定体积**。网站限制上传 500KB 是刚需，而 TinyPNG 只能调质量档位。
 - **中文该有的功能**。中文水印和页码需要把字体嵌进 PDF，而微软雅黑 19.7 MB
-  且受版权保护不能分发——子集化后只占 13.5 KB。
+  且受版权保护不能分发——子集化后只占 13.5 KB。九宫格切图、长图拼接、GBK 乱码修复
+  这几件事中文社区天天在用，欧美的同类工具普遍不做。
 
 ## 怎么用
 

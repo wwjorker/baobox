@@ -195,6 +195,81 @@ export const TOOLS: ToolDef[] = [
     ],
   },
 
+  // 中文社区天天在用、欧美图片工具普遍不做的两个。
+  // 差异化不是靠功能多，是靠别人不做而这里的人真的需要。
+  {
+    id: "image.grid",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_grid",
+    status: "ready",
+    highlight: true,
+    options: [
+      { kind: "number", id: "rows", label: "opt.gridRows", min: 1, max: 6, step: 1, def: 3 },
+      { kind: "number", id: "cols", label: "opt.gridCols", min: 1, max: 6, step: 1, def: 3 },
+      { kind: "toggle", id: "squareFirst", label: "opt.squareFirst", def: true },
+    ],
+  },
+  {
+    id: "image.stitch",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_stitch",
+    status: "ready",
+    highlight: true,
+    aggregate: true,
+    ordered: true,
+    options: [
+      {
+        kind: "choice",
+        id: "direction",
+        label: "opt.stitchDir",
+        def: "vertical",
+        choices: [
+          { value: "vertical", label: "opt.stitchVertical" },
+          { value: "horizontal", label: "opt.stitchHorizontal" },
+        ],
+      },
+      { kind: "number", id: "gap", label: "opt.stitchGap", min: 0, max: 60, step: 2, def: 0, unit: "px" },
+    ],
+  },
+  {
+    id: "image.trim",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_trim",
+    status: "ready",
+    savesSpace: true,
+    options: [
+      { kind: "number", id: "tolerance", label: "opt.trimTolerance", min: 0, max: 60, step: 2, def: 10 },
+    ],
+  },
+  {
+    id: "image.frame",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_frame",
+    status: "ready",
+    options: [
+      { kind: "number", id: "radius", label: "opt.cornerRadius", min: 0, max: 50, step: 1, def: 8, unit: "%" },
+      { kind: "number", id: "border", label: "opt.borderWidth", min: 0, max: 80, step: 2, def: 0, unit: "px" },
+      { kind: "toggle", id: "borderDark", label: "opt.borderDark", def: false },
+    ],
+  },
+  {
+    id: "image.adjust",
+    pillar: "image",
+    accepts: IMG,
+    command: "img_adjust",
+    status: "ready",
+    options: [
+      { kind: "number", id: "brightness", label: "opt.brightness", min: -100, max: 100, step: 5, def: 0 },
+      { kind: "number", id: "contrast", label: "opt.contrast", min: -100, max: 100, step: 5, def: 0 },
+      { kind: "number", id: "saturation", label: "opt.saturation", min: -100, max: 100, step: 5, def: 0 },
+      { kind: "toggle", id: "grayscale", label: "opt.grayscale", def: false },
+    ],
+  },
+
   // ------------------------------------------------------------ OCR（3）
   {
     id: "ocr.image",
@@ -301,6 +376,35 @@ export const TOOLS: ToolDef[] = [
   // ----------------------------------------------------------- 文件（2）
   { id: "file.rename", pillar: "file", accepts: [], command: "rename_apply", status: "ready", options: [] },
   { id: "file.dedupe", pillar: "file", accepts: [], command: "find_duplicates", status: "ready", options: [] },
+  {
+    id: "file.encoding",
+    pillar: "file",
+    accepts: ["txt", "csv", "log", "md", "json", "xml", "srt", "ass", "ini", "html", "css", "js"],
+    command: "text_fix_encoding",
+    status: "ready",
+    highlight: true,
+    options: [{ kind: "toggle", id: "addBom", label: "opt.addBom", def: true }],
+  },
+  {
+    id: "file.hash",
+    pillar: "file",
+    accepts: [],
+    command: "file_hash",
+    status: "ready",
+    output: "text",
+    options: [
+      {
+        kind: "choice",
+        id: "algo",
+        label: "opt.hashAlgo",
+        def: "sha256",
+        choices: [
+          { value: "sha256", label: "SHA-256" },
+          { value: "blake3", label: "BLAKE3" },
+        ],
+      },
+    ],
+  },
 ];
 
 export const PILLARS: Pillar[] = ["image", "ocr", "pdf", "file"];

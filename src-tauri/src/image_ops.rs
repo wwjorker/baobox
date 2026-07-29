@@ -18,7 +18,7 @@ pub enum OutFmt {
 }
 
 impl OutFmt {
-    fn parse(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
             "jpeg" | "jpg" => Self::Jpeg,
             "png" => Self::Png,
@@ -28,7 +28,7 @@ impl OutFmt {
     }
 
     /// Keep 需要根据源文件扩展名落到一个具体格式上
-    fn resolve(self, src: &Path) -> Self {
+    pub fn resolve(self, src: &Path) -> Self {
         if self != Self::Keep {
             return self;
         }
@@ -44,7 +44,7 @@ impl OutFmt {
         }
     }
 
-    fn ext(self) -> &'static str {
+    pub fn ext(self) -> &'static str {
         match self {
             Self::Jpeg | Self::Keep => "jpg",
             Self::Png => "png",
@@ -96,7 +96,7 @@ pub fn encode_jpeg(img: &DynamicImage, quality: u8) -> AppResult<Vec<u8>> {
     encode(img, OutFmt::Jpeg, quality)
 }
 
-fn encode(img: &DynamicImage, fmt: OutFmt, quality: u8) -> AppResult<Vec<u8>> {
+pub fn encode(img: &DynamicImage, fmt: OutFmt, quality: u8) -> AppResult<Vec<u8>> {
     match fmt {
         OutFmt::Jpeg | OutFmt::Keep => {
             // JPEG 没有透明通道。直接 to_rgb8() 会把完全透明的像素
@@ -286,7 +286,7 @@ fn shrink_until_fits(
 // FileOutcome / Progress / run_batch 已提取到 crate::batch，
 // 供图片、PDF、OCR 等所有支柱共用，前端因此只需要认一种结果结构。
 
-fn load(src: &Path) -> AppResult<DynamicImage> {
+pub fn load(src: &Path) -> AppResult<DynamicImage> {
     let bytes = std::fs::read(long_path(src))?;
     image::load_from_memory(&bytes).map_err(|e| {
         let ext = src
@@ -428,7 +428,7 @@ pub async fn thumbs(paths: Vec<String>) -> Vec<Thumb> {
     .unwrap_or_default()
 }
 
-fn write_out(src: &Path, fmt: OutFmt, data: &[u8]) -> AppResult<PathBuf> {
+pub fn write_out(src: &Path, fmt: OutFmt, data: &[u8]) -> AppResult<PathBuf> {
     let dir = output_dir_for(src)?;
     let dst = unique_path(&dir, &stem_of(src), fmt.ext());
     std::fs::write(long_path(&dst), data)?;

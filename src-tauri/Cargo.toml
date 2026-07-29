@@ -93,4 +93,11 @@ tauri-plugin-global-shortcut = "2.3.2"
 # 文件列表的缩略图以 data URI 送进界面。tauri 已经间接依赖它，
 # 直接声明不增加任何体积，也省得自己手写一遍 base64。
 base64 = "0.22"
+# 乱码修复：检测出原文是什么编码，再转成 UTF-8。
+# chardetng 是 Firefox 那套检测器的 Rust 移植，对 GBK/Big5 判得准。
+encoding_rs = "0.8"
+chardetng = "0.1"
+# 哈希校验。blake3 已经在了（重复文件比对用），这里补 sha256——
+# 网站给的校验值基本都是 SHA-256，只提供 blake3 等于用户没法核对。
+sha2 = "0.10"
 

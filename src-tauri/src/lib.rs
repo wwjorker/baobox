@@ -1,6 +1,7 @@
 ﻿pub mod batch;
 pub mod dedupe;
 pub mod err;
+pub mod image_edit;
 pub mod image_ops;
 pub mod ocr;
 pub mod paths;
@@ -10,6 +11,7 @@ pub mod pdf_render;
 pub mod redact;
 pub mod rename;
 pub mod screen_ocr;
+pub mod textfile;
 pub mod watermark;
 
 /// 截图取字的全局热键。
@@ -81,6 +83,13 @@ pub fn run() {
             image_ops::expand_inputs,
             paths::set_output_dir,
             batch::cancel_batch,
+            image_edit::img_grid,
+            image_edit::img_stitch,
+            image_edit::img_trim,
+            image_edit::img_frame,
+            image_edit::img_adjust,
+            textfile::text_fix_encoding,
+            textfile::file_hash,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

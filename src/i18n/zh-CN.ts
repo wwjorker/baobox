@@ -30,10 +30,10 @@ export default {
     file: "文件",
     recent: "最近",
     tools: "工具",
-    imageDesc: "压缩、转格式、缩放、抹隐私、加水印、打码。全部批量，原图一律不动。",
+    imageDesc: "压缩、转格式、缩放、抹隐私、打码，还有九宫格切图和长图拼接。全部批量，原图一律不动。",
     ocrDesc: "用 Windows 自带的识别引擎，离线且免费。截图取字按 Ctrl+Shift+S 随时唤起。",
     pdfDesc: "合并、拆分、压缩、转图片、加中文水印页码、解除限制。不需要 Docker。",
-    fileDesc: "按内容找出重复文件，批量改名可预览可撤销。删除一律走回收站。",
+    fileDesc: "按内容找重复、批量改名可撤销、GBK 乱码修复、哈希校验。删除一律走回收站。",
     readyCount: "{ready}/{total} 可用",
   },
 
@@ -59,6 +59,26 @@ export default {
       redact: {
         name: "打码遮挡",
         desc: "框选身份证号、手机号这类内容打码。像素是真被改写的，不是盖一层——原始内容无法还原。选区按比例记录，一组框能套用到整批同版式的截图上。",
+      },
+      grid: {
+        name: "九宫格切图",
+        desc: "一张图切成九块发朋友圈。默认先按中心裁成正方形，不然拼起来是歪的。编号按发图顺序排好。",
+      },
+      stitch: {
+        name: "长图拼接",
+        desc: "多张截图接成一张长图，聊天记录、长网页都用得上。宽度自动对齐到最窄那张，只缩不放。顺序就是下面的列表顺序。",
+      },
+      trim: {
+        name: "自动去白边",
+        desc: "裁掉四周的纯色边。以角落像素为基准，深色背景同样能裁。容差调大一点能对付有噪点的扫描件。",
+      },
+      frame: {
+        name: "圆角与边框",
+        desc: "加圆角、加外边框。圆角靠透明通道实现，所以一律输出 PNG——存成 JPEG 圆角会被填成实色，等于白做。",
+      },
+      adjust: {
+        name: "调色",
+        desc: "亮度、对比度、饱和度、转灰度。四个放在一个工具里，因为实际用起来几乎总是一起调的，拆开等于逼你跑四遍、编码四次。",
       },
     },
     ocr: {
@@ -93,6 +113,14 @@ export default {
     file: {
       rename: { name: "批量重命名", desc: "规则可叠加，实时预览，改错了能一键撤销。" },
       dedupe: { name: "重复文件查找", desc: "按内容精确比对，不只看文件名。" },
+      encoding: {
+        name: "乱码修复",
+        desc: "GBK 存的 txt / csv 在 UTF-8 环境里打开全是「锟斤拷」。自动认出原编码再转成 UTF-8，用的是 Firefox 那套检测器，对 GBK 和 Big5 判得准。",
+      },
+      hash: {
+        name: "文件哈希校验",
+        desc: "算出 SHA-256 或 BLAKE3，跟下载页给的那串字对一下，确认文件没被掉包也没传坏。大文件分块读，不吃内存。",
+      },
     },
   },
 
@@ -177,6 +205,15 @@ export default {
     decryptNotNeeded: "本来就没有密码，已原样输出",
     pdfRecompressed: "重压 {n} 张内嵌图片",
     pdfStructOnly: "没有可重压的图片，仅优化了文档结构",
+    grid: "{rows}×{cols} · 切成 {n} 块",
+    stitched: "{n} 张已接成一张",
+    trimmed: "{w}×{h} → {nw}×{nh}",
+    framed: "圆角 {px} 像素",
+    adjusted: "亮度 {b} · 对比 {c} · 饱和 {s}",
+    grayscaled: "已转灰度",
+    encFixed: "原编码 {from} → UTF-8",
+    encAlready: "本来就是 UTF-8，未改动内容",
+    hashAlgo: "{algo}",
   },
 
   opt: {
@@ -199,6 +236,23 @@ export default {
     rotate: "旋转角度",
     pageNumbers: "加页码",
     tile: "平铺整张",
+    gridRows: "行数",
+    gridCols: "列数",
+    squareFirst: "先裁成正方形",
+    stitchDir: "拼接方向",
+    stitchVertical: "竖着接",
+    stitchHorizontal: "横着接",
+    stitchGap: "图之间留白",
+    trimTolerance: "颜色容差",
+    cornerRadius: "圆角",
+    borderWidth: "边框宽度",
+    borderDark: "深色边框",
+    brightness: "亮度",
+    contrast: "对比度",
+    saturation: "饱和度",
+    grayscale: "转灰度",
+    addBom: "加 BOM 头",
+    hashAlgo: "算法",
   },
 
   redact: {
@@ -299,6 +353,11 @@ export default {
     // 错误必须说人话并给出下一步，不能直接抛技术堆栈（风险 19）
     decode: "无法读取这个文件，它可能已损坏或不是真正的 {format} 文件。",
     outDirMissing: "指定的输出文件夹不存在了，已恢复成默认位置。",
+    tooSmallToSplit: "这张图太小了，切不出这么多块。",
+    needAtLeastTwo: "拼接至少需要两张图。",
+    stitchTooLong: "接出来会有 {got} 像素长，超过 {max} 的上限。分几批接吧。",
+    trimAllUniform: "整张图都是同一个颜色，没有边可裁。",
+    emptyFile: "这是个空文件。",
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",

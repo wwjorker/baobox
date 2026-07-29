@@ -139,6 +139,28 @@ impl FileOutcome {
         }
     }
 
+    /// 产物是一串文字，不落文件。
+    ///
+    /// 哈希校验这类工具要的就是能直接跟网站给的那串字对上，
+    /// 而不是又下载一个文件再打开。out_path 留空，界面上
+    /// 「打开输出文件夹」自然就不出现。
+    pub fn text_only(src: &Path, text: String, note: Option<Note>) -> Self {
+        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        Self {
+            path: src.to_string_lossy().to_string(),
+            name: file_name_of(src),
+            ok: true,
+            in_bytes,
+            // 没有产物文件，报和输入一样大，免得被算成「省下了全部体积」
+            out_bytes: in_bytes,
+            out_path: None,
+            note,
+            skipped: false,
+            text: Some(text),
+            error: None,
+        }
+    }
+
     /// 没轮到就被取消了。
     ///
     /// 不是失败——用户自己喊停的，画成红叉是在报一个不存在的错。
