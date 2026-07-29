@@ -1,4 +1,4 @@
-use crate::batch::{run_batch, FileOutcome};
+use crate::batch::{run_batch, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{long_path, output_dir_for, stem_of, unique_path};
 use ab_glyph::{Font, FontRef, PxScale, ScaleFont};
@@ -172,7 +172,7 @@ fn img_watermark_blocking(
     let a = (opacity as f32 / 100.0).clamp(0.03, 1.0);
     run_batch(&app, paths, move |src| {
         let (dst, n) = watermark_file(src, &text, a, tile)?;
-        Ok((dst, Some(format!("绘制 {n} 处"))))
+        Ok((dst, Some(Note::new("note.watermarkDrawn").with("n", n))))
     })
 }
 

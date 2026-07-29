@@ -77,6 +77,9 @@ pub fn run() {
             watermark::img_watermark,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
+            image_ops::thumbs,
+            paths::set_output_dir,
+            batch::cancel_batch,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

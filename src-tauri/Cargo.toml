@@ -90,4 +90,7 @@ oxipng = { version = "9", default-features = false, features = ["parallel"] }
 regex = "1.13.1"
 ab_glyph = "0.2.32"
 tauri-plugin-global-shortcut = "2.3.2"
+# 文件列表的缩略图以 data URI 送进界面。tauri 已经间接依赖它，
+# 直接声明不增加任何体积，也省得自己手写一遍 base64。
+base64 = "0.22"
 

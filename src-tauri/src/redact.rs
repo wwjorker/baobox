@@ -1,4 +1,4 @@
-use crate::batch::{run_batch, FileOutcome};
+use crate::batch::{run_batch, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{long_path, output_dir_for, stem_of, unique_path};
 use image::GenericImageView;
@@ -136,7 +136,7 @@ fn img_redact_blocking(
     };
     run_batch(&app, paths, move |src| {
         let (dst, n) = redact_file(src, &regions, m)?;
-        Ok((dst, Some(format!("已抹除 {n} 处"))))
+        Ok((dst, Some(Note::new("note.redacted").with("n", n))))
     })
 }
 

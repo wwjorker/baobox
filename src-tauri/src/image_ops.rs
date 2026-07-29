@@ -1,4 +1,4 @@
-﻿use crate::batch::{run_batch, FileOutcome};
+use crate::batch::{run_batch, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
 use image::{DynamicImage, GenericImageView};
@@ -326,6 +326,51 @@ pub fn stat_files(paths: Vec<String>) -> Vec<FileMeta> {
         .collect()
 }
 
+/// 一张缩略图，直接嵌成 data URI 给界面用。
+///
+/// 走命令通道而不是开 Tauri 的 asset 协议：开协议要放宽 CSP、给出可读目录范围，
+/// 为了几个 64 像素的方块扩这么大一片攻击面不值得。而且在 Rust 这边缩放，
+/// 界面拿到的是几 KB，不是原图那 4.6 MB。
+#[derive(Serialize)]
+pub struct Thumb {
+    pub path: String,
+    /// 生成失败（非图片、损坏、无权限）就是 None，界面回落到空位图
+    pub data_url: Option<String>,
+}
+
+const THUMB_PX: u32 = 96;
+
+fn thumb_of(src: &Path) -> Option<String> {
+    let img = image::open(long_path(src)).ok()?;
+    let small = img.thumbnail(THUMB_PX, THUMB_PX).to_rgb8();
+    let mut buf = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 70)
+        .encode(&small, small.width(), small.height(), image::ExtendedColorType::Rgb8)
+        .ok()?;
+    use base64::Engine;
+    Some(format!(
+        "data:image/jpeg;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&buf)
+    ))
+}
+
+/// 缩略图是「看得见自己选了什么」的关键 —— 一列文件名分不清哪张是哪张。
+/// 前端异步调用，慢也不挡主流程。
+#[tauri::command]
+pub async fn thumbs(paths: Vec<String>) -> Vec<Thumb> {
+    tauri::async_runtime::spawn_blocking(move || {
+        paths
+            .into_iter()
+            .map(|p| Thumb {
+                data_url: thumb_of(Path::new(&p)),
+                path: p,
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
+}
+
 fn write_out(src: &Path, fmt: OutFmt, data: &[u8]) -> AppResult<PathBuf> {
     let dir = output_dir_for(src)?;
     let dst = unique_path(&dir, &stem_of(src), fmt.ext());
@@ -360,10 +405,10 @@ fn img_compress_target_blocking(
                     .unwrap_or_else(|| "jpg".into());
                 let dst = unique_path(&dir, &stem_of(src), &ext);
                 std::fs::copy(long_path(src), long_path(&dst))?;
-                return Ok((dst, Some("原图已达标且更小，按原样保留".into())));
+                return Ok((dst, Some(Note::new("note.alreadyUnderTarget"))));
             }
             let dst = write_out(src, fmt, &r.bytes)?;
-            return Ok((dst, Some(format!("质量 {}", r.quality))));
+            return Ok((dst, Some(Note::new("note.quality").with("q", r.quality))));
         }
 
         let img = load(src)?;
@@ -371,15 +416,15 @@ fn img_compress_target_blocking(
         let lost_alpha = fmt == OutFmt::Jpeg && has_transparency(&img);
         let r = compress_to_target(&img, fmt, target)?;
         let dst = write_out(src, fmt, &r.bytes)?;
-        let mut note = format!("质量 {}", r.quality);
+        let mut note = Note::new("note.quality").with("q", r.quality);
         if lost_alpha {
-            note.push_str(" · 透明区已合成到白底（JPEG 不支持透明）");
+            note = note.plus("note.alphaFlattened");
         }
         if r.scale_pct < 100 {
-            note.push_str(&format!(" · 缩放 {}%", r.scale_pct));
+            note = note.plus("note.scaled").with("pct", r.scale_pct);
         }
         if r.overshoot {
-            note.push_str(" · 未能达标");
+            note = note.plus("note.overshoot");
         }
         Ok((dst, Some(note)))
     })
@@ -395,7 +440,7 @@ fn img_compress_blocking(
         let fmt = OutFmt::Keep.resolve(src);
         let data = encode(&img, fmt, quality)?;
         let dst = write_out(src, fmt, &data)?;
-        Ok((dst, Some(format!("质量 {quality}"))))
+        Ok((dst, Some(Note::new("note.quality").with("q", quality))))
     })
 }
 
@@ -407,9 +452,9 @@ fn img_convert_blocking(app: AppHandle, paths: Vec<String>, format: String) -> V
         let lost_alpha = f == OutFmt::Jpeg && has_transparency(&img);
         let data = encode(&img, f, 90)?;
         let dst = write_out(src, f, &data)?;
-        let mut note = f.ext().to_uppercase();
+        let mut note = Note::new("note.converted").with("fmt", f.ext().to_uppercase());
         if lost_alpha {
-            note.push_str(" · 透明区已合成到白底（JPEG 不支持透明）");
+            note = note.plus("note.alphaFlattened");
         }
         Ok((dst, Some(note)))
     })
@@ -424,14 +469,26 @@ fn img_resize_blocking(app: AppHandle, paths: Vec<String>, long_edge: u32) -> Ve
             let fmt = OutFmt::Keep.resolve(src);
             let data = encode(&img, fmt, 92)?;
             let dst = write_out(src, fmt, &data)?;
-            return Ok((dst, Some(format!("{w}×{h} 未超限，原样输出"))));
+            return Ok((
+                dst,
+                Some(Note::new("note.resizeSkipped").with("w", w).with("h", h)),
+            ));
         }
         let scaled = img.resize(long_edge, long_edge, image::imageops::FilterType::Lanczos3);
         let (nw, nh) = scaled.dimensions();
         let fmt = OutFmt::Keep.resolve(src);
         let data = encode(&scaled, fmt, 92)?;
         let dst = write_out(src, fmt, &data)?;
-        Ok((dst, Some(format!("{w}×{h} → {nw}×{nh}"))))
+        Ok((
+            dst,
+            Some(
+                Note::new("note.resized")
+                    .with("w", w)
+                    .with("h", h)
+                    .with("nw", nw)
+                    .with("nh", nh),
+            ),
+        ))
     })
 }
 
@@ -474,9 +531,9 @@ fn img_strip_exif_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcom
         std::fs::write(long_path(&dst), &out)?;
 
         let note = if had_gps {
-            "已移除 GPS 定位与设备信息".to_string()
+            Note::new("note.exifGps")
         } else {
-            "已移除设备信息（本图无 GPS）".to_string()
+            Note::new("note.exifNoGps")
         };
         Ok((dst, Some(note)))
     })

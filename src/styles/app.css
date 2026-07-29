@@ -557,7 +557,8 @@
 }
 .row {
   display: grid;
-  grid-template-columns: 26px 1fr auto auto auto;
+  /* 末列是排序与移除 */
+  grid-template-columns: 30px 1fr auto auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 7px 11px;
@@ -570,12 +571,30 @@
 .row.is-waiting {
   opacity: 0.45;
 }
+/* 缩略图。打磨稿第 6 条：压缩工具最有说服力的就是看见图片本身。
+   非图片（PDF 等）退回显示扩展名，总好过一个什么都不说的空方块。 */
 .row__thumb {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  flex: none;
   border: var(--b3);
   background: var(--bg-soft);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.row__thumb img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  display: block;
+}
+.row__ext {
+  font-family: var(--f-mono);
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--dim);
+  letter-spacing: -0.02em;
 }
 .row__name {
   font-family: var(--f-mono);
@@ -583,6 +602,52 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+/* 顺序影响结果的工具（合并、图片转 PDF）才显示序号 */
+.row__seq {
+  flex: none;
+  min-width: 17px;
+  padding: 1px 4px;
+  text-align: center;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 9.5px;
+  font-weight: 800;
+}
+.row__tools {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+.rowbtn {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: var(--b3);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--dim);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.rowbtn:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+.rowbtn.is-remove:hover:not(:disabled) {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
+}
+.rowbtn:disabled {
+  opacity: 0.28;
+  cursor: default;
 }
 .row__from {
   font-family: var(--f-mono);
@@ -671,11 +736,74 @@
   padding-top: 3px;
 }
 
+/* 「再添加」和「清空」并排 */
+.listbar {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.listbar .addbar {
+  flex: 1;
+}
+.listbar .chip {
+  flex: none;
+}
+
+/* 输出位置。之前只有一句「结果输出到 Baobox_output」的说明，
+   看着像在通知你规则，其实用户想问的是「能不能换个地方」。 */
+.outbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border: var(--b2);
+  background: var(--paper);
+  font-size: 11.5px;
+  min-width: 0;
+}
+.outbar__label {
+  flex: none;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  font-weight: 800;
+}
+.outbar__path {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
 /* ------------------------------------------------- 统一处理流：执行 */
 .runbar {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+/* 停止按钮：够显眼能找到，但别抢主按钮的位置 */
+.chip.is-stop {
+  background: var(--bad);
+  color: #fff;
+  border-color: var(--ink);
+  font-weight: 700;
+}
+.chip.is-stop:disabled {
+  opacity: 0.55;
+}
+/* 跑完之后真正想点的是「打开输出文件夹」，给它一点重量 */
+.chip.is-primary {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+  font-weight: 700;
 }
 .go {
   flex: 1;

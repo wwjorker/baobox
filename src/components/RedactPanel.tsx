@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
+import { noteText, type Note } from "../notes";
 
 /**
  * 图片打码
@@ -30,7 +31,7 @@ interface Outcome {
   name: string;
   ok: boolean;
   out_path: string | null;
-  note: string | null;
+  note: Note | null;
 }
 
 export function RedactPanel() {
@@ -208,7 +209,7 @@ export function RedactPanel() {
               <span className="row__name">{r.name}</span>
               <span className="row__from" />
               <span className="row__to">{r.ok ? "✓" : t("run.failed")}</span>
-              <span className="pill">{r.note ?? ""}</span>
+              <span className="pill">{noteText(r.note, t) ?? ""}</span>
             </div>
           ))}
         </div>

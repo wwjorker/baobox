@@ -153,7 +153,7 @@ pub struct OcrOutcome {
     pub in_bytes: u64,
     pub out_bytes: u64,
     pub out_path: Option<String>,
-    pub note: Option<String>,
+    pub note: Option<crate::batch::Note>,
     /// 识别出的文字。OCR 的产物是文本而不是文件，界面要能直接看和复制。
     pub text: Option<String>,
     pub error: Option<AppError>,
@@ -219,10 +219,36 @@ pub async fn ocr_image(app: AppHandle, paths: Vec<String>, lang: Option<String>)
 fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec<OcrOutcome> {
     let total = paths.len();
     let mut results = Vec::with_capacity(total);
+    // OCR 没走 run_batch（产物是文本不是文件），取消检查得自己做一遍
+    crate::batch::reset_cancel();
 
     for (index, p) in paths.iter().enumerate() {
         let src = PathBuf::from(p);
         let in_bytes = std::fs::metadata(long_path(&src)).map(|m| m.len()).unwrap_or(0);
+
+        if crate::batch::cancelled() {
+            let o = OcrOutcome {
+                path: p.clone(),
+                name: file_name_of(&src),
+                ok: false,
+                in_bytes,
+                out_bytes: 0,
+                out_path: None,
+                note: Some(crate::batch::Note::new("run.cancelledSkip")),
+                text: None,
+                error: None,
+            };
+            let _ = app.emit(
+                "baobox://progress",
+                OcrProgress {
+                    index,
+                    total,
+                    outcome: o.clone(),
+                },
+            );
+            results.push(o);
+            continue;
+        }
 
         let outcome = match recognize(&src, lang.as_deref()) {
             Ok(text) => {
@@ -243,12 +269,15 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
                     name: file_name_of(&src),
                     ok: true,
                     in_bytes,
-                    out_bytes: text.len() as u64,
+                    // OCR 不是压缩：产物是文本，原图还在。早先这里报文本字节数，
+                    // 界面拿 in-out 一减，就把「31 KB 的图识别出 200 字节文字」
+                    // 算成省下 30 KB 记进了首页那个累计数字。
+                    out_bytes: in_bytes,
                     out_path: written.as_ref().ok().map(|d| d.to_string_lossy().to_string()),
                     note: Some(if chars == 0 {
-                        "没有识别到文字".into()
+                        crate::batch::Note::new("note.ocrNone")
                     } else {
-                        format!("识别到 {chars} 个字符")
+                        crate::batch::Note::new("note.ocrChars").with("chars", chars)
                     }),
                     text: Some(text),
                     error: None,

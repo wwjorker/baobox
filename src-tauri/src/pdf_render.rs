@@ -1,4 +1,4 @@
-use crate::batch::{run_batch, FileOutcome};
+use crate::batch::{run_batch, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{long_path, output_dir_for, stem_of, unique_path};
 use std::path::Path;
@@ -102,7 +102,10 @@ fn pdf_to_image_blocking(app: AppHandle, paths: Vec<String>, dpi: u32) -> Vec<Fi
             std::fs::write(long_path(&dst), &png)?;
             last = dst;
         }
-        Ok((last, Some(format!("{total} 页 → {total} 张 PNG · {dpi} DPI"))))
+        Ok((
+            last,
+            Some(Note::new("note.pdfToImage").with("total", total).with("dpi", dpi)),
+        ))
     })
 }
 

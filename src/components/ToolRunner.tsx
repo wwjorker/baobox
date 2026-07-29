@@ -5,6 +5,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n, type TVars } from "../i18n";
 import { fmtSize } from "../useSaved";
+import { useOutDir } from "../useOutDir";
+import { noteText, type Note } from "../notes";
 import type { OptionDef, ToolDef } from "../tools/registry";
 
 /**
@@ -15,7 +17,7 @@ import type { OptionDef, ToolDef } from "../tools/registry";
  *
  * 三个状态都必须存在，缺一个就是设计稿式的自欺：
  *   · 空状态 —— 首次打开的第一印象
- *   · 处理中 —— 实时进度，逐个文件落地
+ *   · 处理中 —— 实时进度，逐个文件落地，可以随时喊停
  *   · 失败态 —— 真实使用一定会有损坏 / 加密 / 格式不支持的文件
  */
 
@@ -32,7 +34,7 @@ interface Outcome {
   in_bytes: number;
   out_bytes: number;
   out_path: string | null;
-  note: string | null;
+  note: Note | null;
   /** 仅文本类工具（OCR 等）会有 */
   text?: string | null;
   error: AppErr | null;
@@ -54,6 +56,11 @@ interface FileMeta {
   exists: boolean;
 }
 
+interface Thumb {
+  path: string;
+  data_url: string | null;
+}
+
 export function ToolRunner({
   tool,
   initialPaths,
@@ -70,13 +77,16 @@ export function ToolRunner({
   const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
   const [running, setRunning] = useState(false);
+  const [stopping, setStopping] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
   const [workingOn, setWorkingOn] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
   const [values, setValues] = useState<Record<string, string | number | boolean>>(() =>
     Object.fromEntries(tool.options.map((o) => [o.id, o.def])),
   );
   const outputDirRef = useRef<string | null>(null);
+  const { outDir, pickOutDir, resetOutDir } = useOutDir();
 
   const notReady = tool.status !== "ready";
   const isText = tool.output === "text";
@@ -112,9 +122,10 @@ export function ToolRunner({
 
       // 先问后端要真实体积，别让列表显示一排「0 B」
       const metas = await invoke<FileMeta[]>("stat_files", { paths: allowed });
+      let fresh: Row[] = [];
       setRows((prev) => {
         const seen = new Set(prev.map((r) => r.path));
-        const fresh = metas
+        fresh = metas
           .filter((m) => !seen.has(m.path))
           .map((m) => ({
             path: m.path,
@@ -124,6 +135,24 @@ export function ToolRunner({
           }));
         return [...prev, ...fresh];
       });
+
+      // 缩略图后台补，慢也不挡着用户先看到列表
+      const wantThumbs = fresh.filter((r) => !r.missing).map((r) => r.path);
+      if (wantThumbs.length) {
+        invoke<Thumb[]>("thumbs", { paths: wantThumbs })
+          .then((list) =>
+            setThumbs((prev) => {
+              const next = { ...prev };
+              list.forEach((x) => {
+                if (x.data_url) next[x.path] = x.data_url;
+              });
+              return next;
+            }),
+          )
+          .catch(() => {
+            /* 缩略图失败无所谓，位图留空即可 */
+          });
+      }
     },
     [tool.accepts],
   );
@@ -157,10 +186,27 @@ export function ToolRunner({
     else if (typeof sel === "string") addPaths([sel]);
   };
 
+  /** 拖错了、或者临时不想处理某一个——列表里就该能拿掉 */
+  const removeRow = (path: string) => {
+    setRows((prev) => prev.filter((r) => r.path !== path));
+  };
+
+  /** 合并、图片转 PDF 的页序就是这里的顺序 */
+  const moveRow = (index: number, delta: number) => {
+    setRows((prev) => {
+      const to = index + delta;
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[to]] = [next[to], next[index]];
+      return next;
+    });
+  };
+
   const run = async () => {
     if (running || rows.length === 0) return;
     const startedAt = performance.now();
     setRunning(true);
+    setStopping(false);
     setDoneCount(0);
     setRows((prev) => prev.map((r) => ({ ...r, outcome: undefined })));
 
@@ -177,7 +223,7 @@ export function ToolRunner({
         setRows((prev) =>
           prev.map((r) => (r.path === payload.outcome.path ? { ...r, outcome: payload.outcome } : r)),
         );
-        setDoneCount(payload.index + 1);
+        setDoneCount((n) => n + 1);
       },
     );
 
@@ -187,16 +233,26 @@ export function ToolRunner({
       const byPath = new Map(results.map((o) => [o.path, o]));
       setRows((prev) => prev.map((r) => ({ ...r, outcome: byPath.get(r.path) ?? r.outcome })));
       outputDirRef.current = results.find((r) => r.out_path)?.out_path ?? null;
-      onSaved(
-        results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0),
-      );
+      // 只有产物真是原件等价替换的工具才计入「已省下」。
+      // OCR、合并、加水印这些算进去，首页那个数字就是编的。
+      if (tool.savesSpace) {
+        onSaved(
+          results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0),
+        );
+      }
     } finally {
       un();
       unWorking();
       setWorkingOn(null);
       setRunning(false);
+      setStopping(false);
       onDone?.(performance.now() - startedAt);
     }
+  };
+
+  const stop = async () => {
+    setStopping(true);
+    await invoke("cancel_batch").catch(() => {});
   };
 
   const summary = useMemo(() => {
@@ -204,18 +260,23 @@ export function ToolRunner({
     if (done.length === 0) return null;
     const ok = done.filter((r) => r.outcome!.ok).length;
     const fail = done.length - ok;
+    // 不省空间的工具就别报「共省下」——合并三份 PDF 省下 0 B 是句废话
+    if (!tool.savesSpace) {
+      const vars: TVars = { ok, fail };
+      return fail > 0 ? t("run.summaryPlain", vars) : t("run.summaryPlainClean", vars);
+    }
     const saved = done.reduce(
       (n, r) => n + Math.max(0, r.outcome!.in_bytes - r.outcome!.out_bytes),
       0,
     );
     const vars: TVars = { ok, fail, saved: fmtSize(saved) };
     return fail > 0 ? t("run.summary", vars) : t("run.summaryClean", vars);
-  }, [rows, t]);
+  }, [rows, t, tool.savesSpace]);
 
   const set = (id: string, v: string | number | boolean) =>
     setValues((prev) => ({ ...prev, [id]: v }));
 
-  const pct = rows.length ? Math.round((doneCount / rows.length) * 100) : 0;
+  const pct = rows.length ? Math.min(100, Math.round((doneCount / rows.length) * 100)) : 0;
 
   return (
     <>
@@ -266,13 +327,23 @@ export function ToolRunner({
         </div>
       ) : (
         <>
-          <button className="addbar" onClick={pick}>
-            <span className="addbar__plus">＋</span>
-            {t("run.addMore", {
-              count: rows.length,
-              size: fmtSize(rows.reduce((n, r) => n + (r.outcome?.in_bytes ?? r.bytes), 0)),
-            })}
-          </button>
+          <div className="listbar">
+            <button className="addbar" onClick={pick}>
+              <span className="addbar__plus">＋</span>
+              {t("run.addMore", {
+                count: rows.length,
+                size: fmtSize(rows.reduce((n, r) => n + (r.outcome?.in_bytes ?? r.bytes), 0)),
+              })}
+            </button>
+            <button className="chip" disabled={running} onClick={() => setRows([])}>
+              {t("run.clearAll")}
+            </button>
+          </div>
+
+          {/* 说明文案里承诺了「排好序」，那就得给得出排序的手段 */}
+          {tool.ordered && rows.length > 1 && (
+            <p className="lede">{t("run.orderHint")}</p>
+          )}
 
           {tool.options.length > 0 && (
             <div className="optbar">
@@ -289,35 +360,87 @@ export function ToolRunner({
           )}
 
           <div className="filelist">
-            {rows.map((r) => {
+            {rows.map((r, i) => {
               const o = r.outcome;
               const state = r.missing ? "failed" : !o ? "waiting" : o.ok ? "done" : "failed";
+              // 只有「产物替换原件」的工具才谈得上压缩率，
+              // 合并出来的文件比任何一个输入都大是理所当然的
               const cut =
-                o && o.ok && o.in_bytes > 0
+                tool.savesSpace && o && o.ok && o.in_bytes > 0
                   ? Math.round((1 - o.out_bytes / o.in_bytes) * 1000) / 10
                   : null;
+              const ext = r.name.split(".").pop()?.toUpperCase() ?? "?";
+              const note = noteText(o?.note, t);
               return (
                 <div key={r.path} className={`row is-${state}`}>
-                  <span className="row__thumb" />
+                  <span className="row__thumb">
+                    {thumbs[r.path] ? (
+                      <img src={thumbs[r.path]} alt="" />
+                    ) : (
+                      <span className="row__ext">{ext}</span>
+                    )}
+                  </span>
                   <span className="row__name" title={r.path}>
+                    {tool.ordered && <span className="row__seq">{i + 1}</span>}
                     {r.name}
                   </span>
                   <span className="row__from">{fmtSize(o?.in_bytes ?? r.bytes)}</span>
                   <span className="row__to">
-                    {r.missing || (o && !o.ok) ? t("run.failed") : o ? fmtSize(o.out_bytes) : "—"}
+                    {r.missing || (o && !o.ok)
+                      ? t("run.failed")
+                      : o && tool.savesSpace
+                        ? fmtSize(o.out_bytes)
+                        : o
+                          ? "✓"
+                          : "—"}
                   </span>
                   <span className="pill">
                     {r.missing
                       ? "×"
                       : !o
                         ? t("run.waiting")
-                        : o.ok
-                          ? cut !== null && cut > 0
-                            ? `−${cut.toFixed(1)}%`
-                            : t("run.grew")
-                          : "×"}
+                        : !o.ok
+                          ? "×"
+                          : cut !== null
+                            ? cut > 0
+                              ? `−${cut.toFixed(1)}%`
+                              : t("run.grew")
+                            : t("run.ok")}
                   </span>
-                  {o?.note && <span className="row__note">{o.note}</span>}
+
+                  {/* 排序与移除。跑起来之后禁掉——列表变了后端还按旧的在跑 */}
+                  <span className="row__tools">
+                    {tool.ordered && (
+                      <>
+                        <button
+                          className="rowbtn"
+                          disabled={running || i === 0}
+                          title={t("run.moveUp")}
+                          onClick={() => moveRow(i, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className="rowbtn"
+                          disabled={running || i === rows.length - 1}
+                          title={t("run.moveDown")}
+                          onClick={() => moveRow(i, 1)}
+                        >
+                          ↓
+                        </button>
+                      </>
+                    )}
+                    <button
+                      className="rowbtn is-remove"
+                      disabled={running}
+                      title={t("run.remove")}
+                      onClick={() => removeRow(r.path)}
+                    >
+                      ×
+                    </button>
+                  </span>
+
+                  {note && <span className="row__note">{note}</span>}
                   {isText && o?.ok && (
                     <div className="textout">
                       <pre className="textout__body">
@@ -344,7 +467,22 @@ export function ToolRunner({
             })}
           </div>
 
-          <p className="lede">{t("run.outputTo", { dir: "Baobox_output" })}</p>
+          {/* 输出位置。默认跟着源文件走最省事，但「我就要放到 D 盘那个文件夹」
+              是完全正当的要求，不该只能接受我们的安排。 */}
+          <div className="outbar">
+            <span className="outbar__label">{t("run.outTo")}</span>
+            <span className="outbar__path" title={outDir ?? undefined}>
+              {outDir ?? t("run.outDefault", { dir: "Baobox_output" })}
+            </span>
+            <button className="chip" disabled={running} onClick={pickOutDir}>
+              {t("run.outPick")}
+            </button>
+            {outDir && (
+              <button className="chip" disabled={running} onClick={resetOutDir}>
+                {t("run.outReset")}
+              </button>
+            )}
+          </div>
 
           <div className="runbar">
             <button className="go" onClick={run} disabled={notReady || running}>
@@ -356,6 +494,15 @@ export function ToolRunner({
                   ? t("run.done")
                   : t("run.start")}
             </button>
+
+            {/* 一批两百张图跑到一半发现参数选错了，只能干等着是说不过去的。
+                已经处理完的产物保留，没轮到的标记为已取消。 */}
+            {running && (
+              <button className="chip is-stop" disabled={stopping} onClick={stop}>
+                {stopping ? t("run.stopping") : t("run.stop")}
+              </button>
+            )}
+
             {isText && summary && !running && (
               <button
                 className="chip"
@@ -374,7 +521,7 @@ export function ToolRunner({
             )}
             {summary && !running && outputDirRef.current && (
               <button
-                className="chip"
+                className="chip is-primary"
                 onClick={() => revealItemInDir(outputDirRef.current!)}
               >
                 {t("run.openOutput")}

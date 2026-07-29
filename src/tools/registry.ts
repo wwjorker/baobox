@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 工具注册表
  *
  * 每个工具用一份声明式描述定义清楚：属于哪根支柱、收什么文件、
@@ -59,6 +59,26 @@ export interface ToolDef {
    * 界面上把话说清楚，比给一句通用的「敬请期待」诚实得多。
    */
   notReadyReason?: string;
+  /**
+   * N→1：多个输入合出一份产物。
+   *
+   * 这类工具不能按「每个文件各自变大变小」来汇报——合并三份 PDF 得到一份更大的
+   * 文件是理所当然的，把它显示成「体积没有变小」是在报一个不存在的问题。
+   */
+  aggregate?: boolean;
+  /**
+   * 输入顺序影响结果。合并和图片转 PDF 的页序就是文件顺序，
+   * 说明文案里承诺了「排好序」，界面就必须给得出排序的手段。
+   */
+  ordered?: boolean;
+  /**
+   * 产物是原件的等价替换，因此体积差是真的省下来的。
+   *
+   * 只有压缩、转格式、缩放这类成立。OCR 产出的是文本、原图还在，
+   * 加水印产出的是另一张图——把这些也算进「已省下」，
+   * 首页那个数字就成了假的。它是最好的传播素材，更不能虚报。
+   */
+  savesSpace?: boolean;
 }
 
 const IMG = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"];
@@ -73,6 +93,7 @@ export const TOOLS: ToolDef[] = [
     command: "img_compress_target",
     status: "ready",
     highlight: true,
+    savesSpace: true,
     options: [
       { kind: "number", id: "targetKb", label: "opt.targetSize", min: 50, max: 5000, step: 50, def: 500, unit: "KB" },
       {
@@ -94,6 +115,7 @@ export const TOOLS: ToolDef[] = [
     accepts: IMG,
     command: "img_compress",
     status: "ready",
+    savesSpace: true,
     options: [
       { kind: "number", id: "quality", label: "opt.quality", min: 1, max: 100, step: 1, def: 82 },
     ],
@@ -104,6 +126,7 @@ export const TOOLS: ToolDef[] = [
     accepts: IMG,
     command: "img_convert",
     status: "ready",
+    savesSpace: true,
     options: [
       {
         kind: "choice",
@@ -124,6 +147,7 @@ export const TOOLS: ToolDef[] = [
     accepts: IMG,
     command: "img_resize",
     status: "ready",
+    savesSpace: true,
     options: [
       { kind: "number", id: "longEdge", label: "opt.longEdge", min: 100, max: 8000, step: 100, def: 1920, unit: "px" },
     ],
@@ -135,6 +159,7 @@ export const TOOLS: ToolDef[] = [
     command: "img_strip_exif",
     status: "ready",
     highlight: true,
+    savesSpace: true,
     options: [{ kind: "toggle", id: "keepOrientation", label: "opt.keepOrientation", def: true }],
   },
   {
@@ -193,7 +218,7 @@ export const TOOLS: ToolDef[] = [
   { id: "ocr.screen", pillar: "ocr", accepts: [], command: "ocr_region", status: "ready", highlight: true, options: [] },
 
   // ------------------------------------------------------------ PDF（8）
-  { id: "pdf.merge", pillar: "pdf", accepts: PDF, command: "pdf_merge", status: "ready", options: [] },
+  { id: "pdf.merge", pillar: "pdf", accepts: PDF, command: "pdf_merge", status: "ready", aggregate: true, ordered: true, options: [] },
   { id: "pdf.split", pillar: "pdf", accepts: PDF, command: "pdf_split", status: "ready", options: [] },
   {
     id: "pdf.rotate",
@@ -221,6 +246,7 @@ export const TOOLS: ToolDef[] = [
     accepts: PDF,
     command: "pdf_compress",
     status: "ready",
+    savesSpace: true,
     options: [{ kind: "number", id: "quality", label: "opt.quality", min: 1, max: 100, step: 1, def: 75 }],
   },
   {
@@ -231,7 +257,7 @@ export const TOOLS: ToolDef[] = [
     status: "ready",
     options: [{ kind: "number", id: "dpi", label: "opt.dpi", min: 72, max: 600, step: 24, def: 150, unit: "DPI" }],
   },
-  { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "ready", options: [] },
+  { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "ready", aggregate: true, ordered: true, options: [] },
   {
     id: "pdf.to-text",
     pillar: "pdf",

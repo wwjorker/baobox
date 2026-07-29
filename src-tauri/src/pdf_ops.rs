@@ -1,4 +1,4 @@
-use crate::batch::{run_batch, FileOutcome};
+use crate::batch::{run_batch, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{long_path, output_dir_for, stem_of, unique_path};
 use lopdf::{Document, Object, ObjectId};
@@ -52,11 +52,11 @@ fn pdf_decrypt_blocking(app: AppHandle, paths: Vec<String>, password: String) ->
         let (dst, was) = decrypt_file(src, &password)?;
         Ok((
             dst,
-            Some(if was {
-                "已移除打开密码".into()
+            Some(Note::new(if was {
+                "note.decrypted"
             } else {
-                "本来就没有密码，已原样输出".to_string()
-            }),
+                "note.decryptNotNeeded"
+            })),
         ))
     })
 }
@@ -184,13 +184,21 @@ fn pdf_merge_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
         Ok(dst)
     })();
 
-    // 合并的产物是一份文件，把它挂在第一个输入上汇报
+    // 产物只有一份，挂在第一个输入上；其余每一个也要各自发一条「已并入」。
+    // 早先只发第一条，界面上后面几行就永远停在「等待」，看着像处理到一半卡死了。
     let o = match result {
-        Ok(dst) => FileOutcome::ok(&first, dst, Some(format!("{} 份 · 共 {count} 页", docs.len()))),
+        Ok(dst) => FileOutcome::ok(
+            &first,
+            dst,
+            Some(Note::new("note.merged").with("files", docs.len()).with("pages", count)),
+        ),
         Err(e) => FileOutcome::fail(&first, e),
     };
-    crate::batch::emit(&app, total - 1, total, &o);
-    outcomes.insert(0, o);
+    let rest: Vec<PathBuf> = docs.iter().skip(1).map(|(p, _)| p.clone()).collect();
+    for (i, o) in crate::batch::fold_outcomes(o, &rest).into_iter().enumerate() {
+        crate::batch::emit(&app, i, total, &o);
+        outcomes.insert(i, o);
+    }
     outcomes
 }
 
@@ -223,7 +231,7 @@ pub fn split_file(src: &Path) -> AppResult<(PathBuf, usize)> {
 fn pdf_split_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     run_batch(&app, paths, |src| {
         let (last, total) = split_file(src)?;
-        Ok((last, Some(format!("{total} 页 → {total} 份"))))
+        Ok((last, Some(Note::new("note.pdfSplit").with("total", total))))
     })
 }
 
@@ -255,7 +263,10 @@ pub fn rotate_file(src: &Path, degrees: i64) -> AppResult<(PathBuf, usize)> {
 fn pdf_rotate_blocking(app: AppHandle, paths: Vec<String>, degrees: i64) -> Vec<FileOutcome> {
     run_batch(&app, paths, move |src| {
         let (dst, n) = rotate_file(src, degrees)?;
-        Ok((dst, Some(format!("{n} 页 · 旋转 {degrees}°"))))
+        Ok((
+            dst,
+            Some(Note::new("note.pdfRotate").with("n", n).with("deg", degrees)),
+        ))
     })
 }
 
@@ -314,12 +325,17 @@ fn pdf_from_image_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcom
         Ok((dst, total))
     })();
 
+    // 同合并：产物一份挂第一个，其余每张各发一条，别让它们停在「等待」
     let o = match result {
-        Ok((dst, n)) => FileOutcome::ok(&first, dst, Some(format!("{n} 张 → {n} 页"))),
+        Ok((dst, n)) => FileOutcome::ok(&first, dst, Some(Note::new("note.imgToPdf").with("n", n))),
         Err(e) => FileOutcome::fail(&first, e),
     };
-    crate::batch::emit(&app, 0, 1, &o);
-    vec![o]
+    let rest: Vec<PathBuf> = paths.iter().skip(1).map(PathBuf::from).collect();
+    let outcomes = crate::batch::fold_outcomes(o, &rest);
+    for (i, o) in outcomes.iter().enumerate() {
+        crate::batch::emit(&app, i, total, o);
+    }
+    outcomes
 }
 
 // ============================================================ 压缩
@@ -452,9 +468,9 @@ fn pdf_compress_blocking(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec
         Ok((
             dst,
             Some(if touched == 0 {
-                "没有可重压的图片，仅优化了文档结构".into()
+                Note::new("note.pdfStructOnly")
             } else {
-                format!("重压 {touched} 张内嵌图片")
+                Note::new("note.pdfRecompressed").with("n", touched)
             }),
         ))
     })
@@ -576,7 +592,7 @@ fn pdf_stamp_blocking(
     };
     run_batch(&app, paths, move |src| {
         let (dst, pages, _) = stamp_file(src, &opt)?;
-        Ok((dst, Some(format!("{pages} 页已加标记"))))
+        Ok((dst, Some(Note::new("note.stamped").with("pages", pages))))
     })
 }
 
@@ -604,7 +620,8 @@ fn pdf_to_text_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> 
         let outcome = match text_file(&src) {
             Ok((dst, text)) => {
                 let chars = text.chars().count();
-                let mut o = FileOutcome::ok(&src, dst, Some(format!("提取 {chars} 个字符")));
+                let mut o =
+                    FileOutcome::ok(&src, dst, Some(Note::new("note.extracted").with("chars", chars)));
                 o.text = Some(text);
                 o
             }
