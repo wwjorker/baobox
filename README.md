@@ -52,7 +52,7 @@ so this costs nothing and adds no bytes.
 |---|---|
 | Extract text from image | ✅ 77 ms per image |
 | Batch OCR to one transcript | ✅ |
-| Screen-capture OCR | ✅ Grabs the desktop, drag to pick a region (no global hotkey yet) |
+| Screen-capture OCR | ✅ `Ctrl+Shift+S` from any application — raises the window, grabs the desktop, drag to pick a region |
 
 ### PDF
 

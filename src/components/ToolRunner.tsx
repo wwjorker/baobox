@@ -56,10 +56,16 @@ interface FileMeta {
 
 export function ToolRunner({
   tool,
+  initialPaths,
   onSaved,
+  onDone,
 }: {
   tool: ToolDef;
+  /** 在首页拖进来、还没送进任何工具的文件 */
+  initialPaths?: string[] | null;
   onSaved: (bytes: number) => void;
+  /** 跑完一批后回调，参数是本次耗时——由调用方决定要不要出声 */
+  onDone?: (elapsedMs: number) => void;
 }) {
   const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
@@ -122,6 +128,12 @@ export function ToolRunner({
     [tool.accepts],
   );
 
+  // 首页接住的文件在这里落地。addPaths 会按 accepts 过滤、按路径去重，
+  // 所以拖了一堆混合文件进来、或者退回去换个工具再点，都不会出乱子。
+  useEffect(() => {
+    if (initialPaths?.length) addPaths(initialPaths);
+  }, [initialPaths, addPaths]);
+
   // 系统级拖放。浏览器的 drop 事件在 Tauri 里拿不到真实路径，必须用这个。
   useEffect(() => {
     const un = getCurrentWebview().onDragDropEvent((e) => {
@@ -147,6 +159,7 @@ export function ToolRunner({
 
   const run = async () => {
     if (running || rows.length === 0) return;
+    const startedAt = performance.now();
     setRunning(true);
     setDoneCount(0);
     setRows((prev) => prev.map((r) => ({ ...r, outcome: undefined })));
@@ -182,6 +195,7 @@ export function ToolRunner({
       unWorking();
       setWorkingOn(null);
       setRunning(false);
+      onDone?.(performance.now() - startedAt);
     }
   };
 
@@ -205,11 +219,6 @@ export function ToolRunner({
 
   return (
     <>
-      <div className="crumb">
-        {t(`pillar.${tool.pillar}` as never)} <span>›</span>{" "}
-        <b>{t(`tool.${tool.id}.name` as never)}</b>
-      </div>
-
       <h1 className="h1">
         {t(`tool.${tool.id}.name` as never)}
         {tool.highlight && <span className="badge is-highlight">{t("status.highlight")}</span>}

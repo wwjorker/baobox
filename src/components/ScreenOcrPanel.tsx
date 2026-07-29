@@ -150,9 +150,6 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
 
   return (
     <>
-      <div className="crumb">
-        {t("pillar.ocr")} <span>›</span> <b>{t("tool.ocr.screen.name")}</b>
-      </div>
       <h1 className="h1">
         {t("tool.ocr.screen.name")}
         <span className="badge is-highlight">{t("status.highlight")}</span>

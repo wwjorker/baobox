@@ -39,6 +39,23 @@
 .titlebar__spacer {
   flex: 1;
   align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+/* 标题栏中间显示当前工具。压得比品牌名轻，别跟左上角抢。 */
+.titlebar__where {
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.82);
+  padding: 3px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .titlebar__search {
   display: flex;
@@ -162,6 +179,10 @@
   font-size: 10.5px;
   color: var(--dim);
 }
+/* 有工具还没到齐时显示 9/10，颜色也提示一下 */
+.nav__count.is-partial {
+  color: var(--red);
+}
 .nav[aria-current="true"] {
   background: var(--paper);
   border-color: var(--ink);
@@ -185,10 +206,47 @@
   font-size: 11.5px;
   color: var(--dim);
   display: flex;
+  align-items: center;
   gap: 6px;
 }
 .crumb b {
   color: var(--ink);
+}
+/* 面包屑要能真的点回去 —— 长得像导航却不能导航是最烦人的那种界面 */
+.crumb__back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 2px 5px 2px 3px;
+  margin-left: -3px;
+  font-size: 11.5px;
+  color: var(--dim);
+  transition: color 0.14s, background 0.14s;
+}
+.crumb__back:hover {
+  color: var(--ink);
+  background: var(--paper-hover);
+}
+.crumb__arrow {
+  font-family: var(--f-display);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--red);
+}
+.crumb__esc {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border: var(--b3);
+  color: var(--dim);
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+.crumb:hover .crumb__esc {
+  opacity: 1;
 }
 .h1 {
   font-family: var(--f-display);
@@ -239,6 +297,9 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  /* 一句话和两句话的卡片高度差一截，整片网格就参差不齐。
+     锁定描述占两行，一行的补白、超过的截断。 */
+  min-height: 92px;
   transition: transform 0.14s var(--spring), box-shadow 0.14s;
 }
 .card:hover {
@@ -258,6 +319,100 @@
   font-size: 11.5px;
   color: var(--dim);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* -------------------------------------------- 首页拖拽区（拖进来就懂）
+   压成贴底的一条，不做大方框 —— 它是个常驻提示，不是主操作，
+   撑成一整块反而把首页的重心带偏了。 */
+.homedrop {
+  margin-top: auto;
+  padding: 9px 14px;
+  border: 2px dashed rgba(20, 17, 9, 0.3);
+  background: rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  transition: transform 0.2s var(--spring), background 0.2s, border-color 0.2s;
+}
+.homedrop__mark {
+  font-family: var(--f-display);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--red);
+  flex: none;
+}
+.homedrop__title {
+  font-family: var(--f-display);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  flex: none;
+}
+.homedrop__hint {
+  font-size: 11.5px;
+  color: var(--dim);
+  line-height: 1.45;
+  min-width: 0;
+}
+/* 拖到窗口上方时整块活过来，告诉用户「松手就行」 */
+.homedrop.is-over {
+  border-color: var(--red);
+  border-style: solid;
+  background: var(--paper);
+  transform: scale(1.012);
+  box-shadow: var(--sh);
+}
+.main.is-dragover .grid {
+  opacity: 0.4;
+  transition: opacity 0.18s;
+}
+
+/* 拖进来之后「已接住」的提示条 */
+.caught {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 11px;
+  background: var(--ink);
+  color: var(--bg);
+  animation: caught-in 0.26s var(--spring);
+}
+.caught__mark {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  background: var(--green);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+.caught__text {
+  font-size: 12px;
+  font-weight: 650;
+}
+.caught__clear {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 10.5px;
+  padding: 2px 8px;
+  transition: color 0.14s, border-color 0.14s;
+}
+.caught__clear:hover {
+  color: #fff;
+  border-color: #fff;
+}
+@keyframes caught-in {
+  from {
+    transform: translateY(-6px);
+    opacity: 0;
+  }
 }
 
 /* ------------------------------------------------- 统一处理流：拖拽区 */
@@ -634,9 +789,53 @@
   height: 6px;
   border-radius: 50%;
   background: var(--green);
+  flex: none;
 }
 .statusbar__push {
   margin-left: auto;
+}
+
+/* 「全程离线」是这个产品最核心的一句承诺，之前却是全屏最灰的字，
+   而右边的「已省下」是黑底标牌 —— 权重完全反了。给它实体和边框，
+   并且可以点开看凭什么这么说；空口宣称和能验证是两回事。 */
+.offlineplate {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  background: var(--paper);
+  border: var(--b2);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink);
+  transition: transform 0.14s var(--spring), box-shadow 0.14s;
+}
+.offlineplate:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.offlineplate__more {
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--dim);
+}
+.statusbar__toggle {
+  background: transparent;
+  border: none;
+  padding: 3px 6px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  transition: color 0.14s;
+}
+.statusbar__toggle:hover {
+  color: var(--ink);
 }
 /* 「已省下 X」是最好的传播素材，做成标牌而不是角落灰字 */
 .savedplate {
@@ -1008,6 +1207,15 @@
   font-family: var(--f-mono);
   font-size: 10px;
   opacity: 0.75;
+}
+/* 两个标签并排时后一个不再抢 auto，只留间距 */
+.palette__tag + .palette__tag {
+  margin-left: 9px;
+}
+.palette__tag.is-wip {
+  padding: 1px 5px;
+  border: 1px solid currentColor;
+  opacity: 0.9;
 }
 .palette__none {
   padding: 22px 15px;

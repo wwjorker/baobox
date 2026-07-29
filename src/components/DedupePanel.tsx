@@ -47,7 +47,15 @@ const PHASE_KEY: Record<string, string> = {
   done: "dedupe.phaseDone",
 };
 
-export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
+export function DedupePanel({
+  onSaved,
+  onDone,
+}: {
+  onSaved: (bytes: number) => void;
+  /** 扫描结束时回调本次耗时。全盘扫描是整个软件里最长的操作，
+      也最可能被切走去干别的，提示音在这里最有意义。 */
+  onDone?: (elapsedMs: number) => void;
+}) {
   const { t } = useI18n();
   const [roots, setRoots] = useState<string[]>([]);
   const [report, setReport] = useState<DupReport | null>(null);
@@ -75,6 +83,7 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
 
   const scan = async () => {
     if (roots.length === 0 || scanning) return;
+    const startedAt = performance.now();
     setScanning(true);
     setReport(null);
     setDoomed(new Set());
@@ -88,6 +97,7 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
     } finally {
       setScanning(false);
       setPhase(null);
+      onDone?.(performance.now() - startedAt);
     }
   };
 
@@ -138,9 +148,6 @@ export function DedupePanel({ onSaved }: { onSaved: (bytes: number) => void }) {
 
   return (
     <>
-      <div className="crumb">
-        {t("pillar.file")} <span>›</span> <b>{t("tool.file.dedupe.name")}</b>
-      </div>
       <h1 className="h1">{t("tool.file.dedupe.name")}</h1>
       <p className="lede">{t("tool.file.dedupe.desc")}</p>
 

@@ -84,7 +84,9 @@ export function CommandPalette({
           onKeyDown={onKeyDown}
         />
         <div className="palette__list">
-          {hits.length === 0 && <div className="palette__none">—</div>}
+          {hits.length === 0 && (
+            <div className="palette__none">{t("app.noMatch", { q: query.trim() })}</div>
+          )}
           {hits.map(({ tool, name }, i) => (
             <button
               key={tool.id}
@@ -96,6 +98,12 @@ export function CommandPalette({
               }}
             >
               {name}
+              {/* 还没实现的工具在这里就标出来，别让人点进去才发现 */}
+              {tool.status !== "ready" && (
+                <span className="palette__tag is-wip">
+                  {t(`status.${tool.status}` as never)}
+                </span>
+              )}
               <span className="palette__tag">{t(`pillar.${tool.pillar}` as never)}</span>
             </button>
           ))}

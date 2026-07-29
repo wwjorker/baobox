@@ -125,9 +125,6 @@ export function RedactPanel() {
 
   return (
     <>
-      <div className="crumb">
-        {t("pillar.image")} <span>›</span> <b>{t("tool.image.redact.name")}</b>
-      </div>
       <h1 className="h1">
         {t("tool.image.redact.name")}
         <span className="badge is-highlight">{t("status.highlight")}</span>

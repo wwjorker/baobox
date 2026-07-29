@@ -15,18 +15,28 @@ export function Sidebar({ active, recent, onPillar, onTool }: Props) {
     <nav className="sidebar">
       <div className="sidebar__label">{t("pillar.tools")}</div>
 
-      {PILLARS.map((p) => (
-        <button
-          key={p}
-          className="nav"
-          aria-current={p === active}
-          onClick={() => onPillar(p)}
-        >
-          <span className="nav__glyph">{PILLAR_GLYPH[p]}</span>
-          {t(`pillar.${p}` as never)}
-          <span className="nav__count">{toolsOf(p).length}</span>
-        </button>
-      ))}
+      {PILLARS.map((p) => {
+        const all = toolsOf(p);
+        const ready = all.filter((x) => x.status === "ready").length;
+        // 计数原先直接用总数，PDF 显示 10 但其中一个是「暂未实现」，
+        // 点进去才发现，等于数字在虚报。没到齐就把两个数都摆出来。
+        const full = ready === all.length;
+        return (
+          <button
+            key={p}
+            className="nav"
+            aria-current={p === active}
+            title={full ? undefined : t("pillar.readyCount", { ready, total: all.length })}
+            onClick={() => onPillar(p)}
+          >
+            <span className="nav__glyph">{PILLAR_GLYPH[p]}</span>
+            {t(`pillar.${p}` as never)}
+            <span className={`nav__count${full ? "" : " is-partial"}`}>
+              {full ? all.length : `${ready}/${all.length}`}
+            </span>
+          </button>
+        );
+      })}
 
       {recent.length > 0 && (
         <>

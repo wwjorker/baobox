@@ -5,7 +5,13 @@ const enUS: typeof zhCN = {
   app: {
     name: "Baobox",
     tagline: "Local file workbench",
-    offline: "Fully offline · no network requests made",
+    offline: "Fully offline",
+    offlineWhy: "No HTTP client is compiled into this binary and the CSP permits no remote origins. Pull the network cable and everything still works.",
+    offlineMore: "How can you tell?",
+    gotIt: "Got it",
+    noMatch: "Nothing matches “{q}”",
+    soundOn: "Done chime: on",
+    soundOff: "Done chime: off",
     saved: "Saved",
     search: "Search {count} tools",
     minimize: "Minimize",
@@ -20,6 +26,11 @@ const enUS: typeof zhCN = {
     file: "Files",
     recent: "Recent",
     tools: "Tools",
+    imageDesc: "Compress, convert, resize, strip metadata, watermark, redact. All batch, originals untouched.",
+    ocrDesc: "Uses the recognition engine Windows already ships — offline and free. Ctrl+Shift+S grabs the screen from anywhere.",
+    pdfDesc: "Merge, split, compress, render to image, stamp, unlock. No Docker required.",
+    fileDesc: "Find duplicates by content, rename in bulk with preview and undo. Deletions go to the Recycle Bin.",
+    readyCount: "{ready}/{total} working",
   },
 
   tool: {
@@ -88,6 +99,11 @@ const enUS: typeof zhCN = {
   run: {
     dropHere: "Drop files here",
     dropHint: "or click to browse · no count or size limits",
+    homeDropTitle: "Drop files anywhere here",
+    homeDropHint: "PDFs flip to the PDF tools, images to the image tools — then whichever tool you pick gets the files.",
+    homeDropUnknown: "Don't know what to do with {ext} yet. Images and PDFs are supported.",
+    dropped: "Got {count} files — pick a tool and they go straight in",
+    droppedClear: "Never mind",
     ready: "{count} files ready · {size} total",
     addMore: "{count} ready · {size} · click to add more",
     start: "Start",

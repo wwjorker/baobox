@@ -110,9 +110,6 @@ export function RenamePanel() {
 
   return (
     <>
-      <div className="crumb">
-        {t("pillar.file")} <span>›</span> <b>{t("tool.file.rename.name")}</b>
-      </div>
       <h1 className="h1">{t("tool.file.rename.name")}</h1>
       <p className="lede">{t("tool.file.rename.desc")}</p>
 

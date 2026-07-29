@@ -3,7 +3,13 @@ export default {
   app: {
     name: "百宝箱",
     tagline: "本地文件工作台",
-    offline: "全程离线 · 未发出任何网络请求",
+    offline: "全程离线",
+    offlineWhy: "这个程序里没有编入任何 HTTP 客户端，CSP 也不允许任何远程来源。不信可以拔掉网线试试——所有功能照常。",
+    offlineMore: "为什么可以确定？",
+    gotIt: "知道了",
+    noMatch: "没有匹配「{q}」的工具",
+    soundOn: "完成提示音：开",
+    soundOff: "完成提示音：关",
     saved: "已省下",
     search: "搜索 {count} 个工具",
     minimize: "最小化",
@@ -18,6 +24,11 @@ export default {
     file: "文件",
     recent: "最近",
     tools: "工具",
+    imageDesc: "压缩、转格式、缩放、抹隐私、加水印、打码。全部批量，原图一律不动。",
+    ocrDesc: "用 Windows 自带的识别引擎，离线且免费。截图取字按 Ctrl+Shift+S 随时唤起。",
+    pdfDesc: "合并、拆分、压缩、转图片、加中文水印页码、解除限制。不需要 Docker。",
+    fileDesc: "按内容找出重复文件，批量改名可预览可撤销。删除一律走回收站。",
+    readyCount: "{ready}/{total} 可用",
   },
 
   // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），
@@ -82,6 +93,11 @@ export default {
   run: {
     dropHere: "把文件拖到这里",
     dropHint: "或点击选择 · 不限数量、不限体积",
+    homeDropTitle: "文件直接拖进来",
+    homeDropHint: "拖 PDF 自动翻到 PDF、拖图片自动翻到图片，之后点哪个工具文件就跟到哪个。",
+    homeDropUnknown: "不认识这类文件：{ext}。目前支持图片和 PDF。",
+    dropped: "收下了 {count} 个文件，挑一个工具就直接开工",
+    droppedClear: "不用了",
     ready: "{count} 个文件已就绪 · 共 {size}",
     addMore: "{count} 个已就绪 · {size} · 点此再添加",
     start: "开始处理",
