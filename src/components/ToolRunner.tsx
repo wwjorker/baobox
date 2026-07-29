@@ -62,6 +62,17 @@ interface Thumb {
   data_url: string | null;
 }
 
+/** 最多给多少个文件做缩略图。够铺满几屏，再多也没人看 */
+const THUMB_BUDGET = 120;
+
+/**
+ * 列表最多画多少行。
+ *
+ * 处理的是全部文件，只是不往 DOM 里塞那么多节点——五千行每行带一张图，
+ * WebView 会直接爬不动，而用户其实一眼也只看得到十几行。
+ */
+const ROW_BUDGET = 300;
+
 export function ToolRunner({
   tool,
   initialPaths,
@@ -82,7 +93,12 @@ export function ToolRunner({
   const [doneCount, setDoneCount] = useState(0);
   const [workingOn, setWorkingOn] = useState<string | null>(null);
   const [over, setOver] = useState(false);
+  const [expanding, setExpanding] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  // addPaths 是 useCallback，不能把 thumbs 放进依赖里（一变就重建，
+  // 顺带把拖放监听也重挂一遍），用 ref 读当前值
+  const thumbsRef = useRef(thumbs);
+  thumbsRef.current = thumbs;
   const [values, setValues] = useState<Record<string, string | number | boolean>>(() =>
     Object.fromEntries(tool.options.map((o) => [o.id, o.def])),
   );
@@ -118,10 +134,17 @@ export function ToolRunner({
     async (paths: string[]) => {
       // 拖进来的可能是文件夹。「一次压一整个文件夹」是说明里写着的，
       // 之前扩展名过滤直接把目录筛掉，拖进来什么都不会发生。
-      const allowed = await invoke<string[]>("expand_inputs", {
-        paths,
-        accepts: tool.accepts,
-      });
+      // 大目录遍历要时间，先把状态摆出来，别让界面看着毫无反应。
+      setExpanding(true);
+      let allowed: string[];
+      try {
+        allowed = await invoke<string[]>("expand_inputs", {
+          paths,
+          accepts: tool.accepts,
+        });
+      } finally {
+        setExpanding(false);
+      }
       if (allowed.length === 0) return;
 
       // 先问后端要真实体积，别让列表显示一排「0 B」
@@ -140,8 +163,15 @@ export function ToolRunner({
         return [...prev, ...fresh];
       });
 
-      // 缩略图后台补，慢也不挡着用户先看到列表
-      const wantThumbs = fresh.filter((r) => !r.missing).map((r) => r.path);
+      // 缩略图只给看得见的那些做。
+      //
+      // 拖一个装着五千张照片的文件夹进来，逐张解码要十几分钟 CPU，
+      // 而列表里同时也就露出十来行——剩下的图从来没人看见就先被解了一遍。
+      // 支持拖文件夹之后才有这条路，一次手选五千个文件没人会干。
+      const wantThumbs = fresh
+        .filter((r) => !r.missing)
+        .slice(0, Math.max(0, THUMB_BUDGET - Object.keys(thumbsRef.current).length))
+        .map((r) => r.path);
       if (wantThumbs.length) {
         invoke<Thumb[]>("thumbs", { paths: wantThumbs })
           .then((list) =>
@@ -322,6 +352,13 @@ export function ToolRunner({
         </div>
       )}
 
+      {expanding && (
+        <div className="notice">
+          <span className="notice__mark">…</span>
+          <span>{t("run.expanding")}</span>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="empty">
           {/* 这是全软件最常看到的空状态，用品牌母题而不是一个通用的加号 */}
@@ -380,7 +417,7 @@ export function ToolRunner({
           )}
 
           <div className="filelist">
-            {rows.map((r, i) => {
+            {rows.slice(0, ROW_BUDGET).map((r, i) => {
               const o = r.outcome;
               const state = r.missing ? "failed" : !o ? "waiting" : o.ok ? "done" : "failed";
               // 只有「产物替换原件」的工具才谈得上压缩率，
@@ -485,6 +522,16 @@ export function ToolRunner({
                 </div>
               );
             })}
+
+            {/* 全部都会处理，只是不往 DOM 里塞那么多行 */}
+            {rows.length > ROW_BUDGET && (
+              <div className="row is-more">
+                {t("run.moreRows", {
+                  shown: ROW_BUDGET,
+                  rest: rows.length - ROW_BUDGET,
+                })}
+              </div>
+            )}
           </div>
 
           {/* 输出位置。默认跟着源文件走最省事，但「我就要放到 D 盘那个文件夹」

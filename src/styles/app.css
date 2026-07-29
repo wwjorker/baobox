@@ -576,6 +576,15 @@
 .row.is-waiting {
   opacity: 0.45;
 }
+/* 「还有 N 个没列出来」那一行，不走网格 */
+.row.is-more {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  background: var(--bg-soft);
+  text-align: center;
+}
 /* 缩略图。打磨稿第 6 条：压缩工具最有说服力的就是看见图片本身。
    非图片（PDF 等）退回显示扩展名，总好过一个什么都不说的空方块。 */
 .row__thumb {

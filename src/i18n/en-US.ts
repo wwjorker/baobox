@@ -106,6 +106,8 @@ const enUS: typeof zhCN = {
     dropHere: "Drop files here",
     dropHint: "or click to browse · whole folders work too · no count or size limits",
     pickFolder: "Pick a folder",
+    expanding: "Expanding folder…",
+    moreRows: "Showing the first {shown}; {rest} more are not listed — all of them still get processed.",
     homeDropTitle: "Drop files anywhere here",
     homeDropHint: "PDFs flip to the PDF tools, images to the image tools — then whichever tool you pick gets the files.",
     homeDropUnknown: "Don't know what to do with {ext} yet. Images and PDFs are supported.",

@@ -100,6 +100,8 @@ export default {
     dropHere: "把文件拖到这里",
     dropHint: "或点击选择 · 整个文件夹也行 · 不限数量、不限体积",
     pickFolder: "选个文件夹",
+    expanding: "正在展开文件夹…",
+    moreRows: "只列出前 {shown} 个，还有 {rest} 个不显示——处理时一个都不会漏。",
     homeDropTitle: "文件直接拖进来",
     homeDropHint: "拖 PDF 自动翻到 PDF、拖图片自动翻到图片，之后点哪个工具文件就跟到哪个。",
     homeDropUnknown: "不认识这类文件：{ext}。目前支持图片和 PDF。",
