@@ -220,7 +220,11 @@ export function ToolRunner({
       {notReady && (
         <div className="notice">
           <span className="notice__mark">!</span>
-          <span>{t("status.plannedHint")}</span>
+          <span>
+            {tool.notReadyReason
+              ? t(tool.notReadyReason as never)
+              : t("status.plannedHint")}
+          </span>
         </div>
       )}
 

@@ -54,7 +54,14 @@ export default {
       "to-image": { name: "PDF 转图片", desc: "导出为 PNG 或 JPG，可选 DPI。" },
       "from-image": { name: "图片转 PDF", desc: "多张图片合成一份 PDF，页面尺寸自动跟随图片。" },
       "to-text": { name: "PDF 提取文字", desc: "把本身带文本层的 PDF 转成纯文本。扫描件请用 OCR 那边。" },
-      encrypt: { name: "加密 / 解密", desc: "设置打开密码，或移除已知密码。" },
+      decrypt: {
+        name: "移除 PDF 密码",
+        desc: "填入你知道的密码，导出一份无密码的副本，之后就能正常编辑打印。需要正确密码，不做破解。",
+      },
+      encrypt: {
+        name: "设置 PDF 密码",
+        desc: "给 PDF 加上打开密码。暂未实现——见下方说明。",
+      },
       stamp: { name: "页码与水印", desc: "添加页码、文字水印或图片水印。" },
     },
     file: {
@@ -116,6 +123,8 @@ export default {
     planned: "尚未实现",
     plannedHint: "这个工具还没做出来。当前版本处于骨架阶段，功能会陆续补上。",
     highlight: "特色",
+    encryptWhy:
+      "这个功能被刻意推迟了。lopdf 只支持解密不支持加密，而自己实现 PDF 加密一旦做错，会给你一份自称受保护、实则形同虚设的文件——那比明说不支持更危险。等找到经过验证的实现再上。",
   },
 
   result: {
@@ -129,12 +138,13 @@ export default {
   err: {
     // 错误必须说人话并给出下一步，不能直接抛技术堆栈（风险 19）
     decode: "无法读取这个文件，它可能已损坏或不是真正的 {format} 文件。",
-    encrypted: "这份 PDF 有密码保护。请先用「加密 / 解密」工具移除密码。",
+    encrypted: "这份 PDF 有密码保护。请先用「移除 PDF 密码」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
     notFound: "找不到这个文件，它可能已被移动或删除。",
     pdfNoPages: "这份 PDF 里没有任何页面，可能已损坏。",
+    pdfWrongPassword: "密码不对，无法解锁这份 PDF。请确认后重试。",
     ocrNoLanguage:
       "系统里没有可用的 OCR 语言包。到「设置 → 时间和语言 → 语言和区域」里给你的语言添加「光学字符识别」功能后重试。",
     unknown: "处理失败：{detail}",

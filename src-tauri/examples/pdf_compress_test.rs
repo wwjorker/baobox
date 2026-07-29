@@ -5,7 +5,19 @@
 
 use baobox_lib::pdf_ops::compress_file;
 use lopdf::{Document, Object};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+
+/// 把样本复制到临时目录再处理。
+///
+/// 工具本身会把结果写到源文件旁的 Baobox_output/，这是对的产品行为；
+/// 但测试若直接对着用户的真实文档跑，就会在人家的文件夹里留下一堆产物
+/// ——包括解密后的私人文件，甚至落进云同步目录。样本一律先隔离。
+fn stage(src: &Path, sandbox: &Path) -> Option<PathBuf> {
+    std::fs::create_dir_all(sandbox).ok()?;
+    let dst = sandbox.join(src.file_name()?);
+    std::fs::copy(src, &dst).ok()?;
+    Some(dst)
+}
 
 fn probe(p: &std::path::Path) -> Option<(usize, usize)> {
     let doc = Document::load(p).ok()?;
@@ -56,6 +68,9 @@ fn main() {
     let (mut ok, mut broken, mut grew) = (0, 0, 0);
     let (mut total_in, mut total_out) = (0u64, 0u64);
 
+    let sandbox = std::env::temp_dir().join("baobox_pdf_compress_test");
+    let _ = std::fs::remove_dir_all(&sandbox);
+
     for (p, pages, _images, size) in &samples {
         let name: String = p
             .file_name()
@@ -64,7 +79,11 @@ fn main() {
             .chars()
             .take(32)
             .collect();
-        match compress_file(p, quality) {
+        let Some(p) = stage(p, &sandbox) else {
+            println!("{name:<34} 无法复制到沙箱，跳过");
+            continue;
+        };
+        match compress_file(&p, quality) {
             Ok((dst, touched, _)) => {
                 let new_size = std::fs::metadata(&dst).map(|m| m.len()).unwrap_or(0);
                 // 关键一步：产物必须能重新打开，且页数一页不少

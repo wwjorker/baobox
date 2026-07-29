@@ -53,6 +53,12 @@ export interface ToolDef {
    * 用户要的是能直接看见和复制的内容，而不是一个待打开的文件。
    */
   output?: "file" | "text";
+  /**
+   * 未实现的具体原因（i18n 键）。
+   * 有些工具不是「还没排到」，而是有明确的技术或安全判断，
+   * 界面上把话说清楚，比给一句通用的「敬请期待」诚实得多。
+   */
+  notReadyReason?: string;
 }
 
 const IMG = ["jpg", "jpeg", "png", "webp", "bmp", "tif", "tiff"];
@@ -235,11 +241,20 @@ export const TOOLS: ToolDef[] = [
     options: [],
   },
   {
+    id: "pdf.decrypt",
+    pillar: "pdf",
+    accepts: PDF,
+    command: "pdf_decrypt",
+    status: "ready",
+    options: [{ kind: "text", id: "password", label: "opt.password", def: "" }],
+  },
+  {
     id: "pdf.encrypt",
     pillar: "pdf",
     accepts: PDF,
     command: "pdf_encrypt",
     status: "planned",
+    notReadyReason: "status.encryptWhy",
     options: [{ kind: "text", id: "password", label: "opt.password", def: "" }],
   },
   {

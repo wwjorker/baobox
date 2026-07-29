@@ -25,6 +25,42 @@ fn open(src: &Path) -> AppResult<Document> {
     Ok(doc)
 }
 
+/// 移除 PDF 的打开密码。
+///
+/// 要求用户提供正确密码——这是「我知道自己文件的密码，但它挡着我编辑」
+/// 这个常见需求，不是破解。密码错了就明确报错，不做任何猜测或穷举。
+pub fn decrypt_file(src: &Path, password: &str) -> AppResult<(PathBuf, bool)> {
+    let mut doc = Document::load(long_path(src)).map_err(|e| AppError::decode("PDF", e))?;
+    let was_encrypted = doc.is_encrypted();
+
+    if was_encrypted {
+        doc.decrypt(password)
+            .map_err(|e| AppError::new("err.pdfWrongPassword").detail(e))?;
+        // 解密后必须把加密字典从 trailer 里摘掉，否则产物仍标称自己是加密的，
+        // 阅读器会拿已经失效的密钥去解已经明文的内容，直接打不开。
+        doc.trailer.remove(b"Encrypt");
+    }
+
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 已解密", stem_of(src)), "pdf");
+    save(&mut doc, &dst)?;
+    Ok((dst, was_encrypted))
+}
+
+fn pdf_decrypt_blocking(app: AppHandle, paths: Vec<String>, password: String) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
+        let (dst, was) = decrypt_file(src, &password)?;
+        Ok((
+            dst,
+            Some(if was {
+                "已移除打开密码".into()
+            } else {
+                "本来就没有密码，已原样输出".to_string()
+            }),
+        ))
+    })
+}
+
 fn save(doc: &mut Document, dst: &Path) -> AppResult<()> {
     // 源文件若带增量更新，trailer 里会留下 /Prev 和 /XRefStm 指向原文件中的
     // 字节偏移。我们整份重写后这些偏移全部失效，产物写入时不报错，
@@ -486,6 +522,17 @@ pub async fn pdf_rotate(app: AppHandle, paths: Vec<String>, degrees: i64) -> Vec
 #[tauri::command]
 pub async fn pdf_from_image(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || pdf_from_image_blocking(app, paths))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn pdf_decrypt(
+    app: AppHandle,
+    paths: Vec<String>,
+    password: String,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_decrypt_blocking(app, paths, password))
         .await
         .unwrap_or_default()
 }

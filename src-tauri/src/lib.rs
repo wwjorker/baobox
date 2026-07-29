@@ -1,4 +1,4 @@
-pub mod batch;
+﻿pub mod batch;
 pub mod err;
 pub mod image_ops;
 pub mod ocr;
@@ -25,6 +25,7 @@ pub fn run() {
             pdf_ops::pdf_rotate,
             pdf_ops::pdf_from_image,
             pdf_ops::pdf_compress,
+            pdf_ops::pdf_decrypt,
             pdf_ops::pdf_to_text,
         ])
         .run(tauri::generate_context!())

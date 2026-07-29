@@ -60,7 +60,14 @@ const enUS: typeof zhCN = {
         name: "Extract PDF text",
         desc: "Pull plain text out of PDFs that already have a text layer. Use OCR for scans.",
       },
-      encrypt: { name: "Encrypt / decrypt", desc: "Set an open password, or remove one you know." },
+      decrypt: {
+        name: "Remove PDF password",
+        desc: "Enter the password you already know and get an unlocked copy you can edit and print. Requires the correct password — this is not a cracker.",
+      },
+      encrypt: {
+        name: "Set PDF password",
+        desc: "Add an open password to a PDF. Not built yet — see the note below.",
+      },
       stamp: { name: "Page numbers & watermark", desc: "Add page numbers, text or an image watermark." },
     },
     file: {
@@ -122,6 +129,8 @@ const enUS: typeof zhCN = {
     planned: "Not built yet",
     plannedHint: "This tool hasn't been built yet. The app is still at the skeleton stage — features are landing gradually.",
     highlight: "Highlight",
+    encryptWhy:
+      "Deliberately deferred. lopdf can decrypt but not encrypt, and a hand-rolled PDF encryption that gets it wrong hands you a file that claims to be protected while offering no real protection — worse than saying it isn't supported. Waiting on a vetted implementation.",
   },
 
   result: {
@@ -134,12 +143,13 @@ const enUS: typeof zhCN = {
 
   err: {
     decode: "Can't read this file — it may be damaged or not actually a {format} file.",
-    encrypted: "This PDF is password protected. Remove the password with the Encrypt / decrypt tool first.",
+    encrypted: "This PDF is password protected. Unlock it with the Remove PDF password tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",
     notFound: "Can't find this file — it may have been moved or deleted.",
     pdfNoPages: "This PDF has no pages — it may be damaged.",
+    pdfWrongPassword: "That password doesn't unlock this PDF. Check it and try again.",
     ocrNoLanguage:
       "No OCR language pack is installed. Add the Optical Character Recognition feature for your language under Settings → Time & language → Language & region, then try again.",
     unknown: "Failed: {detail}",
