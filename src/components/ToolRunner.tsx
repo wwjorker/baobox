@@ -95,10 +95,12 @@ export function ToolRunner({
   const [over, setOver] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
-  // addPaths 是 useCallback，不能把 thumbs 放进依赖里（一变就重建，
+  // addPaths 是 useCallback，不能把这两个放进依赖里（一变就重建，
   // 顺带把拖放监听也重挂一遍），用 ref 读当前值
   const thumbsRef = useRef(thumbs);
   thumbsRef.current = thumbs;
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
   const [values, setValues] = useState<Record<string, string | number | boolean>>(() =>
     Object.fromEntries(tool.options.map((o) => [o.id, o.def])),
   );
@@ -149,19 +151,23 @@ export function ToolRunner({
 
       // 先问后端要真实体积，别让列表显示一排「0 B」
       const metas = await invoke<FileMeta[]>("stat_files", { paths: allowed });
-      let fresh: Row[] = [];
-      setRows((prev) => {
-        const seen = new Set(prev.map((r) => r.path));
-        fresh = metas
-          .filter((m) => !seen.has(m.path))
-          .map((m) => ({
-            path: m.path,
-            name: m.name,
-            bytes: m.bytes,
-            missing: !m.exists,
-          }));
-        return [...prev, ...fresh];
-      });
+
+      // 去重要在更新函数外面算。
+      //
+      // 早先把它写在 setRows 的更新函数里再读出来，而 React 是在下一次渲染时
+      // 才调那个函数——读到的永远是空数组，于是缩略图一张都没请求过。
+      // 状态更新函数不是同步执行的，这里靠 ref 拿当前值。
+      const seen = new Set(rowsRef.current.map((r) => r.path));
+      const fresh: Row[] = metas
+        .filter((m) => !seen.has(m.path))
+        .map((m) => ({
+          path: m.path,
+          name: m.name,
+          bytes: m.bytes,
+          missing: !m.exists,
+        }));
+      if (fresh.length === 0) return;
+      setRows((prev) => [...prev, ...fresh]);
 
       // 缩略图只给看得见的那些做。
       //

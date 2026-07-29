@@ -171,6 +171,48 @@ fn main() {
     ));
     check("单个文件原样通过", direct.len() == 1, "1 个进 1 个出".into());
 
+    println!("\n======== 缩略图 ========");
+
+    // 造一张真图，别拿假字节糊弄
+    let real = tmp.join("真图.png");
+    image::RgbImage::from_fn(400, 300, |x, y| {
+        image::Rgb([(x % 256) as u8, (y % 256) as u8, 128])
+    })
+    .save(&real)
+    .unwrap();
+
+    let thumbs = tauri::async_runtime::block_on(baobox_lib::image_ops::thumbs(vec![
+        real.to_string_lossy().to_string(),
+        tmp.join("doc_1.pdf").to_string_lossy().to_string(),
+        tmp.join("根本不存在.jpg").to_string_lossy().to_string(),
+    ]));
+
+    check(
+        "每个输入都有回执",
+        thumbs.len() == 3,
+        format!("3 个输入 → {} 条", thumbs.len()),
+    );
+    let img = thumbs.iter().find(|t| t.path.ends_with("真图.png")).unwrap();
+    check(
+        "图片生成 data URI",
+        img.data_url.as_deref().is_some_and(|s| s.starts_with("data:image/jpeg;base64,")),
+        format!("{} 字节", img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)),
+    );
+    // 一张缩略图几 KB 就够，太大说明没缩放，几千个塞进界面会撑爆内存
+    check(
+        "缩略图足够小",
+        img.data_url.as_ref().map(|s| s.len()).unwrap_or(usize::MAX) < 8_000,
+        format!("{} 字节 < 8 KB", img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)),
+    );
+    check(
+        "非图片安静返回空",
+        thumbs
+            .iter()
+            .filter(|t| !t.path.ends_with("真图.png"))
+            .all(|t| t.data_url.is_none()),
+        "PDF 与不存在的文件都是 None，不报错".into(),
+    );
+
     let _ = std::fs::remove_dir_all(&tmp);
     println!("\n======== 通过 {pass} / 失败 {fail} ========");
     if fail > 0 {

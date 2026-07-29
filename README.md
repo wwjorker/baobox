@@ -38,7 +38,7 @@ into it.
 |---|---|
 | **Compress to a target size** | ✅ Binary-searches quality, falls back to downscaling. TinyPNG gives you quality presets; upload forms enforce bytes. |
 | **Strip EXIF privacy data** | ✅ Removes GPS and device metadata without re-encoding pixels |
-| Batch compress · Convert format · Batch resize | ✅ |
+| Batch compress · Convert format · Batch resize | ✅ Drop a whole folder; it recurses |
 | **Redact** | ✅ Overwrites pixels rather than covering them |
 | Watermark | ✅ Chinese included, tiled or single |
 
@@ -97,6 +97,22 @@ re-opened and page-counted; none broken, none larger.
 **Duplicate detection** — 338190 files scanned in 8.9 minutes. Sampled pairs
 byte-compared: zero false matches.
 
+## Working with it
+
+Drop files anywhere in the window and it flips to the matching section —
+PDFs to the PDF tools, images to the image tools — then whichever tool you
+pick receives them. It identifies the type but does not guess the verb: one
+PDF could be a merge, a compress or a render, and jumping straight into one
+of those would be presumptuous.
+
+Folders work too, recursively. Rows can be removed or reordered where order
+matters. Long batches can be stopped, and finished work is kept. Output goes
+beside each source file by default; you can point it somewhere else and that
+choice is remembered.
+
+`Ctrl+K` searches all 22 tools. `Ctrl+Shift+S` grabs text off the screen from
+inside any other application.
+
 ## Rules the code actually follows
 
 1. **Originals are never modified.** Output goes to a new folder. Verified by
@@ -113,7 +129,21 @@ byte-compared: zero false matches.
    downloads it. A tool for reclaiming space has no business pulling gigabytes
    back down to compare them.
 5. **No network capability.** No HTTP is compiled in and the CSP permits no
-   remote origins. Pull the cable; everything still works.
+   remote origins. Pull the cable; everything still works. The app will print
+   its actual policy for you — click "Fully offline" in the status bar. That
+   text is injected from the build config rather than retyped into the
+   interface, so it cannot drift into being a comfortable lie.
+6. **A folder you choose is not ours to overwrite.** Our own output folder
+   replaces same-named files from a previous run, or repeating a batch would
+   leave three copies of everything. A folder you picked may already contain
+   your files, so names are suffixed there instead. Both directions are
+   covered by tests.
+7. **The savings counter does not flatter itself.** It counts only operations
+   whose output can replace the original — compression, conversion, resizing,
+   EXIF stripping, and duplicates actually deleted. OCR, merging and
+   watermarking produce something new rather than a replacement and are
+   excluded. Click the figure and it will tell you this itself, including that
+   your originals are still on disk.
 
 ## What is deliberately missing
 
@@ -131,8 +161,8 @@ registry settings.
 
 | | |
 |---|---|
-| Installer | **3.0 MB** |
-| Installed | 9.4 MB |
+| Installer | **3.2 MB** |
+| Installed | 9.8 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -197,6 +227,18 @@ iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文�
 - **中文该有的功能**。中文水印和页码需要把字体嵌进 PDF，而微软雅黑 19.7 MB
   且受版权保护不能分发——子集化后只占 13.5 KB。
 
+## 怎么用
+
+文件直接拖到窗口任意位置，会自动翻到对应的支柱——PDF 翻到 PDF，图片翻到图片——
+之后点哪个工具，文件就跟到哪个。它只认类型不替你猜动作：一份 PDF 你可能想合并、
+想压缩、想转图片，直接跳进其中一个是自作聪明。
+
+文件夹也能拖，会递归展开。行可以单独移除，顺序影响结果的工具可以上下调。
+批量跑到一半能停，已完成的产物保留。产物默认落在源文件旁边，也可以指定别的位置，
+选过就记住。
+
+`Ctrl+K` 搜全部 22 个工具。`Ctrl+Shift+S` 在任何别的软件里都能唤起截图取字。
+
 ## 代码真正遵守的规矩
 
 1. **绝不修改原文件**，结果一律写入新目录。每次验收都用 SHA-256 比对确认过。
@@ -207,7 +249,15 @@ iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文�
    标明归属、强制保留，且**不计入可回收数字**。
 4. **跳过云端占位文件。** 读 OneDrive / WPS 的占位符会触发下载。一个用来腾空间的
    工具，没道理把云端几个 GB 拉回本地来做比对。
-5. **零网络能力。** 拔掉网线，所有功能照常。
+5. **零网络能力。** 拔掉网线，所有功能照常。点左下角「全程离线」，它会把程序真实的
+   内容安全策略贴给你看——那段文字是构建时从配置里读出来的，不是在界面上手抄一份，
+   所以不会哪天改了配置忘了改文案，把一句空话留在那儿。
+6. **你自己指定的输出目录不归我们覆盖。** 我们自建的 `Baobox_output` 里同名产物会替换
+   （不然同一批跑三遍堆出三份），但你挑的文件夹里可能本来就有你的东西，一律加后缀。
+   两个方向都有测试卡着。
+7. **「已省下」不给自己脸上贴金。** 只算产物能直接替换原件的操作；OCR、合并、加水印
+   产出的是新东西不是替换，一概不计。点那个数字它会自己说清楚，包括「原图还在磁盘上，
+   这是换掉原件能省多少，不是已经空出来的量」。
 
 ## 已知的粗糙之处
 
