@@ -80,4 +80,5 @@ subsetter = "0.2"
 # 图片编解码主力
 image = "0.25"
 oxipng = { version = "9", default-features = false, features = ["parallel"] }
+regex = "1.13.1"
 

@@ -325,6 +325,7 @@ dependencies = [
  "mozjpeg",
  "oxipng",
  "rayon",
+ "regex",
  "serde",
  "serde_json",
  "subsetter",

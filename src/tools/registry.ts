@@ -272,7 +272,7 @@ export const TOOLS: ToolDef[] = [
   },
 
   // ----------------------------------------------------------- 文件（2）
-  { id: "file.rename", pillar: "file", accepts: [], command: "file_rename", status: "planned", options: [] },
+  { id: "file.rename", pillar: "file", accepts: [], command: "rename_apply", status: "ready", options: [] },
   { id: "file.dedupe", pillar: "file", accepts: [], command: "find_duplicates", status: "ready", options: [] },
 ];
 

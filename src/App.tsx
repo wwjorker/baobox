@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useI18n } from "./i18n";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
+import { RenamePanel } from "./components/RenamePanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import "./styles/app.css";
@@ -55,7 +56,9 @@ export default function App() {
         />
 
         <main className="main">
-          {tool?.id === "file.dedupe" ? (
+          {tool?.id === "file.rename" ? (
+            <RenamePanel />
+          ) : tool?.id === "file.dedupe" ? (
             // 「扫描 → 分组 → 勾选 → 删除」和通用的「拖入 → 配置 → 执行」
             // 是两种流程，硬套一个框架只会两边都别扭
             <DedupePanel onSaved={addSaved} />

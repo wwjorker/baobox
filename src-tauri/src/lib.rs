@@ -7,6 +7,7 @@ pub mod paths;
 pub mod pdf_font;
 pub mod pdf_ops;
 pub mod pdf_render;
+pub mod rename;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -34,6 +35,9 @@ pub fn run() {
             dedupe::find_duplicates,
             dedupe::delete_to_trash,
             dedupe::cancel_scan,
+            rename::rename_preview,
+            rename::rename_apply,
+            rename::rename_undo,
             dedupe::dir_exists,
             pdf_ops::pdf_to_text,
         ])
