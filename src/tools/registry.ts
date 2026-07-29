@@ -415,6 +415,26 @@ export const TOOLS: ToolDef[] = [
     options: [{ kind: "toggle", id: "addBom", label: "opt.addBom", def: true }],
   },
   {
+    id: "file.zhconv",
+    pillar: "file",
+    accepts: ["txt", "csv", "log", "md", "srt", "ass", "json", "xml", "html"],
+    command: "text_zhconv",
+    status: "ready",
+    highlight: true,
+    options: [
+      {
+        kind: "choice",
+        id: "target",
+        label: "opt.zhTarget",
+        def: "hant",
+        choices: [
+          { value: "hant", label: "opt.zhToHant" },
+          { value: "hans", label: "opt.zhToHans" },
+        ],
+      },
+    ],
+  },
+  {
     id: "file.replace",
     pillar: "file",
     accepts: ["txt", "csv", "log", "md", "json", "xml", "srt", "ass", "ini", "html", "css", "js"],

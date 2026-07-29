@@ -132,6 +132,10 @@ const enUS: typeof zhCN = {
         name: "Fix mojibake",
         desc: "A text file saved as GBK opens as garbage on a UTF-8 machine. Detects the original encoding and converts to UTF-8, using Firefox's detector — it is reliable on GBK and Big5.",
       },
+      zhconv: {
+        name: "Simplified ↔ Traditional",
+        desc: "Uses Wikipedia's phrase-level conversion tables rather than a character map. One simplified 发 becomes 髮 in 头发 but 發 in 发展, and a per-character table gets one of them wrong every time. Same story for 干.",
+      },
       replace: {
         name: "Find and replace",
         desc: "Change text across a batch of files. Regex supported. Encoding is detected, so a pile of old GBK files can be edited directly without repairing them first.",
@@ -251,6 +255,8 @@ const enUS: typeof zhCN = {
     treeLines: "{n} lines",
     qrMade: "{n} codes generated",
     qrFound: "{n} codes read",
+    zhConverted: "{n} characters converted",
+    zhNoChange: "nothing changed — the direction may be the wrong way round",
   },
 
   opt: {
@@ -302,6 +308,9 @@ const enUS: typeof zhCN = {
     treeDepth: "Max depth",
     showSize: "Show file sizes",
     qrSize: "Side length",
+    zhTarget: "Convert to",
+    zhToHant: "Traditional",
+    zhToHans: "Simplified",
   },
 
   redact: {

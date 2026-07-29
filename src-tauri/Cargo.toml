@@ -108,4 +108,13 @@ rqrr = "0.10"
 # 返回 Err（见 pdf_img.rs 的说明），所以内嵌图片这条路必须自己走。
 # flate2 已经被 lopdf 依赖，直接声明不增加体积。
 flate2 = "1"
+# 简繁转换。用 MediaWiki 的转换表而不是逐字映射表——「头发/頭髮」和
+# 「发展/發展」共用一个简体字，只有按词转换才不会出错。
+# 取 ruzstd（纯 Rust 解压）而不是 zstd，避免为了一张表引入 C 工具链依赖。
+zhconv = { version = "0.4.1", default-features = false, features = [
+  "mediawiki-hans",
+  "mediawiki-hant",
+  "compress",
+  "ruzstd",
+] }
 

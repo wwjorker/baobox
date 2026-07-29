@@ -94,6 +94,7 @@ pub fn run() {
             textfile::file_hash,
             textfile::text_replace,
             textfile::dir_tree,
+            textfile::text_zhconv,
             pdf_ops::pdf_extract_images,
             pdf_ops::pdf_reverse,
             pdf_ops::pdf_pages,

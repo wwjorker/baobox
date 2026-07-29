@@ -97,6 +97,67 @@ pub async fn text_fix_encoding(
     .unwrap_or_default()
 }
 
+// ================================================================ 简繁转换
+
+/// 简体 ↔ 繁体。
+///
+/// 用 MediaWiki 的转换表，不是逐字映射。逐字表在中文里是会出错的：
+/// 「头发」和「发展」共用一个「发」，繁体分别是「頭髮」和「發展」；
+/// 「干」对应「幹 / 乾 / 干」三个。只有按词切分才判得对，
+/// 而这正是维基百科多年维护那套表要解决的问题。
+pub fn convert_zh(src: &Path, to_traditional: bool) -> AppResult<(PathBuf, usize)> {
+    let bytes = std::fs::read(long_path(src))?;
+    if bytes.is_empty() {
+        return Err(AppError::new("err.emptyFile"));
+    }
+    let text = decode_text(&bytes);
+
+    let variant = if to_traditional {
+        zhconv::Variant::ZhHant
+    } else {
+        zhconv::Variant::ZhHans
+    };
+    let out = zhconv::zhconv(&text, variant);
+
+    // 一个字都没变通常意味着用户搞反了方向，说一声比默默复制一份有用
+    let changed = out
+        .chars()
+        .zip(text.chars())
+        .filter(|(a, b)| a != b)
+        .count();
+
+    let dir = output_dir_for(src)?;
+    let ext = src
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+        .unwrap_or_else(|| "txt".into());
+    let dst = unique_path(&dir, &stem_of(src), &ext);
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(out.as_bytes());
+    std::fs::write(long_path(&dst), &data)?;
+    Ok((dst, changed))
+}
+
+#[tauri::command]
+pub async fn text_zhconv(app: AppHandle, paths: Vec<String>, target: String) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let hant = target == "hant";
+        run_batch(&app, paths, move |src| {
+            let (dst, changed) = convert_zh(src, hant)?;
+            Ok((
+                dst,
+                Some(if changed == 0 {
+                    Note::new("note.zhNoChange")
+                } else {
+                    Note::new("note.zhConverted").with("n", changed)
+                }),
+            ))
+        })
+    })
+    .await
+    .unwrap_or_default()
+}
+
 // ================================================================ 查找替换
 
 /// 批量查找替换。

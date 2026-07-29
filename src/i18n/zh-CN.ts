@@ -126,6 +126,10 @@ export default {
         name: "乱码修复",
         desc: "GBK 存的 txt / csv 在 UTF-8 环境里打开全是「锟斤拷」。自动认出原编码再转成 UTF-8，用的是 Firefox 那套检测器，对 GBK 和 Big5 判得准。",
       },
+      zhconv: {
+        name: "简繁转换",
+        desc: "用维基百科那套按词转换的表，不是逐字映射——「头发」和「发展」共用一个简体「发」，繁体却是「頭髮」和「發展」，逐字表在这类词上必然错。「干净/干部/树干」同理。",
+      },
       replace: {
         name: "批量查找替换",
         desc: "一批文本文件里统一改字。支持正则。编码自动检测，所以一堆 GBK 的老文件也能直接改，不用先跑一遍乱码修复。",
@@ -247,6 +251,8 @@ export default {
     treeLines: "{n} 行",
     qrMade: "生成 {n} 个二维码",
     qrFound: "读出 {n} 个二维码",
+    zhConverted: "转换 {n} 个字",
+    zhNoChange: "一个字都没变——方向可能选反了",
   },
 
   opt: {
@@ -298,6 +304,9 @@ export default {
     treeDepth: "最大层数",
     showSize: "显示文件大小",
     qrSize: "边长",
+    zhTarget: "转成",
+    zhToHant: "繁体",
+    zhToHans: "简体",
   },
 
   redact: {
