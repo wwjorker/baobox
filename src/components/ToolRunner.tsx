@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { useI18n, type TVars } from "../i18n";
+import { useI18n } from "../i18n";
 import { fmtSize } from "../useSaved";
 import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
@@ -36,6 +36,8 @@ interface Outcome {
   out_bytes: number;
   out_path: string | null;
   note: Note | null;
+  /** 没轮到就被取消了。跟失败分开——用户自己喊的停不是错。 */
+  skipped: boolean;
   /** 仅文本类工具（OCR 等）会有 */
   text?: string | null;
   error: AppErr | null;
@@ -302,22 +304,32 @@ export function ToolRunner({
     await invoke("cancel_batch").catch(() => {});
   };
 
+  /**
+   * 汇总按片段拼，只说发生过的事。
+   *
+   * 之前是四个写死的整句（有没有失败 × 省不省空间），既穷举不完，
+   * 又没有「已取消」的位置——取消的文件被并进失败数里，
+   * 明明是用户自己喊的停，界面却报「2 个失败」。
+   */
   const summary = useMemo(() => {
     const done = rows.filter((r) => r.outcome);
     if (done.length === 0) return null;
     const ok = done.filter((r) => r.outcome!.ok).length;
-    const fail = done.length - ok;
+    const skipped = done.filter((r) => r.outcome!.skipped).length;
+    const fail = done.length - ok - skipped;
+
+    const parts = [t("run.sumOk", { ok })];
+    if (fail > 0) parts.push(t("run.sumFail", { fail }));
+    if (skipped > 0) parts.push(t("run.sumSkipped", { skipped }));
     // 不省空间的工具就别报「共省下」——合并三份 PDF 省下 0 B 是句废话
-    if (!tool.savesSpace) {
-      const vars: TVars = { ok, fail };
-      return fail > 0 ? t("run.summaryPlain", vars) : t("run.summaryPlainClean", vars);
+    if (tool.savesSpace) {
+      const saved = done.reduce(
+        (n, r) => n + Math.max(0, r.outcome!.in_bytes - r.outcome!.out_bytes),
+        0,
+      );
+      if (saved > 0) parts.push(t("run.sumSaved", { saved: fmtSize(saved) }));
     }
-    const saved = done.reduce(
-      (n, r) => n + Math.max(0, r.outcome!.in_bytes - r.outcome!.out_bytes),
-      0,
-    );
-    const vars: TVars = { ok, fail, saved: fmtSize(saved) };
-    return fail > 0 ? t("run.summary", vars) : t("run.summaryClean", vars);
+    return parts.join(" · ");
   }, [rows, t, tool.savesSpace]);
 
   const set = (id: string, v: string | number | boolean) =>
@@ -425,7 +437,15 @@ export function ToolRunner({
           <div className="filelist">
             {rows.slice(0, ROW_BUDGET).map((r, i) => {
               const o = r.outcome;
-              const state = r.missing ? "failed" : !o ? "waiting" : o.ok ? "done" : "failed";
+              const state = r.missing
+                ? "failed"
+                : !o
+                  ? "waiting"
+                  : o.skipped
+                    ? "skipped"
+                    : o.ok
+                      ? "done"
+                      : "failed";
               // 只有「产物替换原件」的工具才谈得上压缩率，
               // 合并出来的文件比任何一个输入都大是理所当然的
               const cut =
@@ -447,28 +467,30 @@ export function ToolRunner({
                     {tool.ordered && <span className="row__seq">{i + 1}</span>}
                     {r.name}
                   </span>
+                  {/* 体积那一列只有压缩类工具有意义；其余留空，
+                      让右边那个标记单独说结论，别两个东西说同一件事 */}
                   <span className="row__from">{fmtSize(o?.in_bytes ?? r.bytes)}</span>
                   <span className="row__to">
-                    {r.missing || (o && !o.ok)
+                    {state === "failed" && (r.missing || o)
                       ? t("run.failed")
-                      : o && tool.savesSpace
+                      : o && o.ok && tool.savesSpace
                         ? fmtSize(o.out_bytes)
-                        : o
-                          ? "✓"
-                          : "—"}
+                        : ""}
                   </span>
                   <span className="pill">
                     {r.missing
                       ? "×"
                       : !o
                         ? t("run.waiting")
-                        : !o.ok
-                          ? "×"
-                          : cut !== null
-                            ? cut > 0
-                              ? `−${cut.toFixed(1)}%`
-                              : t("run.grew")
-                            : t("run.ok")}
+                        : o.skipped
+                          ? t("run.skipped")
+                          : !o.ok
+                            ? "×"
+                            : cut !== null
+                              ? cut > 0
+                                ? `−${cut.toFixed(1)}%`
+                                : t("run.grew")
+                              : t("run.ok")}
                   </span>
 
                   {/* 排序与移除。跑起来之后禁掉——列表变了后端还按旧的在跑 */}

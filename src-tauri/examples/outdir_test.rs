@@ -171,6 +171,28 @@ fn main() {
     ));
     check("单个文件原样通过", direct.len() == 1, "1 个进 1 个出".into());
 
+    println!("\n======== 取消不是失败 ========");
+
+    // 用户自己喊的停，界面上画成红叉是在报一个不存在的错，
+    // 汇总里也不该计进失败数。这两件事得靠一个独立标记分开。
+    let cancelled = FileOutcome::skipped(&srcs[0], "run.cancelledSkip");
+    check(
+        "取消标记独立于失败",
+        cancelled.skipped && !cancelled.ok,
+        "skipped=true，ok=false".into(),
+    );
+    check(
+        "取消不带错误",
+        cancelled.error.is_none(),
+        "error=None，界面不会渲染成红字".into(),
+    );
+    let real_fail = FileOutcome::fail(&srcs[0], baobox_lib::err::AppError::new("err.decode"));
+    check(
+        "真失败不被误判成取消",
+        !real_fail.skipped && real_fail.error.is_some(),
+        "skipped=false，error 在".into(),
+    );
+
     println!("\n======== 缩略图 ========");
 
     // 造一张真图，别拿假字节糊弄

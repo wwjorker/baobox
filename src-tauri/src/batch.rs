@@ -87,6 +87,11 @@ pub struct FileOutcome {
     pub out_bytes: u64,
     pub out_path: Option<String>,
     pub note: Option<Note>,
+    /// 没轮到就被取消了。
+    ///
+    /// 跟 `ok: false` 分开：用户自己喊的停不是失败，界面上画成红叉
+    /// 是在报一个不存在的错，汇总里也不该计进失败数。
+    pub skipped: bool,
     /// 仅文本类工具会有
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
@@ -112,6 +117,7 @@ impl FileOutcome {
             out_bytes,
             out_path: Some(dst.to_string_lossy().to_string()),
             note,
+            skipped: false,
             text: None,
             error: None,
         }
@@ -127,17 +133,31 @@ impl FileOutcome {
             out_bytes: 0,
             out_path: None,
             note: None,
+            skipped: false,
             text: None,
             error: Some(e),
         }
     }
 
-    /// 没轮到就被取消了。不算失败——用户自己喊停的，不该在界面上显示成红色的错。
+    /// 没轮到就被取消了。
+    ///
+    /// 不是失败——用户自己喊停的，画成红叉是在报一个不存在的错。
+    /// 早先这里只是复用 fail() 把 error 清掉，界面看 `ok` 照样当失败画，
+    /// 汇总还报「2 个失败」。得有独立的标记。
     pub fn skipped(src: &Path, reason_key: &str) -> Self {
-        let mut o = Self::fail(src, AppError::new(reason_key));
-        o.error = None;
-        o.note = Some(Note::new(reason_key));
-        o
+        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        Self {
+            path: src.to_string_lossy().to_string(),
+            name: file_name_of(src),
+            ok: false,
+            in_bytes,
+            out_bytes: 0,
+            out_path: None,
+            note: Some(Note::new(reason_key)),
+            skipped: true,
+            text: None,
+            error: None,
+        }
     }
 
     /// 已被并进另一份产物里。
@@ -155,6 +175,7 @@ impl FileOutcome {
             out_bytes: in_bytes,
             out_path: None,
             note: Some(Note::new("run.foldedInto")),
+            skipped: false,
             text: None,
             error: None,
         }

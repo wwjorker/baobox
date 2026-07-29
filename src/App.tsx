@@ -268,21 +268,26 @@ export default function App() {
       )}
 
       {savedOpen && (
-        <Dialog title={t("app.saved")} onClose={() => setSavedOpen(false)}>
+        <Dialog
+          title={t("app.saved")}
+          onClose={() => setSavedOpen(false)}
+          aside={
+            <button
+              className="chip"
+              onClick={() => {
+                resetSaved();
+                setSavedOpen(false);
+              }}
+            >
+              {t("app.savedReset")}
+            </button>
+          }
+        >
           <p className="confirm__lead">
             {t("app.savedWhat", { total: fmtSize(saved) })}
           </p>
           <p className="confirm__safe">{t("app.savedNotCounted")}</p>
           <p className="confirm__safe">{t("app.savedStale")}</p>
-          <button
-            className="chip is-danger"
-            onClick={() => {
-              resetSaved();
-              setSavedOpen(false);
-            }}
-          >
-            {t("app.savedReset")}
-          </button>
         </Dialog>
       )}
 

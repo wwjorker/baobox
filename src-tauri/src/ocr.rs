@@ -154,6 +154,9 @@ pub struct OcrOutcome {
     pub out_bytes: u64,
     pub out_path: Option<String>,
     pub note: Option<crate::batch::Note>,
+    /// 没轮到就被取消了。见 FileOutcome::skipped——不是失败，别画成红叉。
+    #[serde(default)]
+    pub skipped: bool,
     /// 识别出的文字。OCR 的产物是文本而不是文件，界面要能直接看和复制。
     pub text: Option<String>,
     pub error: Option<AppError>,
@@ -235,6 +238,7 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
                 out_bytes: 0,
                 out_path: None,
                 note: Some(crate::batch::Note::new("run.cancelledSkip")),
+                skipped: true,
                 text: None,
                 error: None,
             };
@@ -279,6 +283,7 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
                     } else {
                         crate::batch::Note::new("note.ocrChars").with("chars", chars)
                     }),
+                    skipped: false,
                     text: Some(text),
                     error: None,
                 }
@@ -291,6 +296,7 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
                 out_bytes: 0,
                 out_path: None,
                 note: None,
+                skipped: false,
                 text: None,
                 error: Some(e),
             },

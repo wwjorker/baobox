@@ -695,6 +695,14 @@
   color: var(--dim);
   border: var(--b3);
 }
+/* 取消不是失败。灰着、淡着，别用红色报一个不存在的错。 */
+.row.is-skipped {
+  opacity: 0.6;
+}
+.row.is-skipped .pill {
+  background: var(--bg-soft);
+  color: var(--dim);
+}
 .row.is-done .pill {
   background: var(--green);
   color: #fff;
@@ -1297,6 +1305,10 @@
    一个只是解释一件事的弹层用同样的分量，看着像出了事。 */
 .confirm__actions.is-end {
   justify-content: flex-end;
+}
+/* 把次要操作推到左端，主按钮留在右端 */
+.confirm__gap {
+  flex: 1;
 }
 .confirm__box.is-info {
   width: min(560px, 92%);

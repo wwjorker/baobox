@@ -11,10 +11,19 @@ import { useI18n } from "../i18n";
 export function Dialog({
   title,
   children,
+  aside,
   onClose,
 }: {
   title: string;
   children: ReactNode;
+  /**
+   * 放在按钮行左端的次要操作。
+   *
+   * 必须走这里而不是塞进 children —— 弹层是纵向 flex，直接放进去会被撑成通栏，
+   * 「已省下」那个归零按钮就横成了一条大红，比「知道了」还抢眼，
+   * 而它是个破坏性操作，不该是弹层里最显眼的东西。
+   */
+  aside?: ReactNode;
   onClose: () => void;
 }) {
   const { t } = useI18n();
@@ -29,6 +38,8 @@ export function Dialog({
         <h2 className="confirm__title">{title}</h2>
         {children}
         <div className="confirm__actions is-end">
+          {aside}
+          <span className="confirm__gap" />
           <button className="chip is-primary" onClick={onClose}>
             {t("app.gotIt")}
           </button>
