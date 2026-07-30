@@ -11,11 +11,10 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let root = PathBuf::from(r"F:\dev\百宝箱试用素材");
-    // 只清我们自己生成的那几个子目录，用户放在别处的东西不动
-    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试"] {
-        let d = root.join(sub);
-        let _ = std::fs::remove_dir_all(&d);
-        std::fs::create_dir_all(&d).unwrap();
+    // 幂等：只建目录、不删任何东西。用户可能已经在跑测试，
+    // 产物和进度不能被二次生成毁掉。已存在的样本直接跳过。
+    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试", "压缩包", "GIF与动图", "建文件夹"] {
+        std::fs::create_dir_all(root.join(sub)).unwrap();
     }
 
     let img = root.join("图片");
@@ -23,6 +22,9 @@ fn main() {
     let pdf = root.join("PDF");
     let big = root.join("大文件");
     let ts = root.join("时间戳测试");
+    let zipd = root.join("压缩包");
+    let gifd = root.join("GIF与动图");
+    let mkd = root.join("建文件夹");
 
     // ================================================== 图片
     // 16:9 彩色照片：验按比例裁切、九宫格、调色、主色调
@@ -179,6 +181,36 @@ fn main() {
         std::fs::write(ts.join(format!("会被改时间_{i}.txt")), b"content").unwrap();
     }
 
+    // ================================================== 压缩包（中文名乱码）
+    // 一个用 GBK 存中文文件名的 zip，且不置 UTF-8 标志位——
+    // Windows 自带的解压会把名字解成乱码，正是要验的场景。
+    make_gbk_zip(&zipd.join("中文名压缩包_解压试试.zip"));
+
+    // ================================================== GIF
+    // 一个三帧的动图，验拆帧；旁边放几张图验做动图
+    make_gif(&gifd.join("三帧动图_拆帧用.gif"));
+    for (i, c) in [[230u8, 60, 60], [60, 200, 90], [70, 110, 230]].iter().enumerate() {
+        image::RgbImage::from_fn(240, 240, |x, y| {
+            if (x / 30 + y / 30) % 2 == 0 {
+                image::Rgb(*c)
+            } else {
+                image::Rgb([245, 245, 245])
+            }
+        })
+        .save(gifd.join(format!("做动图_第{}帧.png", i + 1)))
+        .unwrap();
+    }
+
+    // ================================================== 建文件夹清单
+    std::fs::write(
+        mkd.join("文件夹清单.txt"),
+        "一月\r\n二月\r\n三月\r\n2026/第一季度\r\n2026/第二季度\r\n项目A/设计\r\n项目A/开发\r\n".as_bytes(),
+    )
+    .unwrap();
+
+    // 一份坏索引的 PDF，验修复
+    make_broken_pdf(&pdf.join("坏索引_修复用.pdf"));
+
     // ================================================== 记录哈希
     let mut lines = Vec::new();
     walk(&root, &mut lines);
@@ -187,9 +219,9 @@ fn main() {
 
     println!("素材已生成：{}", root.display());
     println!("共 {} 个文件，哈希清单见 _原文件哈希.txt\n", lines.len());
-    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试"] {
+    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试", "压缩包", "GIF与动图", "建文件夹"] {
         let n = std::fs::read_dir(root.join(sub)).map(|d| d.count()).unwrap_or(0);
-        println!("  {sub:<10} {n} 个");
+        println!("  {sub:<12} {n} 个");
     }
 }
 
@@ -197,6 +229,10 @@ fn walk(dir: &Path, out: &mut Vec<String>) {
     let Ok(rd) = std::fs::read_dir(dir) else { return };
     for e in rd.flatten() {
         let p = e.path();
+        // 跳过工具产出的目录，别把测试产物记进「原文件」清单
+        if p.file_name().map(|n| n == "Baobox_output").unwrap_or(false) {
+            continue;
+        }
         if p.is_dir() {
             walk(&p, out);
         } else if p.file_name().map(|n| n != "_原文件哈希.txt").unwrap_or(true) {
@@ -204,6 +240,130 @@ fn walk(dir: &Path, out: &mut Vec<String>) {
             out.push(format!("{}  {}", blake3::hash(&data).to_hex(), p.display()));
         }
     }
+}
+
+/// 一个三帧 GIF
+fn make_gif(path: &Path) {
+    use image::codecs::gif::{GifEncoder, Repeat};
+    use image::{Delay, Frame};
+
+    let f = std::fs::File::create(path).unwrap();
+    let mut enc = GifEncoder::new_with_speed(std::io::BufWriter::new(f), 10);
+    enc.set_repeat(Repeat::Infinite).unwrap();
+    for c in [[220u8, 50, 50], [50, 200, 80], [60, 100, 220]] {
+        let img = image::RgbaImage::from_pixel(200, 200, image::Rgba([c[0], c[1], c[2], 255]));
+        enc.encode_frame(Frame::from_parts(img, 0, 0, Delay::from_numer_denom_ms(400, 1)))
+            .unwrap();
+    }
+}
+
+/// 一个用 GBK 存中文名、且不置 UTF-8 标志位的 zip
+fn make_gbk_zip(path: &Path) {
+    use std::io::Write;
+    let entries: [(Vec<u8>, &[u8]); 3] = [
+        // 季度报告.txt
+        (
+            vec![
+                0xBC, 0xBE, 0xB6, 0xC8, 0xB1, 0xA8, 0xB8, 0xE6, b'.', b't', b'x', b't',
+            ],
+            "这是季度报告的内容。\r\n如果文件名显示为乱码，说明解压工具没处理好 GBK 编码。".as_bytes(),
+        ),
+        // 图片/说明.txt
+        (
+            {
+                let mut v = vec![0xCD, 0xBC, 0xC6, 0xAC, b'/'];
+                v.extend_from_slice(&[0xCB, 0xB5, 0xC3, 0xF7]);
+                v.extend_from_slice(b".txt");
+                v
+            },
+            "子目录里的说明文件。".as_bytes(),
+        ),
+        // readme.txt（纯 ASCII，不该被动）
+        (b"readme.txt".to_vec(), b"plain ascii name, should stay as-is"),
+    ];
+
+    let mut f = std::fs::File::create(path).unwrap();
+    let mut offsets = Vec::new();
+    let mut pos = 0u32;
+    for (name, data) in &entries {
+        let crc = crc32(data);
+        offsets.push((pos, crc));
+        f.write_all(&0x0403_4b50u32.to_le_bytes()).unwrap();
+        f.write_all(&20u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap(); // 标志位：第 11 位留 0
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&crc.to_le_bytes()).unwrap();
+        f.write_all(&(data.len() as u32).to_le_bytes()).unwrap();
+        f.write_all(&(data.len() as u32).to_le_bytes()).unwrap();
+        f.write_all(&(name.len() as u16).to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(name).unwrap();
+        f.write_all(data).unwrap();
+        pos += 30 + name.len() as u32 + data.len() as u32;
+    }
+    let cd_start = pos;
+    for (i, (name, data)) in entries.iter().enumerate() {
+        let (off, crc) = offsets[i];
+        f.write_all(&0x0201_4b50u32.to_le_bytes()).unwrap();
+        f.write_all(&20u16.to_le_bytes()).unwrap();
+        f.write_all(&20u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&crc.to_le_bytes()).unwrap();
+        f.write_all(&(data.len() as u32).to_le_bytes()).unwrap();
+        f.write_all(&(data.len() as u32).to_le_bytes()).unwrap();
+        f.write_all(&(name.len() as u16).to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u16.to_le_bytes()).unwrap();
+        f.write_all(&0u32.to_le_bytes()).unwrap();
+        f.write_all(&off.to_le_bytes()).unwrap();
+        f.write_all(name).unwrap();
+        pos += 46 + name.len() as u32;
+    }
+    let cd_size = pos - cd_start;
+    f.write_all(&0x0605_4b50u32.to_le_bytes()).unwrap();
+    f.write_all(&0u16.to_le_bytes()).unwrap();
+    f.write_all(&0u16.to_le_bytes()).unwrap();
+    f.write_all(&(entries.len() as u16).to_le_bytes()).unwrap();
+    f.write_all(&(entries.len() as u16).to_le_bytes()).unwrap();
+    f.write_all(&cd_size.to_le_bytes()).unwrap();
+    f.write_all(&cd_start.to_le_bytes()).unwrap();
+    f.write_all(&0u16.to_le_bytes()).unwrap();
+}
+
+fn crc32(data: &[u8]) -> u32 {
+    let mut crc = 0xFFFF_FFFFu32;
+    for &b in data {
+        crc ^= b as u32;
+        for _ in 0..8 {
+            crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+        }
+    }
+    !crc
+}
+
+/// 一份内容完好、但 xref 偏移被打乱的 PDF
+fn make_broken_pdf(path: &Path) {
+    let good = std::env::temp_dir().join("baobox_good_sample.pdf");
+    make_numbered_pdf(&good, 3);
+    let mut bytes = std::fs::read(&good).unwrap();
+    if let Some(pos) = bytes.windows(9).rposition(|w| w == b"startxref") {
+        for b in bytes.iter_mut().skip(pos + 9) {
+            if b.is_ascii_digit() {
+                *b = b'9';
+            } else if *b == b'%' {
+                break;
+            }
+        }
+    }
+    std::fs::write(path, &bytes).unwrap();
+    let _ = std::fs::remove_file(&good);
 }
 
 fn make_numbered_pdf(path: &Path, n: u32) {
