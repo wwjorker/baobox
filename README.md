@@ -189,7 +189,7 @@ registry settings.
 | | |
 |---|---|
 | Installer | **3.2 MB** |
-| Installed | 10.6 MB |
+| Installed | 11.5 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -218,7 +218,7 @@ Needs Rust with the MSVC toolchain, Node 22+, and Visual Studio C++ build tools.
 ## Licence
 
 MIT. Dependency audit in [LICENSES-THIRD-PARTY.md](LICENSES-THIRD-PARTY.md) —
-599 crates, no copyleft obligations. Ghostscript was avoided specifically
+632 crates, no copyleft obligations. Ghostscript was avoided specifically
 because it is AGPL.
 
 ---

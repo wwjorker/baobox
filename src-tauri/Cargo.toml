@@ -114,13 +114,9 @@ flate2 = "1"
 # 默认特性会把 bzip2 / lzma / zstd / xz / ppmd 一并拉进来，
 # 为了极少数包让安装包胖一圈不值得。
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
-# 简繁转换。用 MediaWiki 的转换表而不是逐字映射表——「头发/頭髮」和
-# 「发展/發展」共用一个简体字，只有按词转换才不会出错。
-# 取 ruzstd（纯 Rust 解压）而不是 zstd，避免为了一张表引入 C 工具链依赖。
-zhconv = { version = "0.4.1", default-features = false, features = [
-  "mediawiki-hans",
-  "mediawiki-hant",
-  "compress",
-  "ruzstd",
-] }
+# 简繁转换。用 OpenCC 的按词转换表——「头发/頭髮」和「发展/發展」共用一个
+# 简体字，只有按词转换才不会出错。
+# 原本用的 zhconv 是 GPL-2.0（纯 copyleft，会传染整个 MIT 项目，违反红线 3），
+# 换成这个：crate 本身 MIT，内嵌的 OpenCC 词典是 Apache-2.0，都是宽松许可。
+opencc-fmmseg = "0.11.4"
 

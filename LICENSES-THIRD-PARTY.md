@@ -8,7 +8,7 @@ that needed a human to look at it.
 
 ## Summary
 
-**599 dependencies. No copyleft obligations that reach Baobox's own code.**
+**632 dependencies. No copyleft obligations that reach Baobox's own code.**
 
 | Licence | Count |
 |---|---|
@@ -40,6 +40,10 @@ software is based in part on IJG's work. Satisfied by this file.
 **`blake3` — `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception`**
 CC0 is a public-domain dedication. Nothing required.
 
+**`opencc-fmmseg` — MIT, bundling the OpenCC dictionaries (Apache-2.0)**
+Simplified/Traditional conversion. The crate is MIT; the phrase tables it
+embeds come from OpenCC and are Apache-2.0. Both permissive.
+
 ## Deliberately avoided
 
 Ghostscript is the usual answer for PDF compression and is **AGPL-3.0**. Shipping
@@ -49,6 +53,12 @@ build, but it keeps the licence honest.
 
 The same reasoning ruled out bundling LibreOffice for Office conversion (LGPL,
 and 400 MB besides).
+
+`zhconv` was the first choice for Simplified/Traditional conversion and was
+removed once the audit caught it: it is **GPL-2.0-or-later**, with no permissive
+alternative in its licence expression, so it would have pulled the whole project
+into GPL. `opencc-fmmseg` (MIT) does the same job on the same class of tables.
+This is exactly what the audit exists to catch.
 
 ## Regenerating
 

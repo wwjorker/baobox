@@ -4,6 +4,7 @@
 //! 而这正是决定这个功能能不能用的地方。
 
 use baobox_lib::textfile::convert_zh;
+use opencc_fmmseg::OpenCC;
 
 fn main() {
     let mut pass = 0;
@@ -21,11 +22,12 @@ fn main() {
     let tmp = std::env::temp_dir().join("baobox_zh");
     let _ = std::fs::remove_dir_all(&tmp);
     std::fs::create_dir_all(&tmp).unwrap();
+    let cc = OpenCC::new();
 
     let run = |name: &str, text: &str, hant: bool| -> String {
         let p = tmp.join(format!("{name}.txt"));
         std::fs::write(&p, text.as_bytes()).unwrap();
-        let (dst, _) = convert_zh(&p, hant).unwrap();
+        let (dst, _) = convert_zh(&cc, &p, hant).unwrap();
         let b = std::fs::read(&dst).unwrap();
         String::from_utf8_lossy(&b[3..]).to_string()
     };
@@ -73,7 +75,7 @@ fn main() {
 
     let p = tmp.join("same.txt");
     std::fs::write(&p, "Hello".as_bytes()).unwrap();
-    let (_, changed) = convert_zh(&p, true).unwrap();
+    let (_, changed) = convert_zh(&cc, &p, true).unwrap();
     check(
         "没变化时如实汇报",
         changed == 0,
@@ -82,12 +84,12 @@ fn main() {
 
     let empty = tmp.join("empty.txt");
     std::fs::write(&empty, b"").unwrap();
-    check("空文件明确报错", convert_zh(&empty, true).is_err(), "err.emptyFile".into());
+    check("空文件明确报错", convert_zh(&cc, &empty, true).is_err(), "err.emptyFile".into());
 
     // GBK 的简体老文件应该也能直接转
     let gbk = tmp.join("gbk.txt");
     std::fs::write(&gbk, vec![0xD6, 0xD0, 0xCE, 0xC4, 0xB2, 0xE2, 0xCA, 0xD4]).unwrap();
-    let (gdst, _) = convert_zh(&gbk, true).unwrap();
+    let (gdst, _) = convert_zh(&cc, &gbk, true).unwrap();
     let gb = std::fs::read(&gdst).unwrap();
     let gtext = String::from_utf8_lossy(&gb[3..]).to_string();
     check(

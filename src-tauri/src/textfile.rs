@@ -101,23 +101,28 @@ pub async fn text_fix_encoding(
 
 /// 简体 ↔ 繁体。
 ///
-/// 用 MediaWiki 的转换表，不是逐字映射。逐字表在中文里是会出错的：
+/// 用 OpenCC 的按词转换表，不是逐字映射。逐字表在中文里是会出错的：
 /// 「头发」和「发展」共用一个「发」，繁体分别是「頭髮」和「發展」；
 /// 「干」对应「幹 / 乾 / 干」三个。只有按词切分才判得对，
-/// 而这正是维基百科多年维护那套表要解决的问题。
-pub fn convert_zh(src: &Path, to_traditional: bool) -> AppResult<(PathBuf, usize)> {
+/// 而这正是 OpenCC 那套词典要解决的问题。
+///
+/// 传入已建好的转换器：`OpenCC::new()` 要解析并建索引整套词典，
+/// 每个文件重建一次是几十毫秒的浪费，一批共用一个即可。
+pub fn convert_zh(
+    cc: &opencc_fmmseg::OpenCC,
+    src: &Path,
+    to_traditional: bool,
+) -> AppResult<(PathBuf, usize)> {
     let bytes = std::fs::read(long_path(src))?;
     if bytes.is_empty() {
         return Err(AppError::new("err.emptyFile"));
     }
     let text = decode_text(&bytes);
 
-    let variant = if to_traditional {
-        zhconv::Variant::ZhHant
-    } else {
-        zhconv::Variant::ZhHans
-    };
-    let out = zhconv::zhconv(&text, variant);
+    // s2t / t2s 是 OpenCC 的配置名：简→繁 / 繁→简。标点不转，
+    // 中文用户的文本里全角标点本来就在用，强行换成另一套反而添乱。
+    let config = if to_traditional { "s2t" } else { "t2s" };
+    let out = cc.convert(&text, config, false);
 
     // 一个字都没变通常意味着用户搞反了方向，说一声比默默复制一份有用
     let changed = out
@@ -142,8 +147,9 @@ pub fn convert_zh(src: &Path, to_traditional: bool) -> AppResult<(PathBuf, usize
 pub async fn text_zhconv(app: AppHandle, paths: Vec<String>, target: String) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || {
         let hant = target == "hant";
+        let cc = opencc_fmmseg::OpenCC::new();
         run_batch(&app, paths, move |src| {
-            let (dst, changed) = convert_zh(src, hant)?;
+            let (dst, changed) = convert_zh(&cc, src, hant)?;
             Ok((
                 dst,
                 Some(if changed == 0 {
