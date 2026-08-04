@@ -4,8 +4,9 @@
 //! 去白边要确认边真的没了且内容没被啃掉，乱码修复要用真的 GBK 字节。
 
 use baobox_lib::image_edit::{adjust_file, frame_file, grid_file, stitch, trim_file};
+use baobox_lib::image_ops::apply_orientation;
 use baobox_lib::textfile::{fix_encoding, hash_file};
-use image::{GenericImageView, Rgb, RgbImage};
+use image::{DynamicImage, GenericImageView, Rgb, RgbImage};
 use std::path::PathBuf;
 
 fn main() {
@@ -266,6 +267,46 @@ fn main() {
         format!("{}…", &b3[..16]),
     );
     check("两种算法结果不同", sha != b3, "没有串到同一个实现上".into());
+
+    // ---------------------------------------------------------- EXIF 方向转正
+    println!("\n======== 抹 EXIF · 方向转正 ========");
+
+    // 造一张左上角唯一有色、其余全黑的 3×2 图，转向后角点落到哪一目了然
+    let mut mark = RgbImage::from_pixel(3, 2, Rgb([0, 0, 0]));
+    mark.put_pixel(0, 0, Rgb([255, 0, 0])); // 左上标记
+    let base = DynamicImage::ImageRgba8(image::DynamicImage::ImageRgb8(mark).to_rgba8());
+
+    // orientation=1 原样不动
+    let o1 = apply_orientation(base.clone(), 1);
+    check(
+        "方向 1 原样不动",
+        o1.dimensions() == (3, 2) && o1.to_rgba8().get_pixel(0, 0).0[0] == 255,
+        format!("{:?} 左上仍是红", o1.dimensions()),
+    );
+
+    // orientation=6 顺时针 90°：3×2 → 2×3，原左上(0,0)应转到右上(1,0)
+    let o6 = apply_orientation(base.clone(), 6).to_rgba8();
+    check(
+        "方向 6 顺时针 90°",
+        o6.dimensions() == (2, 3) && o6.get_pixel(1, 0).0[0] == 255 && o6.get_pixel(0, 0).0[0] == 0,
+        format!("{:?} 红点到了右上", o6.dimensions()),
+    );
+
+    // orientation=3 转 180°：尺寸不变，左上标记应跑到右下(2,1)
+    let o3 = apply_orientation(base.clone(), 3).to_rgba8();
+    check(
+        "方向 3 转 180°",
+        o3.dimensions() == (3, 2) && o3.get_pixel(2, 1).0[0] == 255,
+        "红点到了右下".into(),
+    );
+
+    // orientation=2 水平翻转：左上标记跑到右上(2,0)
+    let o2 = apply_orientation(base.clone(), 2).to_rgba8();
+    check(
+        "方向 2 水平翻转",
+        o2.dimensions() == (3, 2) && o2.get_pixel(2, 0).0[0] == 255,
+        "红点镜像到右上".into(),
+    );
 
     let _ = std::fs::remove_dir_all(&tmp);
     println!("\n======== 通过 {pass} / 失败 {fail} ========");

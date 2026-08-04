@@ -315,6 +315,7 @@ const enUS: typeof zhCN = {
     resizeSkipped: "{w}×{h} already within the limit — unchanged",
     exifGps: "GPS location and device details removed",
     exifNoGps: "device details removed (this one had no GPS)",
+    exifRotated: "metadata removed and orientation baked in (this one carried a rotation flag, so it was re-encoded once to keep it upright)",
     ocrChars: "{chars} characters recognised",
     ocrNone: "no text found",
     merged: "{files} files · {pages} pages",

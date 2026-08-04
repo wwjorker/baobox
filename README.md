@@ -6,7 +6,7 @@
 
 ![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
 
-> ## 🚧 Preview — 61 of 62 tools work
+> ## 🚧 Preview — 59 of 60 tools work
 >
 > No release binary yet; build from source with the steps below. Everything
 > marked ✅ has been run against real files and measured. Anything else says so
@@ -134,7 +134,7 @@ matters. Long batches can be stopped, and finished work is kept. Output goes
 beside each source file by default; you can point it somewhere else and that
 choice is remembered.
 
-`Ctrl+K` searches all 62 tools. `Ctrl+Shift+S` grabs text off the screen from
+`Ctrl+K` searches all 60 tools. `Ctrl+Shift+S` grabs text off the screen from
 inside any other application.
 
 ## Rules the code actually follows
@@ -229,7 +229,7 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 62 个工具中 61 个可用
+> ## 🚧 预览版 —— 60 个工具中 59 个可用
 >
 > 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
 > 其余的在软件里会明说自己还没做好，不会假装能用。
@@ -265,7 +265,7 @@ iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文�
 批量跑到一半能停，已完成的产物保留。产物默认落在源文件旁边，也可以指定别的位置，
 选过就记住。
 
-`Ctrl+K` 搜全部 22 个工具。`Ctrl+Shift+S` 在任何别的软件里都能唤起截图取字。
+`Ctrl+K` 搜全部 60 个工具。`Ctrl+Shift+S` 在任何别的软件里都能唤起截图取字。
 
 ## 代码真正遵守的规矩
 

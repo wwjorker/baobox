@@ -311,6 +311,7 @@ export default {
     resizeSkipped: "{w}×{h} 未超限，原样输出",
     exifGps: "已移除 GPS 定位与设备信息",
     exifNoGps: "已移除设备信息（本图无 GPS）",
+    exifRotated: "已移除元数据，并把方向转正（这张有旋转标记，为不歪显示做了一次重编码）",
     ocrChars: "识别到 {chars} 个字符",
     ocrNone: "没有识别到文字",
     merged: "{files} 份 · 共 {pages} 页",

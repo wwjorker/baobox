@@ -561,33 +561,86 @@ fn has_gps(bytes: &[u8]) -> bool {
         || exif.get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY).is_some()
 }
 
-fn img_strip_exif_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
-    run_batch(&app, paths, |src| {
+/// 读 EXIF 里的方向标记（1–8）。没有则返回 1（正常）。
+///
+/// 这个标记是「相机怎么摆的」——竖着拍的照片，像素常是横着存的，
+/// 全靠这个标记告诉看图软件转多少度。抹掉 EXIF 就把它一起抹了，
+/// 那些照片就会歪着显示。
+pub fn exif_orientation(bytes: &[u8]) -> u32 {
+    let mut cur = std::io::Cursor::new(bytes);
+    let Ok(exif) = exif::Reader::new().read_from_container(&mut cur) else {
+        return 1;
+    };
+    exif.get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+        .and_then(|f| f.value.get_uint(0))
+        .unwrap_or(1)
+}
+
+/// 按方向标记把像素真正转正，转完就不再依赖任何标记。
+/// 数值含义是 EXIF 规范定死的 8 种朝向。
+pub fn apply_orientation(img: DynamicImage, orientation: u32) -> DynamicImage {
+    match orientation {
+        2 => img.fliph(),
+        3 => img.rotate180(),
+        4 => img.flipv(),
+        5 => img.rotate90().fliph(),
+        6 => img.rotate90(),
+        7 => img.rotate270().fliph(),
+        8 => img.rotate270(),
+        _ => img,
+    }
+}
+
+fn img_strip_exif_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    keep_orientation: bool,
+) -> Vec<FileOutcome> {
+    run_batch(&app, paths, move |src| {
         let bytes = std::fs::read(long_path(src))?;
         let had_gps = has_gps(&bytes);
+        let orientation = exif_orientation(&bytes);
 
-        // 用 img-parts 直接剥掉 EXIF 段，不重新编码像素——
-        // 画质完全不受影响，这点比「解码再编码」的做法重要。
-        let mut dyn_img = img_parts::DynImage::from_bytes(bytes.clone().into())
-            .map_err(|e| AppError::decode("图片", e))?
-            .ok_or_else(|| AppError::new("err.decode").var("format", "图片"))?;
-        img_parts::ImageEXIF::set_exif(&mut dyn_img, None);
+        // 只有「要保方向」且这张确实带了非默认方向标记时，才走重编码那条路。
+        // 绝大多数照片方向是 1（正常），照旧走无损剥离，画质不受影响。
+        let rotated = keep_orientation && orientation != 1;
 
-        let mut out = Vec::with_capacity(bytes.len());
-        dyn_img
-            .encoder()
-            .write_to(&mut out)
-            .map_err(|e| AppError::unknown(e))?;
+        let dst = if rotated {
+            // 把像素转正，再编码。转正后不再需要方向标记，抹掉也不会歪。
+            // 这条路会重编码，是「不歪」对「无损」的取舍——所以只在必要时走。
+            let img = load(src)?;
+            let fixed = apply_orientation(img, orientation);
+            let fmt = OutFmt::Keep.resolve(src);
+            // 质量给高一点，重编码的损失几乎看不出来
+            let data = encode(&fixed, fmt, 95)?;
+            write_out(src, fmt, &data)?
+        } else {
+            // 无损路径：img-parts 直接剥掉 EXIF 段，一个像素都不动。
+            let mut dyn_img = img_parts::DynImage::from_bytes(bytes.clone().into())
+                .map_err(|e| AppError::decode("图片", e))?
+                .ok_or_else(|| AppError::new("err.decode").var("format", "图片"))?;
+            img_parts::ImageEXIF::set_exif(&mut dyn_img, None);
 
-        let dir = output_dir_for(src)?;
-        let ext = src
-            .extension()
-            .map(|e| e.to_string_lossy().to_string())
-            .unwrap_or_else(|| "jpg".into());
-        let dst = unique_path(&dir, &stem_of(src), &ext);
-        std::fs::write(long_path(&dst), &out)?;
+            let mut out = Vec::with_capacity(bytes.len());
+            dyn_img
+                .encoder()
+                .write_to(&mut out)
+                .map_err(|e| AppError::unknown(e))?;
 
-        let note = if had_gps {
+            let dir = output_dir_for(src)?;
+            let ext = src
+                .extension()
+                .map(|e| e.to_string_lossy().to_string())
+                .unwrap_or_else(|| "jpg".into());
+            let dst = unique_path(&dir, &stem_of(src), &ext);
+            std::fs::write(long_path(&dst), &out)?;
+            dst
+        };
+
+        // 说明要如实：转正过就讲一声（因为重编码了），没转正照旧报 GPS 情况
+        let note = if rotated {
+            Note::new("note.exifRotated")
+        } else if had_gps {
             Note::new("note.exifGps")
         } else {
             Note::new("note.exifNoGps")
@@ -638,8 +691,13 @@ pub async fn img_resize(app: AppHandle, paths: Vec<String>, long_edge: u32) -> V
 }
 
 #[tauri::command]
-pub async fn img_strip_exif(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
-    tauri::async_runtime::spawn_blocking(move || img_strip_exif_blocking(app, paths))
+#[allow(non_snake_case)]
+pub async fn img_strip_exif(
+    app: AppHandle,
+    paths: Vec<String>,
+    keepOrientation: bool,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || img_strip_exif_blocking(app, paths, keepOrientation))
         .await
         .unwrap_or_default()
 }
