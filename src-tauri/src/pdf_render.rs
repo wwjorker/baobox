@@ -143,3 +143,47 @@ pub async fn pdf_to_image(
         .await
         .unwrap_or_default()
 }
+
+// ============================================ 可视化整理页面用的缩略图
+
+#[derive(serde::Serialize)]
+pub struct PageThumbs {
+    pub count: u32,
+    /// 每页一张小图，data URL（PNG）。顺序即原文档页序。
+    pub thumbs: Vec<String>,
+}
+
+/// 缩略图的目标宽度。小一点，为的是一次能把整份文档的每页都渲染出来。
+const THUMB_WIDTH: u32 = 150;
+/// 可视化整理最多支持的页数。再多就该用「拆分」，而且逐页渲染+传输会很沉。
+const MAX_ORGANIZER_PAGES: u32 = 400;
+
+fn page_thumbs_blocking(path: String) -> AppResult<PageThumbs> {
+    use base64::Engine;
+    let src = Path::new(&path);
+    let total = page_count(src)?;
+    if total == 0 {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    if total > MAX_ORGANIZER_PAGES {
+        return Err(AppError::new("err.pdfTooManyPages").var("max", MAX_ORGANIZER_PAGES.to_string()));
+    }
+    let mut thumbs = Vec::with_capacity(total as usize);
+    for i in 0..total {
+        let png = render_page(src, i, THUMB_WIDTH)?;
+        thumbs.push(format!(
+            "data:image/png;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(&png)
+        ));
+    }
+    Ok(PageThumbs { count: total, thumbs })
+}
+
+#[tauri::command]
+pub async fn pdf_page_thumbs(path: String) -> AppResult<PageThumbs> {
+    let joined = tauri::async_runtime::spawn_blocking(move || page_thumbs_blocking(path)).await;
+    match joined {
+        Ok(inner) => inner,
+        Err(e) => Err(AppError::unknown(e)),
+    }
+}

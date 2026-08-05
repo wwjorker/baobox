@@ -10,6 +10,7 @@ import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
 import { TouchPanel } from "./components/TouchPanel";
+import { PdfPagesPanel } from "./components/PdfPagesPanel";
 import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
 import { ShredPanel } from "./components/ShredPanel";
@@ -167,6 +168,10 @@ export default function App() {
 
           {tool?.id === "image.redact" ? (
             <RedactPanel />
+          ) : tool?.id === "pdf.split" ? (
+            // 缩略图上勾选 / 拖动排序 / 逐页旋转，是「逐页摆布一份文档」，
+            // 和通用的「一批文件一组参数」两码事，走专用面板
+            <PdfPagesPanel />
           ) : tool?.id === "file.shred" ? (
             // 唯一不可逆销毁数据的功能，独立面板、独立确认流程，
             // 绝不与普通删除共用任何组件（安全红线 3）

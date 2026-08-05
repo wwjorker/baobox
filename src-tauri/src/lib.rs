@@ -69,6 +69,8 @@ pub fn run() {
             pdf_ops::pdf_decrypt,
             pdf_ops::pdf_stamp,
             pdf_render::pdf_to_image,
+            pdf_render::pdf_page_thumbs,
+            pdf_ops::pdf_arrange,
             dedupe::find_duplicates,
             dedupe::delete_to_trash,
             dedupe::cancel_scan,

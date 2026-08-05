@@ -655,6 +655,91 @@ fn pdf_pages_blocking(
     })
 }
 
+// ================================================ 可视化整理页面（选/排/转）
+
+/// 对某一页的一步操作：保留原文档里第 `page` 页（从 1 数），并额外旋转 `rotate` 度。
+#[derive(serde::Deserialize)]
+pub struct PageOp {
+    /// 原文档里的页码，从 1 开始
+    pub page: u32,
+    /// 额外旋转的角度（0/90/180/270，累加到该页已有的 /Rotate 上）
+    pub rotate: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct ArrangeResult {
+    pub out_path: String,
+    pub pages: usize,
+}
+
+/// 按一份「保留哪些页、什么顺序、各转多少」的清单，重排出一份新 PDF。
+///
+/// 这一个函数同时覆盖了拆分/提取、删页、重排、逐页旋转——因为这些本质上
+/// 都是「挑出若干原页、按新顺序、各带一个旋转」。前端的缩略图组织器把
+/// 勾选、拖拽、转向都收敛成这份 `ops` 清单，后端照单执行即可。
+///
+/// 实现沿用「倒序」那条稳妥路线：每页克隆整份文档、只留这一页，再按 ops
+/// 顺序合并。直接改页树的 Kids 数组更快，但嵌套页节点一多就容易改坏。
+pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> {
+    let doc = open(src)?;
+    let pages = doc.get_pages();
+    if pages.is_empty() {
+        return Err(AppError::new("err.pdfNoPages"));
+    }
+    // 原文档的页码，升序。ops 里的 page 是「第几页」，据此映射到真实页号。
+    let nums: Vec<u32> = pages.keys().copied().collect();
+
+    let mut singles: Vec<Document> = Vec::with_capacity(ops.len());
+    for op in ops {
+        let Some(&keep_num) = nums.get((op.page.saturating_sub(1)) as usize) else {
+            continue;
+        };
+        let mut one = doc.clone();
+        let drop: Vec<u32> = nums.iter().copied().filter(|p| *p != keep_num).collect();
+        one.delete_pages(&drop);
+        one.adjust_zero_pages();
+
+        if op.rotate != 0 {
+            for id in one.get_pages().values() {
+                if let Ok(obj) = one.get_object_mut(*id) {
+                    if let Ok(dict) = obj.as_dict_mut() {
+                        let cur = dict.get(b"Rotate").and_then(|o| o.as_i64()).unwrap_or(0);
+                        dict.set("Rotate", ((cur + op.rotate) % 360 + 360) % 360);
+                    }
+                }
+            }
+        }
+        singles.push(one);
+    }
+
+    if singles.is_empty() {
+        return Err(AppError::new("err.pdfNoPagesPicked"));
+    }
+    let n = singles.len();
+    let mut merged = merge_docs(singles)?;
+    let dir = output_dir_for(src)?;
+    let dst = unique_path(&dir, &format!("{} 整理", stem_of(src)), "pdf");
+    save(&mut merged, &dst)?;
+    Ok((dst, n))
+}
+
+#[tauri::command]
+pub async fn pdf_arrange(path: String, ops: Vec<PageOp>) -> AppResult<ArrangeResult> {
+    let joined = tauri::async_runtime::spawn_blocking(move || {
+        let src = PathBuf::from(&path);
+        let (dst, n) = arrange_pages(&src, &ops)?;
+        Ok::<ArrangeResult, AppError>(ArrangeResult {
+            out_path: dst.to_string_lossy().to_string(),
+            pages: n,
+        })
+    })
+    .await;
+    match joined {
+        Ok(inner) => inner,
+        Err(e) => Err(AppError::unknown(e)),
+    }
+}
+
 // ================================================ 修复损坏的 PDF
 
 /// 尽力抢救一份打不开的 PDF。

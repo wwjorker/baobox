@@ -996,6 +996,103 @@
   border-color: var(--red);
 }
 
+/* ------------------------------------------------ PDF 页面整理器 */
+.pagegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 12px;
+}
+.pagecard {
+  border: var(--b2);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  cursor: grab;
+  transition: transform 0.12s var(--spring), box-shadow 0.12s;
+}
+.pagecard:hover {
+  box-shadow: var(--sh);
+}
+.pagecard:active {
+  cursor: grabbing;
+}
+/* 拖到哪张上面，哪张亮蓝边——落点一目了然 */
+.pagecard.is-over {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+.pagecard.is-removed {
+  opacity: 0.45;
+}
+.pagecard__thumb {
+  position: relative;
+  height: 150px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--bg-soft);
+  border-bottom: var(--b3);
+}
+.pagecard__thumb img {
+  max-width: 100%;
+  max-height: 100%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s var(--spring);
+}
+.pagecard__x {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--f-display);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: var(--red);
+  background: rgba(255, 255, 255, 0.55);
+}
+.pagecard__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+}
+.pagecard__no {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--dim);
+  margin-right: auto;
+}
+.pagecard__btn {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rad);
+}
+.pagecard__btn:hover {
+  background: var(--bg-soft);
+}
+/* 「拖动可排序」这类提示挤到右边，用正常字重，不套标签的全大写 */
+.pdfpages__hint {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+.empty__box.is-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ------------------------------------------------------------ 状态栏 */
 .statusbar {
   display: flex;
