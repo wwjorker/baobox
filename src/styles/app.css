@@ -347,13 +347,242 @@
    才分得开两段、也更贴合整套贴纸风。 */
 .grouplabel {
   align-self: flex-start;
+  font-family: var(--f-display);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-weight: 800;
   color: var(--bg-soft);
   background: var(--ink);
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: var(--rad);
+  transform: rotate(-1deg);
+}
+/* 次级分段（最近 / 试试看）：轮廓标签，弱于「常用」那枚黑贴纸 */
+.grouplabel.is-quiet {
+  background: transparent;
+  color: var(--dim);
+  border: var(--b2);
+  transform: none;
+}
+
+/* ============================================ 仪表盘首页 */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.home__hero {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+/* 吉祥物就是那个接文件的箱子：整块是拖入区 */
+.catch {
+  flex: 1 1 380px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-soft);
+  border: 3px dashed rgba(20, 17, 9, 0.4);
+  border-radius: 8px;
+  padding: 15px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.16s var(--spring), background 0.16s, border-color 0.16s;
+}
+.catch.is-over {
+  transform: translateY(-3px);
+  background: #ffe873;
+  border-style: solid;
+  border-color: var(--ink);
+  box-shadow: var(--sh);
+}
+.catch__spot {
+  position: absolute;
+  right: -20px;
+  bottom: -30px;
+  width: 150px;
+  height: 150px;
+  background: #fff;
+  opacity: 0.35;
+  transform: rotate(20deg);
+}
+.catch__text {
+  position: relative;
+  z-index: 1;
+}
+.catch__hi {
+  font-family: var(--f-display);
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.catch__sub {
+  font-size: 12.5px;
+  color: var(--dim);
+  margin-top: 6px;
+  max-width: 42ch;
+  line-height: 1.5;
+}
+
+/* 吉祥物 */
+.mascot {
+  width: 92px;
+  height: 92px;
+  flex: none;
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+.mascot svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.mascot__body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: mascot-wobble 5s ease-in-out infinite;
+}
+@keyframes mascot-wobble {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(-1deg) translateY(-2px);
+  }
+}
+.mascot.is-cheer .mascot__body {
+  animation: mascot-jump 0.5s var(--spring) 2;
+}
+@keyframes mascot-jump {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-5deg);
+  }
+  40% {
+    transform: translateY(-18px) rotate(6deg);
+  }
+}
+.mascot__lid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.2s var(--spring);
+}
+.mascot.is-open .mascot__lid {
+  transform: rotate(-36deg) translateY(-1px);
+}
+
+/* 已省下大招牌 */
+.plate {
+  flex: 0 0 236px;
+  text-align: left;
+  background: var(--ink);
+  color: #fff;
+  border: var(--b1);
+  border-radius: 8px;
+  box-shadow: var(--sh);
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transform: rotate(1deg);
+  transition: transform 0.14s var(--spring), box-shadow 0.14s;
+}
+.plate:hover {
+  transform: rotate(0) translate(-2px, -2px);
+  box-shadow: var(--sh-lg);
+}
+.plate__label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 800;
+}
+.plate__val {
+  font-family: var(--f-display);
+  font-size: 38px;
+  line-height: 1;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bg-soft);
+}
+.plate__sub {
+  font-size: 11.5px;
+  color: #cbbf9b;
+  margin-top: 6px;
+}
+.home__favhint {
+  font-size: 12.5px;
+  color: var(--dim);
+  margin: 0 0 4px;
+}
+
+/* 最近 / 试试看：紧凑标签条 */
+.recentstrip {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.rchip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper);
+  border: var(--b2);
+  border-radius: 6px;
+  padding: 6px 13px 6px 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: transform 0.12s var(--spring), box-shadow 0.12s;
+}
+.rchip:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sh-sm, 3px 3px 0 var(--ink));
+}
+.rchip__ico {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+}
+.rchip__ico svg {
+  width: 15px;
+  height: 15px;
+}
+.rchip--image .rchip__ico { background: var(--img-bg); color: var(--img-ink); }
+.rchip--ocr .rchip__ico { background: var(--ocr-bg); color: var(--ocr-ink); }
+.rchip--pdf .rchip__ico { background: var(--pdf-bg); color: var(--pdf-ink); }
+.rchip--file .rchip__ico { background: var(--file-bg); color: var(--file-ink); }
+
+/* 会轮换的小贴士 */
+.tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  background: #fffbe6;
+  border: 2px dashed rgba(20, 17, 9, 0.28);
+  border-radius: var(--rad);
+  padding: 9px 14px;
+  font-size: 12.5px;
+  color: var(--dim);
+  line-height: 1.5;
+}
+.tip__tag {
+  font-family: var(--f-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 2px 8px;
+  border-radius: 3px;
+  flex: none;
 }
 /* 卡片外面套一层，好让星标绝对定位在角上——按钮不能嵌按钮，
    所以卡片和星标是这层里的两个兄弟。 */

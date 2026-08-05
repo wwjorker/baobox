@@ -4,17 +4,30 @@ import { ToolIcon, pillarOf } from "../tools/icons";
 
 interface Props {
   active: Pillar;
+  /** 当前是否在仪表盘首页 */
+  home: boolean;
   recent: string[];
   favorites: string[];
+  onHome: () => void;
   onPillar: (p: Pillar) => void;
   onTool: (id: string) => void;
 }
 
-export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) {
+export function Sidebar({ active, home, recent, favorites, onHome, onPillar, onTool }: Props) {
   const { t } = useI18n();
 
   return (
     <nav className="sidebar">
+      <button className="nav nav--home" aria-current={home} onClick={onHome}>
+        <span className="nav__ico nav__ico--home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 11l8-7 8 7" />
+            <path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" />
+          </svg>
+        </span>
+        {t("pillar.home")}
+      </button>
+
       <div className="sidebar__label">{t("pillar.tools")}</div>
 
       {PILLARS.map((p) => {
@@ -27,7 +40,7 @@ export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) 
           <button
             key={p}
             className="nav nav--pillar"
-            aria-current={p === active}
+            aria-current={!home && p === active}
             title={full ? undefined : t("pillar.readyCount", { ready, total: all.length })}
             onClick={() => onPillar(p)}
           >

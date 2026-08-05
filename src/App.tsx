@@ -14,8 +14,9 @@ import { PdfPagesPanel } from "./components/PdfPagesPanel";
 import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
 import { ShredPanel } from "./components/ShredPanel";
+import { Home } from "./components/Home";
+import { ToolCard } from "./components/ToolCard";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
-import { ToolIcon, pillarOf } from "./tools/icons";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
 import { useFavorites } from "./useFavorites";
@@ -45,6 +46,8 @@ export default function App() {
   const { t } = useI18n();
   const [pillar, setPillar] = useState<Pillar>("image");
   const [toolId, setToolId] = useState<string | null>(null);
+  /** 落地页是仪表盘首页；点某支柱或拖入文件才离开首页去看工具网格 */
+  const [home, setHome] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [offlineOpen, setOfflineOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -67,6 +70,7 @@ export default function App() {
       if (!def) return;
       setPillar(def.pillar);
       setToolId(id);
+      setHome(false);
       // 只把真能用的工具计入「最近」——计划中的（如「设置 PDF 密码」还没做）
       // 记进去只会让人点开发现用不了
       if (def.status === "ready") pushRecent(id);
@@ -81,6 +85,7 @@ export default function App() {
     const un = getCurrentWebview().listen("baobox://hotkey-screen-ocr", () => {
       setPillar("ocr");
       setToolId("ocr.screen");
+      setHome(false);
       setHotkeyTick((n) => n + 1);
     });
     return () => {
@@ -107,6 +112,7 @@ export default function App() {
         setDropHint(null);
         setPillar(guess);
         setPending(e.payload.paths);
+        setHome(false);
       } else {
         const ext = e.payload.paths[0]?.split(".").pop()?.toUpperCase() ?? "?";
         setDropHint(t("run.homeDropUnknown", { ext }));
@@ -130,10 +136,11 @@ export default function App() {
       else if (offlineOpen) setOfflineOpen(false);
       else if (savedOpen) setSavedOpen(false);
       else if (toolId) setToolId(null);
+      else if (!home) setHome(true);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [paletteOpen, offlineOpen, savedOpen, toolId]);
+  }, [paletteOpen, offlineOpen, savedOpen, toolId, home]);
 
   const tools = toolsOf(pillar);
 
@@ -147,11 +154,19 @@ export default function App() {
       <div className="body">
         <Sidebar
           active={pillar}
+          home={home && !tool}
           recent={recent}
           favorites={favorites}
+          onHome={() => {
+            setHome(true);
+            setToolId(null);
+            setPending(null);
+            setDropHint(null);
+          }}
           onPillar={(p) => {
             setPillar(p);
             setToolId(null);
+            setHome(false);
             // 换支柱等于换了件事做，之前接住的文件和上一条提示都不该跟过去
             setPending(null);
             setDropHint(null);
@@ -202,6 +217,18 @@ export default function App() {
                 setPending(null);
               }}
             />
+          ) : home ? (
+            <Home
+              favorites={favorites}
+              recent={recent}
+              saved={saved}
+              over={over}
+              dropHint={dropHint}
+              onOpenTool={openTool}
+              onOpenSaved={() => setSavedOpen(true)}
+              isFavorite={isFavorite}
+              onToggleFav={toggleFav}
+            />
           ) : (
             <>
               <h1 className="h1">{t(`pillar.${pillar}` as never)}</h1>
@@ -229,38 +256,13 @@ export default function App() {
                 const fav = tools.filter((tl) => isFavorite(tl.id));
                 const rest = tools.filter((tl) => !isFavorite(tl.id));
                 const card = (tl: (typeof tools)[number]) => (
-                  <div key={tl.id} className="cardwrap">
-                    <button
-                      className={`card card--${pillarOf(tl.id)}`}
-                      onClick={() => openTool(tl.id)}
-                    >
-                      <span className="card__ico">
-                        <ToolIcon id={tl.id} />
-                      </span>
-                      <span className="card__body">
-                        <span className="card__name">
-                          {t(`tool.${tl.id}.name` as never)}
-                          {tl.highlight && (
-                            <span className="badge is-highlight">{t("status.highlight")}</span>
-                          )}
-                          {tl.status !== "ready" && (
-                            <span className="badge">{t(`status.${tl.status}` as never)}</span>
-                          )}
-                        </span>
-                        <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
-                      </span>
-                    </button>
-                    {/* 星标是独立按钮、不嵌在卡片按钮里（按钮不能套按钮）。
-                        平时淡淡的，钉上了变实心金色。 */}
-                    <button
-                      className={`cardstar${isFavorite(tl.id) ? " is-on" : ""}`}
-                      title={isFavorite(tl.id) ? t("fav.remove") : t("fav.add")}
-                      aria-pressed={isFavorite(tl.id)}
-                      onClick={() => toggleFav(tl.id)}
-                    >
-                      {isFavorite(tl.id) ? "★" : "☆"}
-                    </button>
-                  </div>
+                  <ToolCard
+                    key={tl.id}
+                    tool={tl}
+                    fav={isFavorite(tl.id)}
+                    onFav={() => toggleFav(tl.id)}
+                    onOpen={() => openTool(tl.id)}
+                  />
                 );
                 return fav.length > 0 ? (
                   <>

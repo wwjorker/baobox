@@ -25,6 +25,7 @@ const enUS: typeof zhCN = {
   },
 
   pillar: {
+    home: "Home",
     image: "Images",
     ocr: "OCR",
     pdf: "PDF",
@@ -40,10 +41,24 @@ const enUS: typeof zhCN = {
 
   fav: {
     section: "Favourites",
-    common: "⭐ Favourites",
+    common: "Favourites",
     others: "All tools",
     add: "Pin to favourites",
     remove: "Remove from favourites",
+  },
+
+  home: {
+    heroTitle: "Drop a file in → I'll take it from here",
+    heroSub: "Images go to images, PDFs go to PDFs — it figures out where. Nothing uploaded, nothing online.",
+    savedSub: "Total size squeezed out over time · click for details",
+    noFav: "Tap the star on a tool card to pin your regulars here for one-tap access.",
+    discover: "Try these · you may not have used them",
+    tipTag: "Tip",
+    tip1: "Screen OCR has a global hotkey, Ctrl+Shift+S — grab text from any app.",
+    tip2: "Press Ctrl+K to search every tool instead of hunting through the list.",
+    tip3: "Drop a file anywhere on the window and it jumps to the right tool.",
+    tip4: "Everything runs fully offline — works with no network, nothing is ever uploaded.",
+    tip5: "Rename and timestamp changes both undo in one click, so go ahead.",
   },
 
   tool: {

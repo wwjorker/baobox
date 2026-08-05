@@ -23,6 +23,7 @@ export default {
   },
 
   pillar: {
+    home: "首页",
     image: "图片",
     ocr: "OCR 识字",
     pdf: "PDF",
@@ -38,10 +39,24 @@ export default {
 
   fav: {
     section: "收藏",
-    common: "⭐ 常用",
+    common: "常用",
     others: "其他工具",
     add: "加入常用",
     remove: "取消常用",
+  },
+
+  home: {
+    heroTitle: "丢个文件进来 → 剩下的交给我",
+    heroSub: "图片跳图片、PDF 跳 PDF——它自己认该去哪。不上传、不联网。",
+    savedSub: "累计帮你压掉的体积 · 点开看口径",
+    noFav: "点工具卡片右上角的星，把常用钉在这儿，下次一步直达。",
+    discover: "试试看 · 你可能还没用过",
+    tipTag: "小贴士",
+    tip1: "截图取字有全局热键 Ctrl+Shift+S，在别的软件里也能随手唤起。",
+    tip2: "按 Ctrl+K 直接搜全部工具，不用一个个找。",
+    tip3: "拖个文件到窗口任意处，它会自动跳到该用的工具。",
+    tip4: "所有工具全程离线，断网也照跑——文件一个字节都不会上传。",
+    tip5: "重命名和改时间都能一键撤销，放心动。",
   },
 
   // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），
