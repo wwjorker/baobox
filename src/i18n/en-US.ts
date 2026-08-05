@@ -39,6 +39,14 @@ const enUS: typeof zhCN = {
     readyCount: "{ready}/{total} working",
   },
 
+  fav: {
+    section: "Favourites",
+    common: "⭐ Favourites",
+    others: "All tools",
+    add: "Pin to favourites",
+    remove: "Remove from favourites",
+  },
+
   tool: {
     image: {
       "compress-target": {
@@ -232,6 +240,10 @@ const enUS: typeof zhCN = {
         name: "Shift file timestamps",
         desc: "A camera set to the wrong timezone, or an export tool that stamps everything with the current moment, ruins sorting by date — this is the only fix. Note that this edits the timestamps of your original files in place (the contents are untouched), because copying a file to change its date achieves nothing.",
       },
+      "zip-make": {
+        name: "Compress to ZIP",
+        desc: "Pack a batch of files, or a whole folder, into one zip. Dropping a folder keeps its directory structure; loose sibling files come out as clean names. Names are always UTF-8, so they open cleanly on any machine — the very mess the Extract tool cleans up for others, not made here.",
+      },
       unzip: {
         name: "Extract (repairing mangled names)",
         desc: "WinRAR and older versions of Explorer store Chinese filenames in a zip as GBK bytes. On another machine they come out as garbage — the names are destroyed with no warning at all, and Windows'' own extractor does exactly this. Here the encoding is detected and decoded properly. Each archive also gets its own folder, and entries that try to write outside it are refused.",
@@ -367,6 +379,7 @@ const enUS: typeof zhCN = {
     gifSplit: "{total} frames · {saved} exported",
     gifMade: "{n} frame animation",
     unzipped: "{n} files extracted",
+    zipped: "{n} files packed",
     unzipFixedNames: "{n} mangled names repaired",
     unzipRejected: "{n} unsafe paths refused",
     unzipSkipped: "{n} skipped (encrypted or unsupported method)",
@@ -607,6 +620,7 @@ const enUS: typeof zhCN = {
     gifNoFrames: "This GIF contains no frames.",
     gifNeedTwo: "An animation needs at least two images.",
     badArchive: "Can''t open this archive — it may be damaged or not a zip at all.",
+    zipNoFiles: "No files to pack (the dropped items may all be empty folders).",
     archiveUnsupported: "Every entry uses an unsupported compression method, or needs a password. Only the common deflate method is supported.",
     archiveEmpty: "This archive is empty.",
     noDirsMade: "No folders were created — the list may be empty, or they all exist already.",

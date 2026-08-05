@@ -3,7 +3,7 @@
 //! 解压那几条是重点：GBK 名的 zip 要手工造，因为 zip crate 写出来的
 //! 一律是 UTF-8，用它造不出「会坏」的样本。目录穿越同理，必须手工造。
 
-use baobox_lib::archive::extract;
+use baobox_lib::archive::{create_zip, extract};
 use baobox_lib::image_edit::{expand_file, gif_frames, make_gif};
 use baobox_lib::pdf_ops::repair_file;
 use baobox_lib::textfile::make_dirs;
@@ -119,6 +119,66 @@ fn main() {
         "不是 zip 时明确报错",
         extract(&notzip, None).is_err(),
         "err.badArchive".into(),
+    );
+
+    // ==================================================== 打包成 zip（闭环）
+    println!("\n======== 压缩成 ZIP（打包→解回，闭环）========");
+
+    // 造一个带子目录的源，文件名故意用中文，才能验「打包不留乱码」
+    let src_root = tmp.join("打包源");
+    std::fs::create_dir_all(src_root.join("子目录")).unwrap();
+    let fa = src_root.join("甲.txt");
+    let fb = src_root.join("子目录").join("乙.txt");
+    std::fs::write(&fa, "alpha 内容一").unwrap();
+    std::fs::write(&fb, "beta 内容二").unwrap();
+
+    match create_zip(&[fa.clone(), fb.clone()]) {
+        Ok((zip_path, n)) => {
+            check("打包 2 个文件", n == 2, format!("{n} 个"));
+            check(
+                "产物是 zip 且名字带「打包」",
+                zip_path.extension().and_then(|e| e.to_str()) == Some("zip")
+                    && zip_path.file_stem().map(|s| s.to_string_lossy().contains("打包")).unwrap_or(false)
+                    && zip_path.is_file(),
+                zip_path.file_name().unwrap().to_string_lossy().into_owned(),
+            );
+
+            // 闭环：拿自己的解压把它解回来，逐项比对
+            match extract(&zip_path, None) {
+                Ok(rep) => {
+                    check("解回 2 个文件", rep.files == 2, format!("{} 个", rep.files));
+                    check(
+                        "子目录层次保住了",
+                        rep.dir.join("甲.txt").is_file()
+                            && rep.dir.join("子目录").join("乙.txt").is_file(),
+                        "甲.txt 在顶层、乙.txt 在子目录".into(),
+                    );
+                    check(
+                        "解回时无需修名字（证明写的是 UTF-8）",
+                        rep.fixed_names == 0,
+                        format!("{} 个名字被判为需修", rep.fixed_names),
+                    );
+                    let a_ok =
+                        std::fs::read(rep.dir.join("甲.txt")).unwrap_or_default() == b"alpha \xe5\x86\x85\xe5\xae\xb9\xe4\xb8\x80";
+                    let b_ok = std::fs::read_to_string(rep.dir.join("子目录").join("乙.txt"))
+                        .unwrap_or_default()
+                        == "beta 内容二";
+                    check("内容逐字节一致（甲）", a_ok, "打包再解回没串内容".into());
+                    check("内容逐字节一致（乙）", b_ok, "子目录里的也对得上".into());
+                }
+                Err(e) => check("解回 2 个文件", false, format!("解压报错 {}", e.key)),
+            }
+        }
+        Err(e) => check("打包 2 个文件", false, format!("打包报错 {}", e.key)),
+    }
+
+    // 全是空文件夹 / 没有真文件时，明确报错而不是产出空包
+    let empty_dir = tmp.join("空壳");
+    std::fs::create_dir_all(&empty_dir).unwrap();
+    check(
+        "没有可打包的文件时报错",
+        matches!(create_zip(&[empty_dir.clone()]), Err(e) if e.key == "err.zipNoFiles"),
+        "err.zipNoFiles".into(),
     );
 
     // ==================================================== 画布扩展

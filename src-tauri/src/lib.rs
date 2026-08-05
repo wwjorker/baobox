@@ -118,6 +118,7 @@ pub fn run() {
             image_edit::img_palette,
             image_edit::img_base64,
             archive::zip_extract,
+            archive::zip_create,
             pdf_ops::pdf_repair,
             image_edit::img_expand,
             image_edit::gif_split,

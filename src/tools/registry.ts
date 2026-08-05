@@ -705,6 +705,16 @@ export const TOOLS: ToolDef[] = [
     ],
   },
   {
+    id: "file.zip-make",
+    pillar: "file",
+    accepts: [],
+    command: "zip_create",
+    status: "ready",
+    highlight: true,
+    aggregate: true,
+    options: [],
+  },
+  {
     id: "file.unzip",
     pillar: "file",
     accepts: ["zip"],

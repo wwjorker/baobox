@@ -4,11 +4,12 @@ import { PILLARS, PILLAR_GLYPH, toolsOf, type Pillar } from "../tools/registry";
 interface Props {
   active: Pillar;
   recent: string[];
+  favorites: string[];
   onPillar: (p: Pillar) => void;
   onTool: (id: string) => void;
 }
 
-export function Sidebar({ active, recent, onPillar, onTool }: Props) {
+export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) {
   const { t } = useI18n();
 
   return (
@@ -37,6 +38,20 @@ export function Sidebar({ active, recent, onPillar, onTool }: Props) {
           </button>
         );
       })}
+
+      {/* 收藏跨支柱，一点直达。放在「最近」之前——钉住的是主动选的常用，
+          比自动滚动的最近更该靠上。 */}
+      {favorites.length > 0 && (
+        <>
+          <div className="sidebar__label">{t("fav.section")}</div>
+          {favorites.map((id) => (
+            <button key={id} className="nav" onClick={() => onTool(id)}>
+              <span className="nav__glyph is-star">★</span>
+              {t(`tool.${id}.name` as never)}
+            </button>
+          ))}
+        </>
+      )}
 
       {recent.length > 0 && (
         <>

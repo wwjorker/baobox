@@ -15,6 +15,7 @@ import { ShredPanel } from "./components/ShredPanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
+import { useFavorites } from "./useFavorites";
 import { useChime } from "./useChime";
 import "./styles/app.css";
 
@@ -50,6 +51,7 @@ export default function App() {
   const [pending, setPending] = useState<string[] | null>(null);
   const { saved, addSaved, resetSaved } = useSaved();
   const { recent, push: pushRecent } = useRecent();
+  const { favorites, toggle: toggleFav, isFavorite } = useFavorites();
   const { chimeEnabled, toggleChime, chime } = useChime();
   /** 热键触发的计数器，变化即表示要立刻开抓 */
   const [hotkeyTick, setHotkeyTick] = useState(0);
@@ -141,6 +143,7 @@ export default function App() {
         <Sidebar
           active={pillar}
           recent={recent}
+          favorites={favorites}
           onPillar={(p) => {
             setPillar(p);
             setToolId(null);
@@ -208,22 +211,52 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid">
-                {tools.map((tl) => (
-                  <button key={tl.id} className="card" onClick={() => openTool(tl.id)}>
-                    <span className="card__name">
-                      {t(`tool.${tl.id}.name` as never)}
-                      {tl.highlight && (
-                        <span className="badge is-highlight">{t("status.highlight")}</span>
-                      )}
-                      {tl.status !== "ready" && (
-                        <span className="badge">{t(`status.${tl.status}` as never)}</span>
-                      )}
-                    </span>
-                    <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
-                  </button>
-                ))}
-              </div>
+              {/* 60 个工具平铺太长。收藏的钉到最前分出一段「常用」，
+                  剩下的归「其他」，这样每个人都能把自己的高频工具顶上来。 */}
+              {(() => {
+                const fav = tools.filter((tl) => isFavorite(tl.id));
+                const rest = tools.filter((tl) => !isFavorite(tl.id));
+                const card = (tl: (typeof tools)[number]) => (
+                  <div key={tl.id} className="cardwrap">
+                    <button className="card" onClick={() => openTool(tl.id)}>
+                      <span className="card__name">
+                        {t(`tool.${tl.id}.name` as never)}
+                        {tl.highlight && (
+                          <span className="badge is-highlight">{t("status.highlight")}</span>
+                        )}
+                        {tl.status !== "ready" && (
+                          <span className="badge">{t(`status.${tl.status}` as never)}</span>
+                        )}
+                      </span>
+                      <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
+                    </button>
+                    {/* 星标是独立按钮、不嵌在卡片按钮里（按钮不能套按钮）。
+                        平时淡淡的，钉上了变实心金色。 */}
+                    <button
+                      className={`cardstar${isFavorite(tl.id) ? " is-on" : ""}`}
+                      title={isFavorite(tl.id) ? t("fav.remove") : t("fav.add")}
+                      aria-pressed={isFavorite(tl.id)}
+                      onClick={() => toggleFav(tl.id)}
+                    >
+                      {isFavorite(tl.id) ? "★" : "☆"}
+                    </button>
+                  </div>
+                );
+                return fav.length > 0 ? (
+                  <>
+                    <div className="grouplabel">{t("fav.common")}</div>
+                    <div className="grid">{fav.map(card)}</div>
+                    {rest.length > 0 && (
+                      <>
+                        <div className="grouplabel">{t("fav.others")}</div>
+                        <div className="grid">{rest.map(card)}</div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid">{tools.map(card)}</div>
+                );
+              })()}
 
               {/* 首页原本是一大片空白。而「拖进来就懂」本来就是设计时
                   列出的差异化点之一，这里正是它该在的位置。 */}

@@ -178,6 +178,12 @@
   background: var(--ink);
   color: var(--bg-soft);
 }
+/* 侧栏收藏项前的星：不要黑方块，就一个金色星 */
+.nav__glyph.is-star {
+  background: transparent;
+  color: #f5a623;
+  font-size: 13px;
+}
 .nav__count {
   margin-left: auto;
   font-family: var(--f-mono);
@@ -293,6 +299,53 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
   gap: 11px;
+}
+/* 「常用 / 其他工具」分段的小标题 */
+.grouplabel {
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--dim);
+  margin-left: 2px;
+}
+/* 卡片外面套一层，好让星标绝对定位在角上——按钮不能嵌按钮，
+   所以卡片和星标是这层里的两个兄弟。 */
+.cardwrap {
+  position: relative;
+  display: flex;
+}
+.cardwrap > .card {
+  flex: 1;
+  min-width: 0;
+}
+.cardstar {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(20, 17, 9, 0.3);
+  opacity: 0;
+  transition: opacity 0.14s, transform 0.14s var(--spring);
+  z-index: 2;
+}
+/* 平时藏着，悬停卡片时露出空心星；已收藏的始终显示、实心金色 */
+.cardwrap:hover .cardstar,
+.cardstar.is-on {
+  opacity: 1;
+}
+.cardstar.is-on {
+  color: #f5a623;
+}
+.cardstar:hover {
+  transform: scale(1.2);
 }
 .card {
   text-align: left;

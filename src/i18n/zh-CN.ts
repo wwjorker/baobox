@@ -37,6 +37,14 @@ export default {
     readyCount: "{ready}/{total} 可用",
   },
 
+  fav: {
+    section: "收藏",
+    common: "⭐ 常用",
+    others: "其他工具",
+    add: "加入常用",
+    remove: "取消常用",
+  },
+
   // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），
   // 而 t() 是按点号逐级下钻的，所以字典结构必须跟 id 的分段一致。
   tool: {
@@ -226,6 +234,10 @@ export default {
         name: "批量改时间",
         desc: "相机时区设错、导出工具把时间全写成当下——照片按时间排序全乱掉，这是唯一的修法。注意：这个工具直接改原文件的时间属性（内容一个字节不动），因为复制一份出来改时间毫无意义。",
       },
+      "zip-make": {
+        name: "压缩成 ZIP",
+        desc: "把一批文件或整个文件夹打包成一个 zip。拖文件夹进来会保留里面的目录层次，拖同一层的散文件就是干净的文件名。名字一律用 UTF-8，别人解开不会乱码——正好是「解压」那头在替别人收拾的坑，自己产出时不留。",
+      },
       unzip: {
         name: "解压（修中文名乱码）",
         desc: "WinRAR 和早年的资源管理器打包时，中文名是按 GBK 存进 zip 的。到别的机器上解开就成了「鏂囦欢澶?」这种东西——文件名彻底毁掉，而且没有任何提示，Windows 自带的解压就是这么坏的。这里会自己判编码再解。同时自动建同名文件夹，并拦掉写向上级目录的恶意条目。",
@@ -363,6 +375,7 @@ export default {
     gifSplit: "共 {total} 帧 · 导出 {saved} 张",
     gifMade: "{n} 帧动图",
     unzipped: "解出 {n} 个文件",
+    zipped: "已打包 {n} 个文件",
     unzipFixedNames: "修正了 {n} 个乱码文件名",
     unzipRejected: "拦掉 {n} 个不安全路径",
     unzipSkipped: "跳过 {n} 个（加密或不支持的压缩方式）",
@@ -603,6 +616,7 @@ export default {
     gifNoFrames: "这个 GIF 里没有帧。",
     gifNeedTwo: "做动图至少需要两张图。",
     badArchive: "打不开这个压缩包，它可能已损坏或不是 zip 格式。",
+    zipNoFiles: "没有可打包的文件（拖进来的可能都是空文件夹）。",
     archiveUnsupported: "包里的条目都用了不支持的压缩方式（或需要密码）。目前只支持最常见的 deflate。",
     archiveEmpty: "这个压缩包是空的。",
     noDirsMade: "一个文件夹都没建成——清单可能是空的，或者要建的都已存在。",

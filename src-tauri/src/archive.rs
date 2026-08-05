@@ -19,12 +19,116 @@
 //!
 //! **自动建同名文件夹。** 一个包里几十个文件直接倒进当前目录是灾难。
 
-use crate::batch::{run_batch, FileOutcome, Note};
+use crate::batch::{fold_outcomes, FileOutcome, Note};
+use crate::batch::run_batch;
 use crate::err::{AppError, AppResult};
-use crate::paths::{long_path, output_dir_for, stem_of};
-use std::io::Read;
+use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
+
+// ================================================================ 打包成 zip
+
+/// 把一批文件压成一个 zip。与「解压」配对。
+///
+/// 关键是**保留目录结构**：每个文件按它相对「所有输入的共同上级目录」的路径
+/// 存进 zip。这样——
+///   · 拖一个文件夹进来（会被展开成里面的文件），共同上级就是那个文件夹，
+///     子目录层次原样保留；
+///   · 拖同一层的几个散文件，共同上级是它们所在的目录，条目就是干净的文件名。
+/// 一个「取共同祖先」的小技巧同时把两种情况都办了，不用分别处理。
+///
+/// 名字一律用 UTF-8（置了标志位第 11 位），中文名不会再变乱码——
+/// 这正是我们解压那头在替别人收拾的烂摊子，自己产出时当然不留。
+pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
+    let files: Vec<&PathBuf> = srcs.iter().filter(|p| long_path(p).is_file()).collect();
+    if files.is_empty() {
+        return Err(AppError::new("err.zipNoFiles"));
+    }
+
+    let base = common_ancestor(&files);
+    let dir = output_dir_for(files[0])?;
+    // 名字取共同上级目录名；取不到（如根目录）就用第一个文件的名字兜底
+    let name = base
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| stem_of(files[0]));
+    let dst = unique_path(&dir, &format!("{name} 打包"), "zip");
+
+    let out = std::fs::File::create(long_path(&dst))?;
+    let mut zip = zip::ZipWriter::new(out);
+    // deflate 是通用压缩法，几乎所有解压软件都认
+    let opts = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    let mut n = 0usize;
+    for src in &files {
+        let rel = src.strip_prefix(&base).unwrap_or(Path::new(""));
+        // zip 里一律用正斜杠；空的（理论上不会）退回文件名
+        let mut entry = rel.to_string_lossy().replace('\\', "/");
+        if entry.is_empty() {
+            entry = file_name_of(src);
+        }
+        zip.start_file(entry, opts)
+            .map_err(|e| AppError::unknown(e))?;
+        let data = std::fs::read(long_path(src))?;
+        zip.write_all(&data)?;
+        n += 1;
+    }
+    zip.finish().map_err(|e| AppError::unknown(e))?;
+    Ok((dst, n))
+}
+
+/// 一批路径的共同上级目录（按路径分段取最长公共前缀）。
+fn common_ancestor(files: &[&PathBuf]) -> PathBuf {
+    // 收成 owned 的分段串，避免 Component 借用带来的生命周期纠缠
+    fn parent_segs(p: &Path) -> Vec<std::ffi::OsString> {
+        p.parent()
+            .unwrap_or_else(|| Path::new(""))
+            .components()
+            .map(|c| c.as_os_str().to_os_string())
+            .collect()
+    }
+    let mut common = parent_segs(files[0]);
+    for f in &files[1..] {
+        let segs = parent_segs(f);
+        let len = common
+            .iter()
+            .zip(segs.iter())
+            .take_while(|(a, b)| a == b)
+            .count();
+        common.truncate(len);
+    }
+    let mut out = PathBuf::new();
+    for seg in &common {
+        out.push(seg);
+    }
+    out
+}
+
+#[tauri::command]
+pub async fn zip_create(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if paths.is_empty() {
+            return Vec::new();
+        }
+        let srcs: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
+        let total = srcs.len();
+        let o = match create_zip(&srcs) {
+            Ok((dst, n)) => FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.zipped").with("n", n))),
+            Err(e) => FileOutcome::fail(&srcs[0], e),
+        };
+        // N→1：产物一份挂第一个，其余各发一条「已并入」，别让它们停在「等待」
+        let outcomes = fold_outcomes(o, &srcs[1..]);
+        for (i, o) in outcomes.iter().enumerate() {
+            crate::batch::emit(&app, i, total, o);
+        }
+        outcomes
+    })
+    .await
+    .unwrap_or_default()
+}
 
 /// 整个压缩包用哪个编码存文件名。
 ///
