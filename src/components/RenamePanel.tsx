@@ -46,6 +46,7 @@ export function RenamePanel() {
   const [preview, setPreview] = useState<Preview[]>([]);
   const [undoLog, setUndoLog] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [result, setResult] = useState<{ done: number; skipped: number; failed: number } | null>(
     null,
   );
@@ -55,6 +56,7 @@ export function RenamePanel() {
     setResult(null);
     setUndoLog(null);
     setErr(null);
+    setMsg(null);
   }, []);
 
   useEffect(() => {
@@ -90,6 +92,7 @@ export function RenamePanel() {
 
   const apply = async () => {
     setErr(null);
+    setMsg(null);
     try {
       const r = await invoke<{ done: number; skipped: number; failed: number; undo_log: string }>(
         "rename_apply",
@@ -117,7 +120,7 @@ export function RenamePanel() {
       if (r.failed === 0) {
         setUndoLog(null);
         setResult(null);
-        alert(t("rename.undone", { count: r.restored }));
+        setMsg(t("rename.undone", { count: r.restored }));
       } else {
         // 有没还原成功的：后端保留了日志，这里也留着撤销按钮让用户再撤一次
         setErr(t("rename.undonePartial", { restored: r.restored, failed: r.failed }));
@@ -308,6 +311,13 @@ export function RenamePanel() {
         <div className="notice">
           <span className="notice__mark">!</span>
           <span>{t("rename.noUndoLog")}</span>
+        </div>
+      )}
+
+      {msg && (
+        <div className="notice">
+          <span className="notice__mark">✓</span>
+          <span>{msg}</span>
         </div>
       )}
 

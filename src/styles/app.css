@@ -206,10 +206,10 @@
 
 /* ------------------------------------------------------------ 内容区 */
 .main {
-  /* 设计令牌写着「黄色是框不是底，内容落在白纸上」，之前这里漏了背景、
-     直接继承了 body 的芥末黄，整片压得很重。铺白纸，黄色只留给侧栏和状态条。
-     白卡片靠 3px 黑边 + 硬投影自己就分得开，不需要靠底色反差。 */
-  background: var(--paper);
+  /* 「黄色是框不是底」。之前漏了背景、继承 body 的芥末黄，整片压得很重；
+     一度改纯白，但白卡贴白底又太像表格。折中用暖纸底 --canvas：白卡片落上去
+     有层次，黄色仍只留给侧栏和状态条。 */
+  background: var(--canvas);
   padding: 16px 20px;
   overflow-y: auto;
   display: flex;
@@ -304,14 +304,17 @@
   grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
   gap: 11px;
 }
-/* 「常用 / 其他工具」分段的小标题 */
+/* 「常用 / 其他工具」分段标题：做成一枚黑底贴纸标签，而不是小号灰字，
+   才分得开两段、也更贴合整套贴纸风。 */
 .grouplabel {
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  align-self: flex-start;
+  font-size: 11px;
+  letter-spacing: 0.1em;
   font-weight: 800;
-  color: var(--dim);
-  margin-left: 2px;
+  color: var(--bg-soft);
+  background: var(--ink);
+  padding: 3px 9px;
+  border-radius: var(--rad);
 }
 /* 卡片外面套一层，好让星标绝对定位在角上——按钮不能嵌按钮，
    所以卡片和星标是这层里的两个兄弟。 */
@@ -1454,17 +1457,10 @@
   line-height: 1.5;
   color: var(--dim);
 }
-@media (prefers-color-scheme: dark) {
-  .shredwarn {
-    background: #2a1512;
-  }
-}
-:root[data-theme="dark"] .shredwarn {
-  background: #2a1512;
-}
-:root[data-theme="light"] .shredwarn {
-  background: #fff4f2;
-}
+/* 早先这里有一条 prefers-color-scheme:dark 规则，只把背景改成深色、
+   文字仍是近黑的 ink —— 系统开深色时这段安全警告几乎看不清。整个应用
+   本就是浅色单一主题（没有 data-theme），删掉这些条件规则，基础的浅色
+   底 #fff4f2 始终生效，配深色文字任何系统下都清楚。 */
 /* 必须手动输入确认短语才能启用粉碎按钮 */
 .shredinput {
   width: 100%;

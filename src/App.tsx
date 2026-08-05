@@ -66,7 +66,9 @@ export default function App() {
       if (!def) return;
       setPillar(def.pillar);
       setToolId(id);
-      pushRecent(id);
+      // 只把真能用的工具计入「最近」——计划中的（如「设置 PDF 密码」还没做）
+      // 记进去只会让人点开发现用不了
+      if (def.status === "ready") pushRecent(id);
       // pending 不在这里清 —— 退回来换个工具再试一次是常见动作，
       // 让文件留着比逼用户重拖一遍好。ToolRunner 按路径去重，重复注入无害。
     },

@@ -22,6 +22,7 @@ export function TouchPanel() {
   const [hours, setHours] = useState(0);
   const [undoLog, setUndoLog] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
   const [result, setResult] = useState<{ done: number; failed: number } | null>(null);
 
   const addPaths = useCallback((incoming: string[]) => {
@@ -29,6 +30,7 @@ export function TouchPanel() {
     setResult(null);
     setUndoLog(null);
     setErr(null);
+    setMsg(null);
   }, []);
 
   useEffect(() => {
@@ -48,6 +50,7 @@ export function TouchPanel() {
 
   const apply = async () => {
     setErr(null);
+    setMsg(null);
     try {
       const r = await invoke<{ done: number; failed: number; undo_log: string }>("touch_apply", {
         paths,
@@ -72,7 +75,7 @@ export function TouchPanel() {
       if (r.failed === 0) {
         setUndoLog(null);
         setResult(null);
-        alert(t("touch.undone", { count: r.restored }));
+        setMsg(t("touch.undone", { count: r.restored }));
       } else {
         // 有没还原成功的：日志还在，留着按钮让用户再撤一次
         setErr(t("touch.undonePartial", { restored: r.restored, failed: r.failed }));
@@ -157,6 +160,13 @@ export function TouchPanel() {
         <div className="notice">
           <span className="notice__mark">!</span>
           <span>{t("touch.noUndoLog")}</span>
+        </div>
+      )}
+
+      {msg && (
+        <div className="notice">
+          <span className="notice__mark">✓</span>
+          <span>{msg}</span>
         </div>
       )}
 

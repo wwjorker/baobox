@@ -45,8 +45,13 @@ export function PdfPagesPanel() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  // 加载代号：换 PDF 时递增，只有最新那次的结果能落地。
+  // 否则先点 A 后点 B、A 后返回，会出现「src 是 B、缩略图却是 A」，
+  // 导出就会把按 A 排的页码用到 B 上——产出和预览不符的 PDF。
+  const loadGen = useRef(0);
 
   const load = useCallback(async (path: string) => {
+    const gen = ++loadGen.current;
     setSrc(path);
     setLoading(true);
     setErr(null);
@@ -55,6 +60,7 @@ export function PdfPagesPanel() {
     setThumbs([]);
     try {
       const r = await invoke<PageThumbs>("pdf_page_thumbs", { path });
+      if (gen !== loadGen.current) return; // 已经有更新的加载了，丢弃这次
       setThumbs(r.thumbs);
       setCards(
         Array.from({ length: r.count }, (_, i) => ({
@@ -65,11 +71,12 @@ export function PdfPagesPanel() {
         })),
       );
     } catch (e) {
+      if (gen !== loadGen.current) return;
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));
       setSrc(null);
     } finally {
-      setLoading(false);
+      if (gen === loadGen.current) setLoading(false);
     }
   }, [t]);
 
@@ -122,54 +129,54 @@ export function PdfPagesPanel() {
         .map((c) => ({ ...c, rotate: 0, removed: false })),
     );
 
-  // 拖拽重排：用鼠标事件自己实现，不用原生 HTML5 拖放。
-  // Tauri 开着「拖文件进来」（dragDropEnabled）时会在系统层截走拖放事件，
-  // WebView 里的 draggable 根本不触发——这也是之前拖不动的原因。
+  // 拖拽重排：用 Pointer Events 自己实现，不用原生 HTML5 拖放。
+  // Tauri 开着「拖文件进来」（dragDropEnabled）时会在系统层截走 HTML5 拖放，
+  // WebView 里的 draggable 根本不触发——这是之前拖不动的原因。
+  // 用 setPointerCapture：光标移出窗口也照样收到事件，不会卡在拖动态；
+  // 落点用 elementFromPoint 直接命中，不必每帧遍历所有卡片；再用 rAF 限频。
+  const rafRef = useRef(0);
+
   const cardIndexAt = (x: number, y: number): number | null => {
     const grid = gridRef.current;
     if (!grid) return null;
-    const kids = Array.from(grid.children) as HTMLElement[];
-    for (let k = 0; k < kids.length; k++) {
-      const r = kids[k].getBoundingClientRect();
-      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return k;
-    }
-    return null;
+    const card = (document.elementFromPoint(x, y) as HTMLElement | null)?.closest(".pagecard");
+    if (!card) return null;
+    const idx = Array.prototype.indexOf.call(grid.children, card);
+    return idx >= 0 ? idx : null;
   };
 
   // 从卡片主体按下起拖；点到按钮上不算（那是旋转/删除/移动）
-  const startDrag = (e: React.MouseEvent, i: number) => {
+  const startDrag = (e: React.PointerEvent, i: number) => {
     if ((e.target as HTMLElement).closest("button")) return;
     e.preventDefault();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* 某些环境不支持捕获，退化为普通拖动即可 */
+    }
     setDragIdx(i);
     setOverIdx(i);
   };
 
-  // 拖动期间在 window 上听，松开后把卡片挪到光标所在的位置
-  useEffect(() => {
-    if (dragIdx === null) return;
-    const from = dragIdx;
-    const onMove = (e: MouseEvent) => setOverIdx(cardIndexAt(e.clientX, e.clientY));
-    const onUp = (e: MouseEvent) => {
-      const to = cardIndexAt(e.clientX, e.clientY);
-      setDragIdx(null);
-      setOverIdx(null);
-      if (to === null || to === from) return;
-      setCards((prev) => {
-        const next = [...prev];
-        const [moved] = next.splice(from, 1);
-        next.splice(to, 0, moved);
-        return next;
-      });
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    // cardIndexAt 只读 gridRef，稳定；无需入依赖
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragIdx]);
+  const onDragMove = (e: React.PointerEvent) => {
+    const { clientX: x, clientY: y } = e;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => setOverIdx(cardIndexAt(x, y)));
+  };
+
+  const endDrag = (e: React.PointerEvent, from: number) => {
+    cancelAnimationFrame(rafRef.current);
+    const to = cardIndexAt(e.clientX, e.clientY);
+    setDragIdx(null);
+    setOverIdx(null);
+    if (to === null || to === from) return;
+    setCards((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
 
   const kept = cards.filter((c) => !c.removed);
 
@@ -198,7 +205,7 @@ export function PdfPagesPanel() {
       <h1 className="h1">{t("tool.pdf.split.name")}</h1>
       <p className="lede">{t("pdfpages.desc")}</p>
 
-      <button className="addbar" onClick={pick}>
+      <button className="addbar" onClick={pick} disabled={loading}>
         <span className="addbar__plus">＋</span>
         {src ? t("pdfpages.pickAnother") : t("pdfpages.pick")}
       </button>
@@ -246,7 +253,10 @@ export function PdfPagesPanel() {
                 className={`pagecard${c.removed ? " is-removed" : ""}${
                   overIdx === i && dragIdx !== i ? " is-over" : ""
                 }${dragIdx === i ? " is-dragging" : ""}`}
-                onMouseDown={(e) => startDrag(e, i)}
+                onPointerDown={(e) => startDrag(e, i)}
+                onPointerMove={dragIdx === i ? onDragMove : undefined}
+                onPointerUp={dragIdx === i ? (e) => endDrag(e, i) : undefined}
+                onPointerCancel={dragIdx === i ? (e) => endDrag(e, i) : undefined}
               >
                 <div className="pagecard__thumb">
                   <img

@@ -563,7 +563,7 @@ const enUS: typeof zhCN = {
     export: "Export ({count})",
     exporting: "Exporting…",
     done: "Exported a new PDF with {pages} page(s).",
-    dropped: "(Bookmarks, forms and other page-anchored structures can't survive reordering and were removed.)",
+    dropped: "(Bookmarks, forms, attachments, page labels and other page-anchored structures can't survive reordering and were removed. Your original is untouched — use it if you need them.)",
   },
   dedupe: {
     pickFolder: "Choose folders to scan",

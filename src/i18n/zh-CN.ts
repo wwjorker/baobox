@@ -559,7 +559,7 @@ export default {
     export: "导出（{count} 页）",
     exporting: "导出中…",
     done: "已导出 {pages} 页的新 PDF。",
-    dropped: "（书签、表单等按页面定位的结构没法随重排带过来，已移除。）",
+    dropped: "（书签、表单、附件、页签等随页面走的结构没法随重排无损带过来，已移除。原文件没动，需要它们就用原文件。）",
   },
   dedupe: {
     pickFolder: "选择要扫描的文件夹",
