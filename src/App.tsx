@@ -9,6 +9,7 @@ import { Dialog } from "./components/Dialog";
 import { ToolRunner } from "./components/ToolRunner";
 import { DedupePanel } from "./components/DedupePanel";
 import { RenamePanel } from "./components/RenamePanel";
+import { TouchPanel } from "./components/TouchPanel";
 import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
 import { ShredPanel } from "./components/ShredPanel";
@@ -174,6 +175,9 @@ export default function App() {
             <ScreenOcrPanel autoStart={hotkeyTick} />
           ) : tool?.id === "file.rename" ? (
             <RenamePanel />
+          ) : tool?.id === "file.touch" ? (
+            // 直接改原文件的时间，得像重命名一样先记原时间、给一键撤销
+            <TouchPanel />
           ) : tool?.id === "file.dedupe" ? (
             // 「扫描 → 分组 → 勾选 → 删除」和通用的「拖入 → 配置 → 执行」
             // 是两种流程，硬套一个框架只会两边都别扭

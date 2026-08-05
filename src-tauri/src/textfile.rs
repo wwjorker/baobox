@@ -794,46 +794,134 @@ pub fn set_times(src: &Path, shift_hours: i64, set_to: Option<i64>) -> AppResult
     Ok(target)
 }
 
+/// 读文件当前的修改时间（Unix 秒）。撤销全靠先把它记下来。
+fn read_mtime(src: &Path) -> Option<i64> {
+    use std::time::UNIX_EPOCH;
+    std::fs::metadata(long_path(src))
+        .ok()?
+        .modified()
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|d| d.as_secs() as i64)
+}
+
+#[derive(serde::Serialize)]
+pub struct TouchResult {
+    pub done: usize,
+    pub failed: usize,
+    /// 撤销日志位置；为空表示没能存下（则界面不提供撤销）
+    pub undo_log: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct TouchUndoEntry {
+    path: String,
+    /// 原来的修改时间（Unix 秒）
+    secs: i64,
+}
+
+/// 批量改文件的修改时间，并写一份可撤销的日志。
+///
+/// 这个工具会**直接改原文件**的时间属性——时间不是内容，复制一份出来改
+/// 毫无意义。正因为动了原件，就得像重命名一样留后路：动手前先把每个文件的
+/// 原时间记下来，撤销即可一键回到从前。**日志必须先能落盘才允许改第一个**，
+/// 建不起来（磁盘满 / 无权限）就直接报错、一个都不动。
 #[tauri::command]
 #[allow(non_snake_case)]
-pub async fn file_touch(
-    app: AppHandle,
-    paths: Vec<String>,
-    shiftHours: i64,
-) -> Vec<FileOutcome> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let total = paths.len();
-        let mut out = Vec::with_capacity(total);
-        crate::batch::reset_cancel();
+pub fn touch_apply(paths: Vec<String>, shiftHours: i64) -> AppResult<TouchResult> {
+    use std::io::Write;
+    let sidecar_dir = paths
+        .first()
+        .map(PathBuf::from)
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let (log_path, mut log_file) = open_touch_log(sidecar_dir.as_deref())?;
 
-        for (index, p) in paths.iter().enumerate() {
-            let src = PathBuf::from(p);
-            if crate::batch::cancelled() {
-                let o = FileOutcome::skipped(&src, "run.cancelledSkip");
-                crate::batch::emit(&app, index, total, &o);
-                out.push(o);
-                continue;
-            }
-            let o = match set_times(&src, shiftHours, None) {
-                // 产物就是原文件本身，out_path 指回去，「打开输出文件夹」才有意义
-                Ok(_) => {
-                    let mut o = FileOutcome::ok(
-                        &src,
-                        src.clone(),
-                        Some(Note::new("note.timeShifted").with("h", shiftHours)),
-                    );
-                    o.out_bytes = o.in_bytes;
-                    o
+    let (mut done, mut failed) = (0usize, 0usize);
+    for p in &paths {
+        let src = PathBuf::from(p);
+        // 先记原时间，再改。改成功却没记下原时间的，不写进日志（宁可不给撤销）
+        let original = read_mtime(&src);
+        match set_times(&src, shiftHours, None) {
+            Ok(_) => {
+                done += 1;
+                if let Some(secs) = original {
+                    let entry = TouchUndoEntry {
+                        path: src.to_string_lossy().to_string(),
+                        secs,
+                    };
+                    if let Ok(line) = serde_json::to_string(&entry) {
+                        let _ = writeln!(log_file, "{line}");
+                        let _ = log_file.flush();
+                    }
                 }
-                Err(e) => FileOutcome::fail(&src, e),
-            };
-            crate::batch::emit(&app, index, total, &o);
-            out.push(o);
+            }
+            Err(_) => failed += 1,
         }
-        out
+    }
+    drop(log_file);
+
+    let undo_log = if done > 0 {
+        log_path.to_string_lossy().to_string()
+    } else {
+        let _ = std::fs::remove_file(long_path(&log_path));
+        String::new()
+    };
+    Ok(TouchResult {
+        done,
+        failed,
+        undo_log,
     })
-    .await
-    .unwrap_or_default()
+}
+
+/// 按日志把时间改回去。用 set_to 设回原来的精确时刻。
+#[tauri::command]
+pub fn touch_undo(log_path: String) -> AppResult<usize> {
+    let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
+    let entries: Vec<TouchUndoEntry> = data
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect();
+    let mut restored = 0usize;
+    for e in &entries {
+        if set_times(Path::new(&e.path), 0, Some(e.secs)).is_ok() {
+            restored += 1;
+        }
+    }
+    if restored > 0 {
+        let _ = std::fs::remove_file(long_path(Path::new(&log_path)));
+    }
+    Ok(restored)
+}
+
+/// 建好改时间的撤销日志并验证可写。源目录优先，失败退临时目录。
+fn open_touch_log(sidecar_dir: Option<&Path>) -> AppResult<(PathBuf, std::fs::File)> {
+    let name = format!("Baobox 改时间撤销 {}.jsonl", touch_stamp());
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(d) = sidecar_dir {
+        candidates.push(d.join(&name));
+    }
+    candidates.push(std::env::temp_dir().join(&name));
+    for path in &candidates {
+        if let Ok(f) = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(long_path(path))
+        {
+            return Ok((path.clone(), f));
+        }
+    }
+    Err(AppError::new("err.undoLogFailed"))
+}
+
+fn touch_stamp() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+        .to_string()
 }
 
 // ================================================================ 批量新建文件夹

@@ -2,7 +2,7 @@
 
 use baobox_lib::image_edit::{aspect_file, base64_of, palette_of};
 use baobox_lib::pdf_ops::{insert_blank, nup_file};
-use baobox_lib::textfile::{csv_to_json, json_to_csv, set_times};
+use baobox_lib::textfile::{csv_to_json, json_to_csv, set_times, touch_apply, touch_undo};
 use lopdf::{dictionary, Document, Object};
 use std::path::PathBuf;
 
@@ -248,6 +248,48 @@ fn main() {
         "内容一个字节没动",
         std::fs::read(&tf).unwrap() == b"content",
         "改的是属性不是内容".into(),
+    );
+
+    // touch_apply → touch_undo 闭环：改了还能一键改回去
+    let uf = tmp.join("undo_me.bin");
+    std::fs::write(&uf, b"x").unwrap();
+    let orig = std::fs::metadata(&uf)
+        .unwrap()
+        .modified()
+        .unwrap()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    let res = touch_apply(vec![uf.to_string_lossy().to_string()], -5).unwrap();
+    let shifted = std::fs::metadata(&uf)
+        .unwrap()
+        .modified()
+        .unwrap()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    check(
+        "touch_apply 改了时间且留了撤销日志",
+        res.done == 1 && !res.undo_log.is_empty() && (orig - shifted - 5 * 3600).abs() <= 2,
+        format!("{orig} → {shifted}"),
+    );
+    let restored = touch_undo(res.undo_log.clone()).unwrap();
+    let back = std::fs::metadata(&uf)
+        .unwrap()
+        .modified()
+        .unwrap()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64;
+    check(
+        "撤销把原时间放了回来",
+        restored == 1 && (back - orig).abs() <= 2,
+        format!("回到 {back}（原 {orig}）"),
+    );
+    check(
+        "撤销后日志被清掉",
+        !std::path::Path::new(&res.undo_log).exists(),
+        "别在用户目录里留垃圾".into(),
     );
 
     let _ = std::fs::remove_dir_all(&tmp);

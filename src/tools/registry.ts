@@ -710,11 +710,11 @@ export const TOOLS: ToolDef[] = [
     id: "file.touch",
     pillar: "file",
     accepts: [],
-    command: "file_touch",
+    // 走专用面板（App.tsx 按 id 路由）：改的是原文件的时间，得像重命名
+    // 一样先记原时间、给一键撤销，通用框架承载不了这条撤销线
+    command: "touch_apply",
     status: "ready",
-    options: [
-      { kind: "number", id: "shiftHours", label: "opt.shiftHours", min: -240, max: 240, step: 1, def: 0, unit: "h" },
-    ],
+    options: [],
   },
   {
     id: "file.zip-make",

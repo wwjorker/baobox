@@ -237,7 +237,7 @@ const enUS: typeof zhCN = {
       },
       touch: {
         name: "Shift file timestamps",
-        desc: "A camera set to the wrong timezone, or an export tool that stamps everything with the current moment, ruins sorting by date — this is the only fix. Note that this edits the timestamps of your original files in place (the contents are untouched), because copying a file to change its date achieves nothing.",
+        desc: "A camera set to the wrong timezone, or an export tool that stamps everything with the current moment, ruins sorting by date. This edits the modified time of your original files in place (contents untouched), and records each file's original time first, so you can undo in one click.",
       },
       "zip-make": {
         name: "Compress to ZIP",
@@ -525,6 +525,20 @@ const enUS: typeof zhCN = {
       case: "Letter case",
     },
     case: { lower: "lowercase", upper: "UPPERCASE", title: "Title Case" },
+  },
+  touch: {
+    pick: "Choose files to retime",
+    picked: "{count} selected · click to edit",
+    shiftLabel: "Shift by",
+    reset: "None",
+    shiftHint: "Positive moves later, negative earlier. A wrong camera timezone is usually ±8. This changes the modified time; contents stay untouched.",
+    apply: "Apply ({count})",
+    result: "{done} changed, {failed} failed. Original times were recorded — undo any time.",
+    undo: "Undo this change",
+    undone: "Put {count} file time(s) back.",
+    noUndoLog: "Times were changed, but the undo log couldn't be saved — one-click revert isn't available for this run.",
+    emptyTitle: "Pick files and set an offset",
+    emptyHint: "Drop files here or pick them above. Set the hour offset; your original times are recorded before anything changes.",
   },
   dedupe: {
     pickFolder: "Choose folders to scan",
