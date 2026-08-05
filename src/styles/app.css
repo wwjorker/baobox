@@ -504,6 +504,12 @@
   font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  /* 固定宽度、右对齐：数字从个位变到三四位时不再改变宽度，
+     否则后面的滑块会跟着左右移动，拖动时对不准想要的值。
+     3.4em 够放 4 位数加负号（-100 / 8000）。 */
+  min-width: 3.4em;
+  text-align: right;
+  flex: none;
 }
 .opt__unit {
   font-size: 11px;

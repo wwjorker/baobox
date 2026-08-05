@@ -153,7 +153,7 @@ const enUS: typeof zhCN = {
       stamp: { name: "Page numbers & watermark", desc: "Stamp every page with a watermark and page numbers, Chinese included. Only the glyphs actually used get embedded, so a 19.7 MB font costs about 13 KB." },
       "ocr-layer": {
         name: "Make a scan searchable",
-        desc: "A scanned PDF is just pictures — nothing to search, nothing to copy. This reads every page and lays the words back over the image as an invisible layer. The page looks identical, but it can now be searched, selected and copied. iLovePDF and Smallpdf keep this behind a subscription.",
+        desc: "A scanned PDF is just pictures — nothing to search, nothing to copy. This reads every page and lays the words back over the image as an invisible layer. The page looks identical, but it can now be searched, selected and copied. This is usually a paid subscription feature elsewhere; here it is offline and free.",
       },
       "extract-images": {
         name: "Extract embedded images",
