@@ -670,6 +670,45 @@ pub struct PageOp {
 pub struct ArrangeResult {
     pub out_path: String,
     pub pages: usize,
+    /// 书签/表单等按页面引用的结构在整理中被移除了——告诉用户一声
+    pub dropped: bool,
+}
+
+/// 把页面可继承的属性从旧 `/Pages` 祖先链解析出来。
+///
+/// PDF 规范允许 `MediaBox`、`CropBox`、`Resources`、`Rotate` 定义在 `/Pages`
+/// 节点上、由下面的页面继承。真实 PDF 极常把 MediaBox 放在 Pages 上。
+/// 一旦把页面的 `Parent` 换到新页树，这条继承链就断了——不先固化，页面就
+/// 会丢尺寸（导出空白/错位）、丢资源（字体图片不显示）、丢原始旋转。
+/// 返回「页面自身没有、但祖先有」的那些属性，交给调用方固化到页面上。
+fn resolve_inherited(doc: &Document, page_id: ObjectId) -> Vec<(Vec<u8>, Object)> {
+    let keys: [&[u8]; 4] = [b"MediaBox", b"CropBox", b"Resources", b"Rotate"];
+    let mut out: Vec<(Vec<u8>, Object)> = Vec::new();
+    let Ok(page) = doc.get_object(page_id).and_then(|o| o.as_dict()) else {
+        return out;
+    };
+    for &key in keys.iter() {
+        if page.has(key) {
+            continue;
+        }
+        let mut cur = page.get(b"Parent").ok().and_then(|o| o.as_reference().ok());
+        let mut guard = 0;
+        while let Some(pid) = cur {
+            if guard > 64 {
+                break; // 防环
+            }
+            guard += 1;
+            let Ok(pd) = doc.get_object(pid).and_then(|o| o.as_dict()) else {
+                break;
+            };
+            if let Ok(v) = pd.get(key) {
+                out.push((key.to_vec(), v.clone()));
+                break;
+            }
+            cur = pd.get(b"Parent").ok().and_then(|o| o.as_reference().ok());
+        }
+    }
+    out
 }
 
 /// 按一份「保留哪些页、什么顺序、各转多少」的清单，重排出一份新 PDF。
@@ -683,7 +722,7 @@ pub struct ArrangeResult {
 /// 对象。早先的实现「每保留一页就克隆整份文档、最后合并」——4 页的测试全绿，
 /// 但一份 200MB / 200 页的 PDF 会同时持有上百份文档克隆，内存可能爆到几十 GB。
 /// 现在全程只有一份文档在内存里。
-pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> {
+pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize, bool)> {
     let mut doc = open(src)?;
     let pages = doc.get_pages();
     if pages.is_empty() {
@@ -704,12 +743,33 @@ pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> 
     }
     let n = picked.len();
 
-    // 新建一个扁平页树根：选中的页重挂到它下面，旋转就地累加。
-    // 每个选中页的 MediaBox 等属性本就在页字典上（或经继承），这里连同
-    // Parent 一起改，和 merge_docs 扁平化的做法一致。
+    // —— 只读阶段 ——
+    // 换 Parent 会切断继承链，先把每个选中页可继承的属性解析出来。
+    let inherited: Vec<Vec<(Vec<u8>, Object)>> = picked
+        .iter()
+        .map(|(id, _)| resolve_inherited(&doc, *id))
+        .collect();
+    // 保留原 Catalog 的文档级信息（XMP 元数据、语言、阅读器偏好等），别新建一个空的。
+    let mut catalog = doc
+        .trailer
+        .get(b"Root")
+        .ok()
+        .and_then(|o| o.as_reference().ok())
+        .and_then(|id| doc.get_object(id).ok())
+        .and_then(|o| o.as_dict().ok())
+        .cloned()
+        .unwrap_or_else(lopdf::Dictionary::new);
+
+    // —— 可变阶段 ——
+    // 新建一个扁平页树根：选中的页固化继承属性后重挂到它下面，旋转就地累加。
     let pages_id = doc.new_object_id();
-    for (id, rot) in &picked {
+    for ((id, rot), inh) in picked.iter().zip(inherited) {
         if let Ok(dict) = doc.get_object_mut(*id).and_then(|o| o.as_dict_mut()) {
+            for (k, v) in inh {
+                if !dict.has(&k) {
+                    dict.set(k, v);
+                }
+            }
             dict.set("Parent", pages_id);
             if *rot != 0 {
                 let cur = dict.get(b"Rotate").and_then(|o| o.as_i64()).unwrap_or(0);
@@ -725,9 +785,25 @@ pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> 
     pages_dict.set("Kids", kids);
     doc.objects.insert(pages_id, Object::Dictionary(pages_dict));
 
-    let mut catalog = lopdf::Dictionary::new();
     catalog.set("Type", "Catalog");
     catalog.set("Pages", pages_id);
+    // 这些都按页面引用，重排/删页后会指向已删的页、变成坏引用——明确摘掉。
+    // 有则记一笔：整理动了页面，书签/表单这类没法无损带过来，如实告诉用户。
+    let mut dropped = false;
+    for k in [
+        b"Outlines".as_ref(),
+        b"AcroForm",
+        b"Names",
+        b"Dests",
+        b"PageLabels",
+        b"OpenAction",
+        b"Threads",
+        b"StructTreeRoot",
+    ] {
+        if catalog.remove(k).is_some() {
+            dropped = true;
+        }
+    }
     let catalog_id = doc.add_object(Object::Dictionary(catalog));
     doc.trailer.set("Root", catalog_id);
 
@@ -740,17 +816,18 @@ pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> 
     let dir = output_dir_for(src)?;
     let dst = unique_path(&dir, &format!("{} 整理", stem_of(src)), "pdf");
     save(&mut doc, &dst)?;
-    Ok((dst, n))
+    Ok((dst, n, dropped))
 }
 
 #[tauri::command]
 pub async fn pdf_arrange(path: String, ops: Vec<PageOp>) -> AppResult<ArrangeResult> {
     let joined = tauri::async_runtime::spawn_blocking(move || {
         let src = PathBuf::from(&path);
-        let (dst, n) = arrange_pages(&src, &ops)?;
+        let (dst, n, dropped) = arrange_pages(&src, &ops)?;
         Ok::<ArrangeResult, AppError>(ArrangeResult {
             out_path: dst.to_string_lossy().to_string(),
             pages: n,
+            dropped,
         })
     })
     .await;

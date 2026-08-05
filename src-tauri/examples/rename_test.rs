@@ -102,7 +102,8 @@ fn main() {
     );
 
     // ---- 5. 撤销：必须把每一个名字都还原回去 ----
-    let restored = rename_undo(res.undo_log.clone()).expect("撤销失败");
+    let undo = rename_undo(res.undo_log.clone()).expect("撤销失败");
+    let restored = undo.restored;
     let now: Vec<String> = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(|e| e.ok())
@@ -112,8 +113,8 @@ fn main() {
     let all_back = before.iter().all(|b| now.contains(b));
     check(
         "撤销还原",
-        all_back && restored == res.done,
-        format!("还原 {restored}/{} · 原名全部回来: {all_back}", res.done),
+        all_back && restored == res.done && undo.failed == 0,
+        format!("还原 {restored}/{} · 失败 {} · 原名全部回来: {all_back}", res.done, undo.failed),
     );
 
     // ---- 6. 占位文件没被覆盖 ----

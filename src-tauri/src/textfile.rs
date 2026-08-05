@@ -882,16 +882,20 @@ pub fn touch_apply(paths: Vec<String>, shiftHours: i64) -> AppResult<TouchResult
 }
 
 /// 按日志把时间改回去。用 set_to 设回原来的精确时刻。
-/// 只有全部还原成功才删日志；有失败就留着可再试。
+/// 只有「一条都没失败」才删日志；有失败（含解析不了的坏行）就留着可再试，
+/// 前端据 `failed > 0` 保留撤销按钮。
 #[tauri::command]
-pub fn touch_undo(log_path: String) -> AppResult<usize> {
+pub fn touch_undo(log_path: String) -> AppResult<crate::rename::UndoResult> {
     let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
-    let entries: Vec<TouchUndoEntry> = data
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|l| serde_json::from_str(l).ok())
-        .collect();
-    let (mut restored, mut failed) = (0usize, 0usize);
+    let mut entries: Vec<TouchUndoEntry> = Vec::new();
+    let mut failed = 0usize; // 解析不了的行先记为失败
+    for line in data.lines().filter(|l| !l.trim().is_empty()) {
+        match serde_json::from_str::<TouchUndoEntry>(line) {
+            Ok(e) => entries.push(e),
+            Err(_) => failed += 1,
+        }
+    }
+    let mut restored = 0usize;
     for e in &entries {
         if set_times(Path::new(&e.path), 0, Some(e.secs)).is_ok() {
             restored += 1;
@@ -902,15 +906,12 @@ pub fn touch_undo(log_path: String) -> AppResult<usize> {
     if failed == 0 {
         let _ = std::fs::remove_file(long_path(Path::new(&log_path)));
     }
-    Ok(restored)
+    Ok(crate::rename::UndoResult { restored, failed })
 }
 
+/// 复用重命名那套纳秒时间戳，避免同一秒内撞名盖掉上一份日志。
 fn touch_stamp() -> String {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
-        .to_string()
+    crate::rename::chrono_stamp()
 }
 
 // ================================================================ 批量新建文件夹

@@ -512,6 +512,7 @@ const enUS: typeof zhCN = {
     apply: "Rename {count} file(s)",
     undo: "Undo this rename",
     undone: "Restored {count} original name(s).",
+    undonePartial: "Restored {restored}; {failed} couldn't be put back (target name may be taken). The undo log is kept — you can try again.",
     noUndoLog: "Files were renamed, but the undo log couldn't be saved — one-click revert isn't available for this run.",
     result: "{done} renamed, {skipped} skipped, {failed} failed. An undo log sits next to the files if you need to roll back.",
     emptyTitle: "Pick files, then add rules",
@@ -536,6 +537,7 @@ const enUS: typeof zhCN = {
     result: "{done} changed, {failed} failed. Original times were recorded — undo any time.",
     undo: "Undo this change",
     undone: "Put {count} file time(s) back.",
+    undonePartial: "Put {restored} back; {failed} couldn't be restored. The undo log is kept — you can try again.",
     noUndoLog: "Times were changed, but the undo log couldn't be saved — one-click revert isn't available for this run.",
     emptyTitle: "Pick files and set an offset",
     emptyHint: "Drop files here or pick them above. Set the hour offset; your original times are recorded before anything changes.",
@@ -561,6 +563,7 @@ const enUS: typeof zhCN = {
     export: "Export ({count})",
     exporting: "Exporting…",
     done: "Exported a new PDF with {pages} page(s).",
+    dropped: "(Bookmarks, forms and other page-anchored structures can't survive reordering and were removed.)",
   },
   dedupe: {
     pickFolder: "Choose folders to scan",

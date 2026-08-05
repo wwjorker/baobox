@@ -86,6 +86,10 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
                 entries.push((name, p));
             }
         } else if lp.is_file() {
+            if entries.len() >= MAX_ENTRIES {
+                hit_cap = true;
+                break;
+            }
             entries.push((file_name_of(src), src.clone()));
         }
     }

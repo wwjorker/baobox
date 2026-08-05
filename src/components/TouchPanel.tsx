@@ -66,10 +66,17 @@ export function TouchPanel() {
   const undo = async () => {
     if (!undoLog) return;
     try {
-      const n = await invoke<number>("touch_undo", { logPath: undoLog });
-      setUndoLog(null);
-      setResult(null);
-      alert(t("touch.undone", { count: n }));
+      const r = await invoke<{ restored: number; failed: number }>("touch_undo", {
+        logPath: undoLog,
+      });
+      if (r.failed === 0) {
+        setUndoLog(null);
+        setResult(null);
+        alert(t("touch.undone", { count: r.restored }));
+      } else {
+        // 有没还原成功的：日志还在，留着按钮让用户再撤一次
+        setErr(t("touch.undonePartial", { restored: r.restored, failed: r.failed }));
+      }
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));

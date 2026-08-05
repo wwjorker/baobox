@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -39,9 +39,12 @@ export function PdfPagesPanel() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [result, setResult] = useState<{ out_path: string; pages: number } | null>(null);
+  const [result, setResult] = useState<{ out_path: string; pages: number; dropped: boolean } | null>(
+    null,
+  );
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async (path: string) => {
     setSrc(path);
@@ -119,21 +122,54 @@ export function PdfPagesPanel() {
         .map((c) => ({ ...c, rotate: 0, removed: false })),
     );
 
-  // 拖拽重排：原生 HTML5 拖放，不引第三方库
-  const onDrop = (target: number) => {
-    setOverIdx(null);
-    if (dragIdx === null || dragIdx === target) {
-      setDragIdx(null);
-      return;
+  // 拖拽重排：用鼠标事件自己实现，不用原生 HTML5 拖放。
+  // Tauri 开着「拖文件进来」（dragDropEnabled）时会在系统层截走拖放事件，
+  // WebView 里的 draggable 根本不触发——这也是之前拖不动的原因。
+  const cardIndexAt = (x: number, y: number): number | null => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const kids = Array.from(grid.children) as HTMLElement[];
+    for (let k = 0; k < kids.length; k++) {
+      const r = kids[k].getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return k;
     }
-    setCards((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(dragIdx, 1);
-      next.splice(target, 0, moved);
-      return next;
-    });
-    setDragIdx(null);
+    return null;
   };
+
+  // 从卡片主体按下起拖；点到按钮上不算（那是旋转/删除/移动）
+  const startDrag = (e: React.MouseEvent, i: number) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    e.preventDefault();
+    setDragIdx(i);
+    setOverIdx(i);
+  };
+
+  // 拖动期间在 window 上听，松开后把卡片挪到光标所在的位置
+  useEffect(() => {
+    if (dragIdx === null) return;
+    const from = dragIdx;
+    const onMove = (e: MouseEvent) => setOverIdx(cardIndexAt(e.clientX, e.clientY));
+    const onUp = (e: MouseEvent) => {
+      const to = cardIndexAt(e.clientX, e.clientY);
+      setDragIdx(null);
+      setOverIdx(null);
+      if (to === null || to === from) return;
+      setCards((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      });
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    // cardIndexAt 只读 gridRef，稳定；无需入依赖
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragIdx]);
 
   const kept = cards.filter((c) => !c.removed);
 
@@ -144,7 +180,7 @@ export function PdfPagesPanel() {
     setResult(null);
     try {
       const ops = kept.map((c) => ({ page: c.orig, rotate: c.rotate }));
-      const r = await invoke<{ out_path: string; pages: number }>("pdf_arrange", {
+      const r = await invoke<{ out_path: string; pages: number; dropped: boolean }>("pdf_arrange", {
         path: src,
         ops,
       });
@@ -203,25 +239,14 @@ export function PdfPagesPanel() {
             <span className="opt__label pdfpages__hint">{t("pdfpages.dragHint")}</span>
           </div>
 
-          <div className="pagegrid">
+          <div className="pagegrid" ref={gridRef}>
             {cards.map((c, i) => (
               <div
                 key={c.key}
                 className={`pagecard${c.removed ? " is-removed" : ""}${
-                  overIdx === i ? " is-over" : ""
-                }`}
-                draggable
-                onDragStart={() => setDragIdx(i)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (overIdx !== i) setOverIdx(i);
-                }}
-                onDragLeave={() => setOverIdx((o) => (o === i ? null : o))}
-                onDrop={() => onDrop(i)}
-                onDragEnd={() => {
-                  setDragIdx(null);
-                  setOverIdx(null);
-                }}
+                  overIdx === i && dragIdx !== i ? " is-over" : ""
+                }${dragIdx === i ? " is-dragging" : ""}`}
+                onMouseDown={(e) => startDrag(e, i)}
               >
                 <div className="pagecard__thumb">
                   <img
@@ -239,6 +264,7 @@ export function PdfPagesPanel() {
                   <button
                     className="pagecard__btn"
                     title={t("pdfpages.moveLeft")}
+                    aria-label={t("pdfpages.moveLeft")}
                     disabled={i === 0}
                     onClick={() => move(i, -1)}
                   >
@@ -247,6 +273,7 @@ export function PdfPagesPanel() {
                   <button
                     className="pagecard__btn"
                     title={t("pdfpages.moveRight")}
+                    aria-label={t("pdfpages.moveRight")}
                     disabled={i === cards.length - 1}
                     onClick={() => move(i, 1)}
                   >
@@ -256,6 +283,7 @@ export function PdfPagesPanel() {
                   <button
                     className="pagecard__btn"
                     title={t("pdfpages.rotate")}
+                    aria-label={t("pdfpages.rotate")}
                     onClick={() => rotateCard(c.key)}
                   >
                     ↻
@@ -263,6 +291,7 @@ export function PdfPagesPanel() {
                   <button
                     className="pagecard__btn"
                     title={c.removed ? t("pdfpages.restore") : t("pdfpages.remove")}
+                    aria-label={c.removed ? t("pdfpages.restore") : t("pdfpages.remove")}
                     onClick={() => toggleRemove(c.key)}
                   >
                     {c.removed ? "↩" : "✕"}
@@ -281,7 +310,10 @@ export function PdfPagesPanel() {
           {result && (
             <div className="notice">
               <span className="notice__mark">✓</span>
-              <span>{t("pdfpages.done", { pages: result.pages })}</span>
+              <span>
+                {t("pdfpages.done", { pages: result.pages })}
+                {result.dropped && ` ${t("pdfpages.dropped")}`}
+              </span>
               <button className="chip" onClick={() => revealItemInDir(result.out_path)}>
                 {t("run.openOutput")}
               </button>

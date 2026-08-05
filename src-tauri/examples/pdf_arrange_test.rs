@@ -41,6 +41,36 @@ fn make_pdf_rot(path: &Path, widths: &[i64], rots: &[i64]) {
     doc.save(path).unwrap();
 }
 
+/// 造一份「MediaBox 和 Rotate 只在 /Pages 节点上、页面靠继承」的 PDF。
+/// 页面自己不写这两个属性，专门用来验「换父节点前先固化继承属性」。
+fn make_pdf_inherited(path: &Path, count: usize, width: i64, rotate: i64) {
+    let mut doc = Document::with_version("1.5");
+    let pages_id = doc.new_object_id();
+    let mut kids: Vec<Object> = Vec::new();
+    for _ in 0..count {
+        // 页面只有 Type/Parent/Resources，尺寸和旋转全靠从 /Pages 继承
+        let page = dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "Resources" => dictionary! {},
+        };
+        let page_id = doc.add_object(page);
+        doc.add_page_contents(page_id, Vec::new()).unwrap();
+        kids.push(page_id.into());
+    }
+    let pages = dictionary! {
+        "Type" => "Pages",
+        "Count" => count as i64,
+        "Kids" => kids,
+        "MediaBox" => vec![0.into(), 0.into(), width.into(), 800.into()],
+        "Rotate" => rotate,
+    };
+    doc.objects.insert(pages_id, Object::Dictionary(pages));
+    let catalog_id = doc.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages_id });
+    doc.trailer.set("Root", catalog_id);
+    doc.save(path).unwrap();
+}
+
 fn num(o: &Object) -> i64 {
     match o {
         Object::Integer(i) => *i,
@@ -97,7 +127,7 @@ fn main() {
         PageOp { page: 4, rotate: 270 },
     ];
     match arrange_pages(&src, &ops) {
-        Ok((dst, n)) => {
+        Ok((dst, n, _)) => {
             check("导出 3 页", n == 3, format!("{n} 页"));
             let pages = read_pages(&dst);
             check(
@@ -130,7 +160,7 @@ fn main() {
     let pre = tmp.join("已转.pdf");
     make_pdf_rot(&pre, &[200, 210], &[90, 90]);
     match arrange_pages(&pre, &[PageOp { page: 2, rotate: 90 }]) {
-        Ok((dst, n)) => {
+        Ok((dst, n, _)) => {
             let pages = read_pages(&dst);
             check(
                 "只留一页也能正常输出",
@@ -141,6 +171,79 @@ fn main() {
             check("旋转在原有角度上累加", r == 180, format!("90 + 90 = {r}"));
         }
         Err(e) => check("旋转在原有角度上累加", false, format!("报错 {}", e.key)),
+    }
+
+    // 继承结构：MediaBox 和 Rotate 只写在 /Pages 节点上、由页面继承（真实 PDF 极常见）。
+    // 换父节点会切断继承，必须先固化；不然导出页会丢尺寸、丢原始旋转。
+    let inh = tmp.join("继承.pdf");
+    make_pdf_inherited(&inh, 3, 175, 90);
+    match arrange_pages(&inh, &[PageOp { page: 2, rotate: 90 }]) {
+        Ok((dst, _, _)) => {
+            let pages = read_pages(&dst);
+            let (w, rot) = pages.first().copied().unwrap_or((0, -1));
+            check(
+                "继承的 MediaBox 被固化下来",
+                w == 175,
+                format!("导出页宽 {w}（原继承 175）"),
+            );
+            check(
+                "继承的 Rotate 也固化并累加",
+                rot == 180,
+                format!("继承 90 + 又转 90 = {rot}"),
+            );
+        }
+        Err(e) => check("继承属性固化", false, format!("报错 {}", e.key)),
+    }
+
+    // 文档级信息：整理后应保留 Catalog 里与页面无关的项（这里用 Lang 代表），
+    // 摘掉会指向旧页面、变成坏引用的项（书签 Outlines），并如实标 dropped。
+    let meta = tmp.join("有目录.pdf");
+    {
+        let mut doc = Document::with_version("1.5");
+        let pages_id = doc.new_object_id();
+        let page = dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => vec![0.into(), 0.into(), 200.into(), 800.into()],
+            "Resources" => dictionary! {},
+        };
+        let page_id = doc.add_object(page);
+        doc.add_page_contents(page_id, Vec::new()).unwrap();
+        let pages = dictionary! { "Type" => "Pages", "Count" => 1i64, "Kids" => vec![page_id.into()] };
+        doc.objects.insert(pages_id, Object::Dictionary(pages));
+        let outlines_id = doc.add_object(dictionary! { "Type" => "Outlines", "Count" => 0i64 });
+        let catalog_id = doc.add_object(dictionary! {
+            "Type" => "Catalog",
+            "Pages" => pages_id,
+            "Outlines" => outlines_id,
+            "Lang" => "zh-CN",
+        });
+        doc.trailer.set("Root", catalog_id);
+        doc.save(&meta).unwrap();
+    }
+    match arrange_pages(&meta, &[PageOp { page: 1, rotate: 0 }]) {
+        Ok((dst, _, dropped)) => {
+            check("有书签时标记 dropped", dropped, format!("dropped={dropped}"));
+            let out = Document::load(&dst).unwrap();
+            let cat = out
+                .trailer
+                .get(b"Root")
+                .ok()
+                .and_then(|o| o.as_reference().ok())
+                .and_then(|id| out.get_object(id).ok())
+                .and_then(|o| o.as_dict().ok());
+            check(
+                "保留了文档级信息（Lang）",
+                cat.map(|c| c.has(b"Lang")).unwrap_or(false),
+                "Lang 还在".into(),
+            );
+            check(
+                "摘掉了会悬空的书签（Outlines）",
+                !cat.map(|c| c.has(b"Outlines")).unwrap_or(true),
+                "Outlines 已移除".into(),
+            );
+        }
+        Err(e) => check("目录级信息处理", false, format!("报错 {}", e.key)),
     }
 
     let _ = std::fs::remove_dir_all(&tmp);

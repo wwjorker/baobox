@@ -273,7 +273,7 @@ fn main() {
         res.done == 1 && !res.undo_log.is_empty() && (orig - shifted - 5 * 3600).abs() <= 2,
         format!("{orig} → {shifted}"),
     );
-    let restored = touch_undo(res.undo_log.clone()).unwrap();
+    let restored = touch_undo(res.undo_log.clone()).unwrap().restored;
     let back = std::fs::metadata(&uf)
         .unwrap()
         .modified()
@@ -311,7 +311,7 @@ fn main() {
         r3.done == 3 && lines == 3,
         format!("日志 {lines} 条 / 改了 {} 个", r3.done),
     );
-    let back3 = touch_undo(r3.undo_log.clone()).unwrap();
+    let back3 = touch_undo(r3.undo_log.clone()).unwrap().restored;
     check(
         "三个都能还原",
         back3 == 3 && !std::path::Path::new(&r3.undo_log).exists(),

@@ -155,6 +155,13 @@ struct UndoEntry {
     to: String,
 }
 
+/// 撤销的结果。`failed > 0` 时日志保留、可以再撤一次。
+#[derive(Serialize)]
+pub struct UndoResult {
+    pub restored: usize,
+    pub failed: usize,
+}
+
 /// 执行重命名，并写一份撤销日志。
 ///
 /// 冲突和非法命名一律跳过而不是硬改——宁可少改几个，
@@ -251,10 +258,11 @@ pub(crate) fn write_ahead_log<T: Serialize>(
     candidates.push(std::env::temp_dir().join(name));
 
     for path in &candidates {
+        // create_new：绝不覆盖已存在的文件——名字里带了纳秒时间戳，正常不会撞；
+        // 万一同名（并发/时钟异常），宁可换下一个候选，也不能把上一份日志冲掉。
         if let Ok(mut f) = std::fs::OpenOptions::new()
-            .create(true)
+            .create_new(true)
             .write(true)
-            .truncate(true)
             .open(long_path(path))
         {
             // 写全 + sync_all 都成功才算数；写一半失败就删掉半截、试下一个候选
@@ -269,19 +277,23 @@ pub(crate) fn write_ahead_log<T: Serialize>(
 
 /// 按撤销日志把名字改回去。日志是 JSONL（一行一条），逐行解析。
 ///
-/// 只有「没有任何一条真的还原失败」时才删日志。若 5 条里 4 条还原、
-/// 1 条失败（目标名被占等），日志保留，用户可以再撤一次——
-/// 不能因为删早了让最后一个永远回不去。当初没改成的条目（`to` 不存在）
-/// 直接跳过，不算失败。
+/// 只有「一条都没失败」时才删日志。若 5 条里 4 条还原、1 条失败（目标名被占等），
+/// 日志保留、返回的 `failed > 0`，前端据此**留着撤销按钮**让用户再撤一次——
+/// 不能因为删早了让最后一个永远回不去。当初没改成的条目（`to` 不存在）跳过，
+/// 不算失败。**损坏、解析不了的行也算失败**（那条没法还原），日志因此保留。
 #[tauri::command]
-pub fn rename_undo(log_path: String) -> AppResult<usize> {
+pub fn rename_undo(log_path: String) -> AppResult<UndoResult> {
     let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
-    let entries: Vec<UndoEntry> = data
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|l| serde_json::from_str(l).ok())
-        .collect();
-    let (mut restored, mut failed) = (0usize, 0usize);
+    let mut entries: Vec<UndoEntry> = Vec::new();
+    let mut failed = 0usize; // 解析不了的行先记为失败
+    for line in data.lines().filter(|l| !l.trim().is_empty()) {
+        match serde_json::from_str::<UndoEntry>(line) {
+            Ok(e) => entries.push(e),
+            Err(_) => failed += 1,
+        }
+    }
+
+    let mut restored = 0usize;
     // 倒序还原，避免链式重命名时中途撞名
     for e in entries.iter().rev() {
         let to = PathBuf::from(&e.to);
@@ -298,13 +310,15 @@ pub fn rename_undo(log_path: String) -> AppResult<usize> {
     if failed == 0 {
         let _ = std::fs::remove_file(long_path(Path::new(&log_path)));
     }
-    Ok(restored)
+    Ok(UndoResult { restored, failed })
 }
 
-fn chrono_stamp() -> String {
-    let secs = std::time::SystemTime::now()
+/// 纳秒级时间戳。秒级在「同一秒内连点两次」时会撞名，把上一份日志盖掉；
+/// 纳秒基本杜绝，配合 create_new 再兜一道底。
+pub(crate) fn chrono_stamp() -> String {
+    let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
+        .map(|d| d.as_nanos())
         .unwrap_or(0);
-    format!("{secs}")
+    format!("{nanos}")
 }

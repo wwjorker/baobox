@@ -508,6 +508,7 @@ export default {
     apply: "执行重命名（{count} 个）",
     undo: "撤销这次重命名",
     undone: "已还原 {count} 个文件的名字。",
+    undonePartial: "还原了 {restored} 个，还有 {failed} 个没成功（目标名可能被占用）。撤销日志留着，可以再撤一次。",
     noUndoLog: "名字已经改好，但撤销日志没能保存——这次没法一键还原了。",
     result: "成功 {done} 个，跳过 {skipped} 个，失败 {failed} 个。撤销日志已存在文件旁，随时可以还原。",
     emptyTitle: "选些文件，加几条规则",
@@ -532,6 +533,7 @@ export default {
     result: "改好 {done} 个，失败 {failed} 个。原时间已记下，可随时撤销。",
     undo: "撤销这次改动",
     undone: "已把 {count} 个文件的时间改回去。",
+    undonePartial: "改回了 {restored} 个，还有 {failed} 个没成功。撤销日志留着，可以再撤一次。",
     noUndoLog: "时间已经改好，但撤销日志没能保存——这次没法一键还原了。",
     emptyTitle: "选些文件，设个偏移量",
     emptyHint: "拖文件进来或点上面选。设好平移的小时数，执行前你的原时间会先被记下来。",
@@ -557,6 +559,7 @@ export default {
     export: "导出（{count} 页）",
     exporting: "导出中…",
     done: "已导出 {pages} 页的新 PDF。",
+    dropped: "（书签、表单等按页面定位的结构没法随重排带过来，已移除。）",
   },
   dedupe: {
     pickFolder: "选择要扫描的文件夹",

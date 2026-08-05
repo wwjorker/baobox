@@ -999,7 +999,7 @@
 /* ------------------------------------------------ PDF 页面整理器 */
 .pagegrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 12px;
 }
 .pagecard {
@@ -1023,6 +1023,10 @@
 }
 .pagecard.is-removed {
   opacity: 0.45;
+}
+/* 正在被拖的那张淡出，落点靠 .is-over 的蓝边指示 */
+.pagecard.is-dragging {
+  opacity: 0.4;
 }
 .pagecard__thumb {
   position: relative;
@@ -1066,10 +1070,10 @@
 .pagecard__btn {
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
-  width: 19px;
-  height: 19px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: var(--rad);

@@ -111,10 +111,17 @@ export function RenamePanel() {
   const undo = async () => {
     if (!undoLog) return;
     try {
-      const n = await invoke<number>("rename_undo", { logPath: undoLog });
-      setUndoLog(null);
-      setResult(null);
-      alert(t("rename.undone", { count: n }));
+      const r = await invoke<{ restored: number; failed: number }>("rename_undo", {
+        logPath: undoLog,
+      });
+      if (r.failed === 0) {
+        setUndoLog(null);
+        setResult(null);
+        alert(t("rename.undone", { count: r.restored }));
+      } else {
+        // 有没还原成功的：后端保留了日志，这里也留着撤销按钮让用户再撤一次
+        setErr(t("rename.undonePartial", { restored: r.restored, failed: r.failed }));
+      }
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));
