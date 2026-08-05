@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
+import { asAppErr } from "../errText";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -46,6 +47,7 @@ export function ShredPanel() {
   const [typed, setTyped] = useState("");
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const addPaths = async (incoming: string[]) => {
     // 文件夹会被 stat 成不存在（它不是文件），顺带就挡掉了——
@@ -105,6 +107,7 @@ export function ShredPanel() {
     if (typed !== CONFIRM_PHRASE) return;
     setConfirming(false);
     setRunning(true);
+    setErr(null);
     try {
       await invoke<ShredOutcome[]>("shred_files", {
         paths: rows.map((r) => r.path),
@@ -112,6 +115,9 @@ export function ShredPanel() {
         confirm: CONFIRM_PHRASE,
       });
       setFinished(true);
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
     } finally {
       setRunning(false);
     }
@@ -206,6 +212,13 @@ export function ShredPanel() {
               </div>
             ))}
           </div>
+
+          {err && (
+            <div className="notice notice--bad">
+              <span className="notice__mark">!</span>
+              <span>{err}</span>
+            </div>
+          )}
 
           {finished ? (
             <p className="lede">{t("shred.finished", { count: okCount })}</p>

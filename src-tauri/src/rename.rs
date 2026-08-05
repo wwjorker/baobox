@@ -1,6 +1,7 @@
 use crate::err::{AppError, AppResult};
 use crate::paths::long_path;
 use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 /// 批量重命名
@@ -158,10 +159,24 @@ struct UndoEntry {
 ///
 /// 冲突和非法命名一律跳过而不是硬改——宁可少改几个，
 /// 也不能覆盖掉一个同名文件。
+///
+/// **撤销日志必须先能落盘，才允许动第一个文件。** 之前是全部改完后
+/// 一句 `let _ = write(...)` 把写盘失败吞了：磁盘满 / 无权限时会出现
+/// 「已经改了名，却拿到一个并不存在的撤销日志」——安全承诺的洞。
+/// 现在先建好日志文件验证可写（建不起来就直接报错、一个都不改），
+/// 再每改一个就追加一行并 flush，中途崩溃也留下已完成部分的可撤销记录。
 #[tauri::command]
 pub fn rename_apply(paths: Vec<String>, rules: Vec<Rule>) -> AppResult<RenameResult> {
     let previews = rename_preview(paths, rules);
-    let mut log: Vec<UndoEntry> = Vec::new();
+
+    // 撤销日志和文件放一起，用户即使换了会话也能找回来；
+    // 源目录写不进去（只读盘、权限）就退回临时目录，两处都不行才放弃。
+    let sidecar_dir = previews
+        .first()
+        .map(|p| PathBuf::from(&p.path))
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let (log_path, mut log_file) = open_undo_log(sidecar_dir.as_deref())?;
+
     let (mut done, mut skipped, mut failed) = (0usize, 0usize, 0usize);
 
     for pv in &previews {
@@ -178,47 +193,71 @@ pub fn rename_apply(paths: Vec<String>, rules: Vec<Rule>) -> AppResult<RenameRes
         match std::fs::rename(long_path(&from), long_path(&to)) {
             Ok(_) => {
                 done += 1;
-                log.push(UndoEntry {
+                let entry = UndoEntry {
                     from: from.to_string_lossy().to_string(),
                     to: to.to_string_lossy().to_string(),
-                });
+                };
+                // 一行一条 JSON（JSONL）：追加即可，flush 落盘，崩溃也不丢已完成的
+                if let Ok(line) = serde_json::to_string(&entry) {
+                    let _ = writeln!(log_file, "{line}");
+                    let _ = log_file.flush();
+                }
             }
             Err(_) => failed += 1,
         }
     }
+    drop(log_file);
 
-    // 撤销日志和文件放一起，用户即使换了会话也能找回来
-    let log_path = previews
-        .first()
-        .map(|p| PathBuf::from(&p.path))
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-        .unwrap_or_else(|| std::env::temp_dir())
-        .join(format!(
-            "Baobox 重命名撤销 {}.json",
-            chrono_stamp()
-        ));
-    let _ = std::fs::write(
-        long_path(&log_path),
-        serde_json::to_vec_pretty(&log).unwrap_or_default(),
-    );
+    // 一个都没改就别在用户目录里留个空日志
+    let undo_log = if done > 0 {
+        log_path.to_string_lossy().to_string()
+    } else {
+        let _ = std::fs::remove_file(long_path(&log_path));
+        String::new()
+    };
 
     Ok(RenameResult {
         done,
         skipped,
         failed,
-        undo_log: log_path.to_string_lossy().to_string(),
+        undo_log,
     })
 }
 
-/// 按撤销日志把名字改回去
+/// 建好撤销日志文件并验证可写。源目录优先，失败退临时目录，都不行才报错。
+fn open_undo_log(sidecar_dir: Option<&Path>) -> AppResult<(PathBuf, std::fs::File)> {
+    let name = format!("Baobox 重命名撤销 {}.jsonl", chrono_stamp());
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(d) = sidecar_dir {
+        candidates.push(d.join(&name));
+    }
+    candidates.push(std::env::temp_dir().join(&name));
+
+    for path in &candidates {
+        if let Ok(f) = std::fs::OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(long_path(path))
+        {
+            return Ok((path.clone(), f));
+        }
+    }
+    Err(AppError::new("err.undoLogFailed"))
+}
+
+/// 按撤销日志把名字改回去。日志是 JSONL（一行一条），逐行解析。
 #[tauri::command]
 pub fn rename_undo(log_path: String) -> AppResult<usize> {
-    let data = std::fs::read(long_path(Path::new(&log_path)))?;
-    let log: Vec<UndoEntry> =
-        serde_json::from_slice(&data).map_err(|e| AppError::unknown(e))?;
+    let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
+    let entries: Vec<UndoEntry> = data
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .filter_map(|l| serde_json::from_str(l).ok())
+        .collect();
     let mut restored = 0usize;
     // 倒序还原，避免链式重命名时中途撞名
-    for e in log.iter().rev() {
+    for e in entries.iter().rev() {
         if std::fs::rename(long_path(Path::new(&e.to)), long_path(Path::new(&e.from))).is_ok() {
             restored += 1;
         }

@@ -86,8 +86,30 @@ fn width_for_dpi(dpi: u32) -> u32 {
     ((595.0 * dpi as f32 / 72.0) as u32).clamp(200, 10000)
 }
 
-fn pdf_to_image_blocking(app: AppHandle, paths: Vec<String>, dpi: u32) -> Vec<FileOutcome> {
+/// 系统引擎渲染出来的一律是 PNG。要 JPG 就解码后重编码一遍。
+/// 照片型扫描件转 JPG 能小很多，界面既然给了选项，后端就得真做到。
+fn encode_page(png: Vec<u8>, jpg: bool) -> AppResult<(&'static str, Vec<u8>)> {
+    if !jpg {
+        return Ok(("png", png));
+    }
+    let rgb = image::load_from_memory(&png)
+        .map_err(|e| AppError::decode("PNG", e))?
+        .to_rgb8();
+    let mut buf: Vec<u8> = Vec::new();
+    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 88)
+        .encode(&rgb, rgb.width(), rgb.height(), image::ExtendedColorType::Rgb8)
+        .map_err(|e| AppError::unknown(e))?;
+    Ok(("jpg", buf))
+}
+
+fn pdf_to_image_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    dpi: u32,
+    format: String,
+) -> Vec<FileOutcome> {
     let width = width_for_dpi(dpi);
+    let jpg = format.eq_ignore_ascii_case("jpg") || format.eq_ignore_ascii_case("jpeg");
     run_batch(&app, paths, move |src| {
         let total = page_count(src)?;
         if total == 0 {
@@ -98,8 +120,9 @@ fn pdf_to_image_blocking(app: AppHandle, paths: Vec<String>, dpi: u32) -> Vec<Fi
         let mut last = dir.clone();
         for i in 0..total {
             let png = render_page(src, i, width)?;
-            let dst = unique_path(&dir, &format!("{stem} 第{}页", i + 1), "png");
-            std::fs::write(long_path(&dst), &png)?;
+            let (ext, bytes) = encode_page(png, jpg)?;
+            let dst = unique_path(&dir, &format!("{stem} 第{}页", i + 1), ext);
+            std::fs::write(long_path(&dst), &bytes)?;
             last = dst;
         }
         Ok((
@@ -110,8 +133,13 @@ fn pdf_to_image_blocking(app: AppHandle, paths: Vec<String>, dpi: u32) -> Vec<Fi
 }
 
 #[tauri::command]
-pub async fn pdf_to_image(app: AppHandle, paths: Vec<String>, dpi: u32) -> Vec<FileOutcome> {
-    tauri::async_runtime::spawn_blocking(move || pdf_to_image_blocking(app, paths, dpi))
+pub async fn pdf_to_image(
+    app: AppHandle,
+    paths: Vec<String>,
+    dpi: u32,
+    format: String,
+) -> Vec<FileOutcome> {
+    tauri::async_runtime::spawn_blocking(move || pdf_to_image_blocking(app, paths, dpi, format))
         .await
         .unwrap_or_default()
 }

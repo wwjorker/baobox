@@ -10,8 +10,7 @@ export default {
     savedWhat:
       "累计 {total}。只统计「产物能直接替换原件」的操作压掉的体积：压到指定体积、批量压缩、格式转换、批量缩放、抹除 EXIF、PDF 压缩，以及重复文件里真正删掉的那些。",
     savedNotCounted:
-      "OCR、合并、拆分、加水印、打码、转图片都不计入——它们的产物不是原件的替换，算进来这个数字就是编的。另外：原图还在原地，这是「如果你用产物替掉原件能省多少」，不是磁盘已经空出来的量。同一批跑两遍会算两次。",
-    savedStale: "如果你在 2026-07-29 之前用过，那时候的口径把 OCR 也算了进去，老账没法追溯修正，建议归零重来。",
+      "OCR、合并、加水印这类不计入，它们不是在替原件省地方。原图也都还在，这是「换成产物能省多少」，不是磁盘已经空出来的量。",
     savedReset: "归零",
     noMatch: "没有匹配「{q}」的工具",
     soundOn: "完成提示音：开",
@@ -407,6 +406,7 @@ export default {
     redactPixelate: "马赛克",
     redactBlackout: "涂黑",
     dpi: "分辨率",
+    imgFormat: "输出格式",
     password: "密码",
     ocrLang: "识别语言",
     ocrLangAuto: "自动",
@@ -508,6 +508,7 @@ export default {
     apply: "执行重命名（{count} 个）",
     undo: "撤销这次重命名",
     undone: "已还原 {count} 个文件的名字。",
+    noUndoLog: "名字已经改好，但撤销日志没能保存——这次没法一键还原了。",
     result: "成功 {done} 个，跳过 {skipped} 个，失败 {failed} 个。撤销日志已存在文件旁，随时可以还原。",
     emptyTitle: "选些文件，加几条规则",
     emptyHint: "规则可以叠加，比如「去掉前缀 + 统一小写 + 加序号」。每改一次规则，下面会立刻显示每个文件将变成什么样。",
@@ -630,6 +631,7 @@ export default {
     encrypted: "这份 PDF 有密码保护。请先用「解除 PDF 限制」工具解锁。",
     tooLarge: "文件超出可处理范围。请先拆分后再试。",
     noPermission: "没有权限访问这个位置。试试把文件复制到桌面再处理。",
+    undoLogFailed: "撤销日志写不进去（可能磁盘满了或没有写权限），为安全起见一个文件都没改。腾出空间或换个位置再试。",
     pathTooLong: "路径太长（超过 Windows 的 260 字符上限）。请把文件移到更浅的目录。",
     notFound: "找不到这个文件，它可能已被移动或删除。",
     pdfNoPages: "这份 PDF 里没有任何页面，可能已损坏。",

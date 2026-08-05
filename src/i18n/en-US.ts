@@ -12,8 +12,7 @@ const enUS: typeof zhCN = {
     savedWhat:
       "{total} in total. Counts only operations whose output can directly replace the original: compress to a target size, batch compress, convert, resize, strip EXIF, PDF compress, and duplicates actually deleted.",
     savedNotCounted:
-      "OCR, merge, split, watermark, redact and render-to-image are excluded — their output does not replace anything, so counting them would make this number fiction. Also: your originals are still there. This is what you would save by replacing them, not space already freed. Running the same batch twice counts twice.",
-    savedStale: "If you used Baobox before 2026-07-29, the old accounting included OCR. That cannot be corrected retroactively — resetting is the honest option.",
+      "OCR, merge and watermark are excluded — they don't save space on the original. Your originals are still there, so this is what you'd save by replacing them, not space already freed.",
     savedReset: "Reset to zero",
     noMatch: "Nothing matches “{q}”",
     soundOn: "Done chime: on",
@@ -411,6 +410,7 @@ const enUS: typeof zhCN = {
     redactPixelate: "Pixelate",
     redactBlackout: "Black out",
     dpi: "Resolution",
+    imgFormat: "Output format",
     password: "Password",
     ocrLang: "Recognition language",
     ocrLangAuto: "Auto",
@@ -512,6 +512,7 @@ const enUS: typeof zhCN = {
     apply: "Rename {count} file(s)",
     undo: "Undo this rename",
     undone: "Restored {count} original name(s).",
+    noUndoLog: "Files were renamed, but the undo log couldn't be saved — one-click revert isn't available for this run.",
     result: "{done} renamed, {skipped} skipped, {failed} failed. An undo log sits next to the files if you need to roll back.",
     emptyTitle: "Pick files, then add rules",
     emptyHint: "Rules stack — strip a prefix, lowercase everything, then number them. Every change re-renders exactly what each file will become.",
@@ -634,6 +635,7 @@ const enUS: typeof zhCN = {
     encrypted: "This PDF is password protected. Unlock it with the Unlock PDF restrictions tool first.",
     tooLarge: "This file is beyond what Baobox can handle. Try splitting it first.",
     noPermission: "No permission to read that location. Try copying the file to your desktop first.",
+    undoLogFailed: "Couldn't write the undo log (disk full or no write permission), so nothing was renamed, to stay safe. Free up space or pick another location and retry.",
     pathTooLong: "The path is too long (over the Windows 260-character limit). Move the file somewhere shallower.",
     notFound: "Can't find this file — it may have been moved or deleted.",
     pdfNoPages: "This PDF has no pages — it may be damaged.",

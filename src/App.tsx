@@ -325,7 +325,6 @@ export default function App() {
             {t("app.savedWhat", { total: fmtSize(saved) })}
           </p>
           <p className="confirm__safe">{t("app.savedNotCounted")}</p>
-          <p className="confirm__safe">{t("app.savedStale")}</p>
         </Dialog>
       )}
 

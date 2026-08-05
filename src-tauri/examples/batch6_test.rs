@@ -127,12 +127,11 @@ fn main() {
     // 造一个带子目录的源，文件名故意用中文，才能验「打包不留乱码」
     let src_root = tmp.join("打包源");
     std::fs::create_dir_all(src_root.join("子目录")).unwrap();
-    let fa = src_root.join("甲.txt");
-    let fb = src_root.join("子目录").join("乙.txt");
-    std::fs::write(&fa, "alpha 内容一").unwrap();
-    std::fs::write(&fb, "beta 内容二").unwrap();
+    std::fs::write(src_root.join("甲.txt"), "alpha 内容一").unwrap();
+    std::fs::write(src_root.join("子目录").join("乙.txt"), "beta 内容二").unwrap();
 
-    match create_zip(&[fa.clone(), fb.clone()]) {
+    // 拖整个文件夹进来：文件夹名和层次都该原样进 zip
+    match create_zip(&[src_root.clone()]) {
         Ok((zip_path, n)) => {
             check("打包 2 个文件", n == 2, format!("{n} 个"));
             check(
@@ -147,20 +146,21 @@ fn main() {
             match extract(&zip_path, None) {
                 Ok(rep) => {
                     check("解回 2 个文件", rep.files == 2, format!("{} 个", rep.files));
+                    let top = rep.dir.join("打包源");
                     check(
-                        "子目录层次保住了",
-                        rep.dir.join("甲.txt").is_file()
-                            && rep.dir.join("子目录").join("乙.txt").is_file(),
-                        "甲.txt 在顶层、乙.txt 在子目录".into(),
+                        "文件夹名和子目录层次都保住了",
+                        top.join("甲.txt").is_file()
+                            && top.join("子目录").join("乙.txt").is_file(),
+                        "打包源/甲.txt、打包源/子目录/乙.txt".into(),
                     );
                     check(
                         "解回时无需修名字（证明写的是 UTF-8）",
                         rep.fixed_names == 0,
                         format!("{} 个名字被判为需修", rep.fixed_names),
                     );
-                    let a_ok =
-                        std::fs::read(rep.dir.join("甲.txt")).unwrap_or_default() == b"alpha \xe5\x86\x85\xe5\xae\xb9\xe4\xb8\x80";
-                    let b_ok = std::fs::read_to_string(rep.dir.join("子目录").join("乙.txt"))
+                    let a_ok = std::fs::read_to_string(top.join("甲.txt")).unwrap_or_default()
+                        == "alpha 内容一";
+                    let b_ok = std::fs::read_to_string(top.join("子目录").join("乙.txt"))
                         .unwrap_or_default()
                         == "beta 内容二";
                     check("内容逐字节一致（甲）", a_ok, "打包再解回没串内容".into());
@@ -170,6 +170,43 @@ fn main() {
             }
         }
         Err(e) => check("打包 2 个文件", false, format!("打包报错 {}", e.key)),
+    }
+
+    // 单分支目录不该被压扁——旧的「取共同祖先」实现在这里会把
+    // 文件夹名和中间层全丢掉，只剩光文件名。Codex 指出的洞，专门守一条。
+    let deep = tmp.join("只有一枝");
+    std::fs::create_dir_all(deep.join("里层")).unwrap();
+    std::fs::write(deep.join("里层").join("独苗.txt"), "solo").unwrap();
+    match create_zip(&[deep.clone()]) {
+        Ok((zip_path, _)) => match extract(&zip_path, None) {
+            Ok(rep) => check(
+                "单分支目录不压扁",
+                rep.dir.join("只有一枝").join("里层").join("独苗.txt").is_file(),
+                "文件夹名和中间层都在".into(),
+            ),
+            Err(e) => check("单分支目录不压扁", false, format!("解压报错 {}", e.key)),
+        },
+        Err(e) => check("单分支目录不压扁", false, format!("打包报错 {}", e.key)),
+    }
+
+    // 拖同一层的散文件：条目就是干净的文件名，不带路径
+    let loose_a = tmp.join("散一.txt");
+    let loose_b = tmp.join("散二.txt");
+    std::fs::write(&loose_a, "l1").unwrap();
+    std::fs::write(&loose_b, "l2").unwrap();
+    match create_zip(&[loose_a.clone(), loose_b.clone()]) {
+        Ok((zip_path, n)) => {
+            check("散文件打包 2 个", n == 2, format!("{n} 个"));
+            match extract(&zip_path, None) {
+                Ok(rep) => check(
+                    "散文件是干净文件名",
+                    rep.dir.join("散一.txt").is_file() && rep.dir.join("散二.txt").is_file(),
+                    "顶层两个文件，无多余目录".into(),
+                ),
+                Err(e) => check("散文件是干净文件名", false, format!("解压报错 {}", e.key)),
+            }
+        }
+        Err(e) => check("散文件打包 2 个", false, format!("打包报错 {}", e.key)),
     }
 
     // 全是空文件夹 / 没有真文件时，明确报错而不是产出空包

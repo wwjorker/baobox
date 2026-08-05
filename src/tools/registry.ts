@@ -446,7 +446,19 @@ export const TOOLS: ToolDef[] = [
     accepts: PDF,
     command: "pdf_to_image",
     status: "ready",
-    options: [{ kind: "number", id: "dpi", label: "opt.dpi", min: 72, max: 600, step: 24, def: 150, unit: "DPI" }],
+    options: [
+      {
+        kind: "choice",
+        id: "format",
+        label: "opt.imgFormat",
+        def: "png",
+        choices: [
+          { value: "png", label: "PNG" },
+          { value: "jpg", label: "JPG" },
+        ],
+      },
+      { kind: "number", id: "dpi", label: "opt.dpi", min: 72, max: 600, step: 24, def: 150, unit: "DPI" },
+    ],
   },
   { id: "pdf.from-image", pillar: "pdf", accepts: IMG, command: "pdf_from_image", status: "ready", aggregate: true, ordered: true, options: [] },
   {
@@ -712,6 +724,9 @@ export const TOOLS: ToolDef[] = [
     status: "ready",
     highlight: true,
     aggregate: true,
+    // 收原始拖入项、不在前端展开文件夹：后端才能按文件夹算相对路径、
+    // 保住文件夹名和层次；空文件夹也会作为一行真正走到后端、报出错误。
+    takesFolders: true,
     options: [],
   },
   {

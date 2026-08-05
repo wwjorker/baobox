@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { fmtSize } from "../useSaved";
 import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
+import { asAppErr } from "../errText";
 import { BoxMark } from "./BoxMark";
 import type { OptionDef, ToolDef } from "../tools/registry";
 
@@ -94,6 +95,7 @@ export function ToolRunner({
   const [stopping, setStopping] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
   const [workingOn, setWorkingOn] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const [over, setOver] = useState(false);
   const [expanding, setExpanding] = useState(false);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
@@ -265,6 +267,7 @@ export function ToolRunner({
     setRunning(true);
     setStopping(false);
     setDoneCount(0);
+    setRunError(null);
     setRows((prev) => prev.map((r) => ({ ...r, outcome: undefined })));
 
     // 开工前的「正在处理哪一个」，避免遇到慢文件时界面毫无动静
@@ -297,6 +300,11 @@ export function ToolRunner({
           results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0),
         );
       }
+    } catch (e) {
+      // 整个命令被拒（反序列化失败、后端 panic、spawn 失败等）。
+      // 之前没有 catch，界面只会停转、一句提示都没有。
+      const ae = asAppErr(e);
+      setRunError(t(ae.key as never, ae.vars));
     } finally {
       un();
       unWorking();
@@ -636,6 +644,13 @@ export function ToolRunner({
           </div>
 
           {summary && <p className="lede">{summary}</p>}
+
+          {runError && (
+            <div className="notice notice--bad">
+              <span className="notice__mark">!</span>
+              <span>{runError}</span>
+            </div>
+          )}
         </>
       )}
     </>

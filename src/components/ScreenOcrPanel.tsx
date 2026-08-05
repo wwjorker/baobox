@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n } from "../i18n";
+import { asAppErr } from "../errText";
 
 /**
  * 截图取字
@@ -35,6 +36,7 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
   const [text, setText] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const startRef = useRef<{ x: number; y: number } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
@@ -42,6 +44,7 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
     setBusy(true);
     setText(null);
     setRect(null);
+    setErr(null);
     const win = getCurrentWindow();
     try {
       // 让自己让开，否则截到的就是这个窗口本身
@@ -49,6 +52,9 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
       await new Promise((r) => setTimeout(r, 320));
       const s = await invoke<ScreenShot>("capture_screen");
       setShot(s);
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
     } finally {
       await win.unminimize();
       // Tauri 的 setFocus() 在 Windows 上常常抢不回前台，窗口会卡在
@@ -108,8 +114,9 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
         lang: null,
       });
       setText(got);
-    } catch {
-      setText("");
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
     } finally {
       setBusy(false);
     }
@@ -155,6 +162,13 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
         <span className="badge is-highlight">{t("status.highlight")}</span>
       </h1>
       <p className="lede">{t("tool.ocr.screen.desc")}</p>
+
+      {err && (
+        <div className="notice notice--bad">
+          <span className="notice__mark">!</span>
+          <span>{err}</span>
+        </div>
+      )}
 
       {!shot ? (
         <div className="empty">

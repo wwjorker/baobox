@@ -23,37 +23,78 @@ use crate::batch::{fold_outcomes, FileOutcome, Note};
 use crate::batch::run_batch;
 use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use tauri::AppHandle;
 
 // ================================================================ 打包成 zip
 
-/// 把一批文件压成一个 zip。与「解压」配对。
+/// 把一批文件 / 文件夹压成一个 zip。与「解压」配对。
 ///
-/// 关键是**保留目录结构**：每个文件按它相对「所有输入的共同上级目录」的路径
-/// 存进 zip。这样——
-///   · 拖一个文件夹进来（会被展开成里面的文件），共同上级就是那个文件夹，
-///     子目录层次原样保留；
-///   · 拖同一层的几个散文件，共同上级是它们所在的目录，条目就是干净的文件名。
-/// 一个「取共同祖先」的小技巧同时把两种情况都办了，不用分别处理。
+/// 这个工具收的是**原始拖入项**（文件夹不在前端展开），于是能保留结构：
+///   · 拖一个文件夹进来 → 条目按「相对该文件夹的上级」算，**文件夹名本身
+///     也进 zip**，里面的子目录层次原样保留。解开就是完整一个文件夹。
+///   · 拖同一层的几个散文件 → 条目就是干净的文件名。
 ///
-/// 名字一律用 UTF-8（置了标志位第 11 位），中文名不会再变乱码——
+/// 早先的实现是把展开后的文件取「共同祖先」，有个洞：一个文件夹里若只有
+/// `子目录/单个文件`，共同祖先会算到 `子目录`，连文件夹名带层次全丢了。
+/// 直接按拖入项走就没这问题。
+///
+/// 名字一律用 UTF-8（zip 库默认置标志位第 11 位），中文名不会再变乱码——
 /// 这正是我们解压那头在替别人收拾的烂摊子，自己产出时当然不留。
 pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
-    let files: Vec<&PathBuf> = srcs.iter().filter(|p| long_path(p).is_file()).collect();
-    if files.is_empty() {
+    // 收集 (zip 内条目名, 磁盘路径)
+    let mut entries: Vec<(String, PathBuf)> = Vec::new();
+    let mut first_dir: Option<PathBuf> = None;
+
+    for src in srcs {
+        let lp = long_path(src);
+        if lp.is_dir() {
+            if first_dir.is_none() {
+                first_dir = Some(src.clone());
+            }
+            // 文件夹自己的名字作为 zip 内的顶层目录
+            let folder = src.file_name().map(|n| n.to_string_lossy().to_string());
+            for entry in jwalk::WalkDir::new(&lp).skip_hidden(false).into_iter().flatten() {
+                if !entry.file_type().is_file() {
+                    continue;
+                }
+                let p = entry.path();
+                // 别把上一轮自己的产物也打进去
+                if p.components().any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR) {
+                    continue;
+                }
+                // 相对「被 walk 的根」算——两边都带 \\?\ 前缀，strip 才对得上；
+                // 拿 src.parent()（无前缀）去 strip 会失败，把整条绝对路径塞进 zip。
+                let within = p
+                    .strip_prefix(&lp)
+                    .unwrap_or(&p)
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                let name = match &folder {
+                    Some(f) if !f.is_empty() => format!("{f}/{within}"),
+                    _ => within,
+                };
+                entries.push((name, p));
+            }
+        } else if lp.is_file() {
+            entries.push((file_name_of(src), src.clone()));
+        }
+    }
+
+    if entries.is_empty() {
+        // 拖进来的全是空文件夹 / 没有真文件。这条现在真能到界面了：
+        // 空文件夹会作为一行走到这里，而不是在前端被悄悄丢掉。
         return Err(AppError::new("err.zipNoFiles"));
     }
 
-    let base = common_ancestor(&files);
-    let dir = output_dir_for(files[0])?;
-    // 名字取共同上级目录名；取不到（如根目录）就用第一个文件的名字兜底
-    let name = base
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
+    let dir = output_dir_for(&srcs[0])?;
+    // 只拖了一个文件夹就用它的名字；否则用第一项兜底
+    let name = first_dir
+        .as_ref()
+        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().to_string()))
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| stem_of(files[0]));
+        .unwrap_or_else(|| stem_of(&entries[0].1));
     let dst = unique_path(&dir, &format!("{name} 打包"), "zip");
 
     let out = std::fs::File::create(long_path(&dst))?;
@@ -63,48 +104,16 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
         .compression_method(zip::CompressionMethod::Deflated);
 
     let mut n = 0usize;
-    for src in &files {
-        let rel = src.strip_prefix(&base).unwrap_or(Path::new(""));
-        // zip 里一律用正斜杠；空的（理论上不会）退回文件名
-        let mut entry = rel.to_string_lossy().replace('\\', "/");
-        if entry.is_empty() {
-            entry = file_name_of(src);
-        }
-        zip.start_file(entry, opts)
+    for (entry_name, path) in &entries {
+        zip.start_file(entry_name.clone(), opts)
             .map_err(|e| AppError::unknown(e))?;
-        let data = std::fs::read(long_path(src))?;
-        zip.write_all(&data)?;
+        // 流式拷贝，几个 GB 的大文件也不会一次性读进内存
+        let mut f = std::fs::File::open(long_path(path))?;
+        std::io::copy(&mut f, &mut zip)?;
         n += 1;
     }
     zip.finish().map_err(|e| AppError::unknown(e))?;
     Ok((dst, n))
-}
-
-/// 一批路径的共同上级目录（按路径分段取最长公共前缀）。
-fn common_ancestor(files: &[&PathBuf]) -> PathBuf {
-    // 收成 owned 的分段串，避免 Component 借用带来的生命周期纠缠
-    fn parent_segs(p: &Path) -> Vec<std::ffi::OsString> {
-        p.parent()
-            .unwrap_or_else(|| Path::new(""))
-            .components()
-            .map(|c| c.as_os_str().to_os_string())
-            .collect()
-    }
-    let mut common = parent_segs(files[0]);
-    for f in &files[1..] {
-        let segs = parent_segs(f);
-        let len = common
-            .iter()
-            .zip(segs.iter())
-            .take_while(|(a, b)| a == b)
-            .count();
-        common.truncate(len);
-    }
-    let mut out = PathBuf::new();
-    for seg in &common {
-        out.push(seg);
-    }
-    out
 }
 
 #[tauri::command]

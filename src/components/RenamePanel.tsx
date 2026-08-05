@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
+import { asAppErr } from "../errText";
 
 /**
  * 批量重命名
@@ -44,6 +45,7 @@ export function RenamePanel() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [preview, setPreview] = useState<Preview[]>([]);
   const [undoLog, setUndoLog] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<{ done: number; skipped: number; failed: number } | null>(
     null,
   );
@@ -52,6 +54,7 @@ export function RenamePanel() {
     setPaths((prev) => [...new Set([...prev, ...incoming])]);
     setResult(null);
     setUndoLog(null);
+    setErr(null);
   }, []);
 
   useEffect(() => {
@@ -86,23 +89,36 @@ export function RenamePanel() {
   };
 
   const apply = async () => {
-    const r = await invoke<{ done: number; skipped: number; failed: number; undo_log: string }>(
-      "rename_apply",
-      { paths, rules },
-    );
-    setResult(r);
-    setUndoLog(r.undo_log);
-    // 名字变了，路径也就变了，清空重来避免拿旧路径继续操作
-    setPaths([]);
-    setPreview([]);
+    setErr(null);
+    try {
+      const r = await invoke<{ done: number; skipped: number; failed: number; undo_log: string }>(
+        "rename_apply",
+        { paths, rules },
+      );
+      setResult(r);
+      // undo_log 为空表示后端没能存下撤销日志（磁盘满/无权限），此时不给撤销按钮
+      setUndoLog(r.undo_log || null);
+      // 名字变了，路径也就变了，清空重来避免拿旧路径继续操作
+      setPaths([]);
+      setPreview([]);
+    } catch (e) {
+      // 撤销日志建不起来时后端会直接拒绝、一个都不改，这里如实报出来
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
+    }
   };
 
   const undo = async () => {
     if (!undoLog) return;
-    const n = await invoke<number>("rename_undo", { logPath: undoLog });
-    setUndoLog(null);
-    setResult(null);
-    alert(t("rename.undone", { count: n }));
+    try {
+      const n = await invoke<number>("rename_undo", { logPath: undoLog });
+      setUndoLog(null);
+      setResult(null);
+      alert(t("rename.undone", { count: n }));
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
+    }
   };
 
   const applicable = preview.filter((p) => !p.conflict && !p.invalid && !p.unchanged).length;
@@ -279,6 +295,20 @@ export function RenamePanel() {
             failed: result.failed,
           })}
         </p>
+      )}
+
+      {result && result.done > 0 && !undoLog && (
+        <div className="notice">
+          <span className="notice__mark">!</span>
+          <span>{t("rename.noUndoLog")}</span>
+        </div>
+      )}
+
+      {err && (
+        <div className="notice notice--bad">
+          <span className="notice__mark">!</span>
+          <span>{err}</span>
+        </div>
       )}
     </>
   );

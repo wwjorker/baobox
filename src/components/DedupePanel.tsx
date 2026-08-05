@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
+import { asAppErr } from "../errText";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -64,6 +65,7 @@ export function DedupePanel({
   /** 勾选待删的路径 */
   const [doomed, setDoomed] = useState<Set<string>>(new Set());
   const [confirming, setConfirming] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     const un = getCurrentWebview().listen<{ phase: string; done: number; total: number }>(
@@ -87,6 +89,7 @@ export function DedupePanel({
     setScanning(true);
     setReport(null);
     setDoomed(new Set());
+    setErr(null);
     try {
       const r = await invoke<DupReport>("find_duplicates", { roots });
       setReport(r);
@@ -94,6 +97,9 @@ export function DedupePanel({
       const pre = new Set<string>();
       r.groups.forEach((g) => g.files.forEach((f) => !f.keep && pre.add(f.path)));
       setDoomed(pre);
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
     } finally {
       setScanning(false);
       setPhase(null);
@@ -127,7 +133,16 @@ export function DedupePanel({
 
   const doDelete = async () => {
     const paths = doomedList.map((f) => f.path);
-    const results = await invoke<{ path: string; ok: boolean }[]>("delete_to_trash", { paths });
+    setErr(null);
+    let results: { path: string; ok: boolean }[];
+    try {
+      results = await invoke<{ path: string; ok: boolean }[]>("delete_to_trash", { paths });
+    } catch (e) {
+      const ae = asAppErr(e);
+      setErr(t(ae.key as never, ae.vars));
+      setConfirming(false);
+      return;
+    }
     const okPaths = new Set(results.filter((r) => r.ok).map((r) => r.path));
     const freed = doomedList.filter((f) => okPaths.has(f.path)).reduce((n, f) => n + f.size, 0);
     onSaved(freed);
@@ -157,6 +172,13 @@ export function DedupePanel({
           ? t("dedupe.pickFolder")
           : t("dedupe.roots", { count: roots.length, list: roots.join(" · ") })}
       </button>
+
+      {err && (
+        <div className="notice notice--bad">
+          <span className="notice__mark">!</span>
+          <span>{err}</span>
+        </div>
+      )}
 
       {report === null ? (
         <div className="empty">
