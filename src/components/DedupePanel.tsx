@@ -299,17 +299,14 @@ export function DedupePanel({
                 {t("dedupe.confirmWipe", { count: wipedGroups })}
               </p>
             )}
+            {/* 列全部待删项，不截断——最后一步用户必须能核对到底要删哪些。
+                容器本身可滚动，多也翻得完（安全红线 4）。 */}
             <div className="confirm__list">
-              {doomedList.slice(0, 200).map((f) => (
+              {doomedList.map((f) => (
                 <div key={f.path} className="confirm__row" title={f.path}>
                   {f.path}
                 </div>
               ))}
-              {doomedList.length > 200 && (
-                <div className="confirm__row">
-                  {t("dedupe.andMore", { count: doomedList.length - 200 })}
-                </div>
-              )}
             </div>
             <p className="confirm__safe">{t("dedupe.recycleNote")}</p>
             <div className="confirm__actions">

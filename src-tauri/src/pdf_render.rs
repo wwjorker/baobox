@@ -110,6 +110,7 @@ fn pdf_to_image_blocking(
 ) -> Vec<FileOutcome> {
     let width = width_for_dpi(dpi);
     let jpg = format.eq_ignore_ascii_case("jpg") || format.eq_ignore_ascii_case("jpeg");
+    let fmt_label = if jpg { "JPG" } else { "PNG" };
     run_batch(&app, paths, move |src| {
         let total = page_count(src)?;
         if total == 0 {
@@ -127,7 +128,12 @@ fn pdf_to_image_blocking(
         }
         Ok((
             last,
-            Some(Note::new("note.pdfToImage").with("total", total).with("dpi", dpi)),
+            Some(
+                Note::new("note.pdfToImage")
+                    .with("total", total)
+                    .with("dpi", dpi)
+                    .with("fmt", fmt_label),
+            ),
         ))
     })
 }

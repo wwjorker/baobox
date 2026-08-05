@@ -43,11 +43,15 @@ use tauri::AppHandle;
 /// 名字一律用 UTF-8（zip 库默认置标志位第 11 位），中文名不会再变乱码——
 /// 这正是我们解压那头在替别人收拾的烂摊子，自己产出时当然不留。
 pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
+    // 遍历上限：误拖一个巨型目录（几十万文件）进来，不该让路径列表把内存吃光。
+    // 内容本身是流式写的，这里限的只是「同时收集多少条路径」。
+    const MAX_ENTRIES: usize = 50_000;
     // 收集 (zip 内条目名, 磁盘路径)
     let mut entries: Vec<(String, PathBuf)> = Vec::new();
     let mut first_dir: Option<PathBuf> = None;
+    let mut hit_cap = false;
 
-    for src in srcs {
+    'outer: for src in srcs {
         let lp = long_path(src);
         if lp.is_dir() {
             if first_dir.is_none() {
@@ -56,6 +60,10 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
             // 文件夹自己的名字作为 zip 内的顶层目录
             let folder = src.file_name().map(|n| n.to_string_lossy().to_string());
             for entry in jwalk::WalkDir::new(&lp).skip_hidden(false).into_iter().flatten() {
+                if entries.len() >= MAX_ENTRIES {
+                    hit_cap = true;
+                    break 'outer;
+                }
                 if !entry.file_type().is_file() {
                     continue;
                 }
@@ -82,6 +90,10 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
         }
     }
 
+    if hit_cap {
+        // 宁可明确报错，也不悄悄只打包前一部分——那样用户会以为全打进去了。
+        return Err(AppError::new("err.zipTooMany").var("max", MAX_ENTRIES.to_string()));
+    }
     if entries.is_empty() {
         // 拖进来的全是空文件夹 / 没有真文件。这条现在真能到界面了：
         // 空文件夹会作为一行走到这里，而不是在前端被悄悄丢掉。

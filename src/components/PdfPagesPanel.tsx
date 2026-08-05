@@ -102,6 +102,16 @@ export function PdfPagesPanel() {
   const rotateAll = () =>
     setCards((cs) => cs.map((c) => (c.removed ? c : { ...c, rotate: (c.rotate + 90) % 360 })));
 
+  // 键盘/鼠标都能用的前移后移，拖拽之外的另一条路（拖拽对键盘用户不可达）
+  const move = (i: number, delta: number) =>
+    setCards((prev) => {
+      const j = i + delta;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
   const reset = () =>
     setCards((cs) =>
       [...cs]
@@ -217,12 +227,31 @@ export function PdfPagesPanel() {
                   <img
                     src={thumbs[c.orig - 1]}
                     alt={`page ${c.orig}`}
-                    style={{ transform: `rotate(${c.rotate}deg)` }}
+                    // 转 90/270 后长边会顶出固定高的框，缩一点避免被裁
+                    style={{
+                      transform: `rotate(${c.rotate}deg)${c.rotate % 180 !== 0 ? " scale(0.72)" : ""}`,
+                    }}
                     draggable={false}
                   />
                   {c.removed && <span className="pagecard__x">{t("pdfpages.removed")}</span>}
                 </div>
                 <div className="pagecard__bar">
+                  <button
+                    className="pagecard__btn"
+                    title={t("pdfpages.moveLeft")}
+                    disabled={i === 0}
+                    onClick={() => move(i, -1)}
+                  >
+                    ◀
+                  </button>
+                  <button
+                    className="pagecard__btn"
+                    title={t("pdfpages.moveRight")}
+                    disabled={i === cards.length - 1}
+                    onClick={() => move(i, 1)}
+                  >
+                    ▶
+                  </button>
                   <span className="pagecard__no">{c.orig}</span>
                   <button
                     className="pagecard__btn"

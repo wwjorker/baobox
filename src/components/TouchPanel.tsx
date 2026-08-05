@@ -115,7 +115,7 @@ export function TouchPanel() {
 
       {paths.length === 0 ? (
         <div className="empty">
-          <div className="empty__box">🕑</div>
+          <div className="empty__box">◷</div>
           <h2 className="empty__title">{t("touch.emptyTitle")}</h2>
           <p className="empty__hint">{t("touch.emptyHint")}</p>
         </div>

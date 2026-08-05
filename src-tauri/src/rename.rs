@@ -160,93 +160,119 @@ struct UndoEntry {
 /// 冲突和非法命名一律跳过而不是硬改——宁可少改几个，
 /// 也不能覆盖掉一个同名文件。
 ///
-/// **撤销日志必须先能落盘，才允许动第一个文件。** 之前是全部改完后
-/// 一句 `let _ = write(...)` 把写盘失败吞了：磁盘满 / 无权限时会出现
-/// 「已经改了名，却拿到一个并不存在的撤销日志」——安全承诺的洞。
-/// 现在先建好日志文件验证可写（建不起来就直接报错、一个都不改），
-/// 再每改一个就追加一行并 flush，中途崩溃也留下已完成部分的可撤销记录。
+/// **写前日志（write-ahead）。** 改名前先把完整计划（会执行的每一条 from→to）
+/// 一次写进日志、并 `sync_all` 确认真的落了盘，成功了才动第一个文件。
+/// 这样即便执行到一半磁盘写满、断电或被拔盘，日志里也已经有全部计划——
+/// 撤销永远不会缺项。日志写不进去（磁盘满/无权限）就直接报错、一个都不改。
+///
+/// 早先是「改一个记一行、`let _ =` 吞掉写盘错误」，中途写满就会出现
+/// 「已经改了名，日志却缺了这条」，撤销失灵——那是没修干净的洞。
 #[tauri::command]
 pub fn rename_apply(paths: Vec<String>, rules: Vec<Rule>) -> AppResult<RenameResult> {
     let previews = rename_preview(paths, rules);
+    let skipped = previews
+        .iter()
+        .filter(|pv| pv.conflict || pv.invalid || pv.unchanged)
+        .count();
 
-    // 撤销日志和文件放一起，用户即使换了会话也能找回来；
-    // 源目录写不进去（只读盘、权限）就退回临时目录，两处都不行才放弃。
+    // 完整计划：真正会执行的每一条 from→to
+    let plan: Vec<UndoEntry> = previews
+        .iter()
+        .filter(|pv| !(pv.conflict || pv.invalid || pv.unchanged))
+        .filter_map(|pv| {
+            let from = PathBuf::from(&pv.path);
+            let dir = from.parent()?;
+            let to = dir.join(&pv.new_name);
+            Some(UndoEntry {
+                from: from.to_string_lossy().to_string(),
+                to: to.to_string_lossy().to_string(),
+            })
+        })
+        .collect();
+
+    if plan.is_empty() {
+        return Ok(RenameResult {
+            done: 0,
+            skipped,
+            failed: 0,
+            undo_log: String::new(),
+        });
+    }
+
+    // 日志和文件放一起，换了会话也能找回来；源目录写不进就退临时目录。
     let sidecar_dir = previews
         .first()
         .map(|p| PathBuf::from(&p.path))
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-    let (log_path, mut log_file) = open_undo_log(sidecar_dir.as_deref())?;
+    let log_path = write_ahead_log(
+        sidecar_dir.as_deref(),
+        &format!("Baobox 重命名撤销 {}.jsonl", chrono_stamp()),
+        &plan,
+    )?;
 
-    let (mut done, mut skipped, mut failed) = (0usize, 0usize, 0usize);
-
-    for pv in &previews {
-        if pv.conflict || pv.invalid || pv.unchanged {
-            skipped += 1;
-            continue;
-        }
-        let from = PathBuf::from(&pv.path);
-        let Some(dir) = from.parent() else {
-            failed += 1;
-            continue;
-        };
-        let to = dir.join(&pv.new_name);
-        match std::fs::rename(long_path(&from), long_path(&to)) {
-            Ok(_) => {
-                done += 1;
-                let entry = UndoEntry {
-                    from: from.to_string_lossy().to_string(),
-                    to: to.to_string_lossy().to_string(),
-                };
-                // 一行一条 JSON（JSONL）：追加即可，flush 落盘，崩溃也不丢已完成的
-                if let Ok(line) = serde_json::to_string(&entry) {
-                    let _ = writeln!(log_file, "{line}");
-                    let _ = log_file.flush();
-                }
-            }
+    let (mut done, mut failed) = (0usize, 0usize);
+    for e in &plan {
+        match std::fs::rename(
+            long_path(Path::new(&e.from)),
+            long_path(Path::new(&e.to)),
+        ) {
+            Ok(_) => done += 1,
             Err(_) => failed += 1,
         }
     }
-    drop(log_file);
-
-    // 一个都没改就别在用户目录里留个空日志
-    let undo_log = if done > 0 {
-        log_path.to_string_lossy().to_string()
-    } else {
-        let _ = std::fs::remove_file(long_path(&log_path));
-        String::new()
-    };
 
     Ok(RenameResult {
         done,
         skipped,
         failed,
-        undo_log,
+        undo_log: log_path.to_string_lossy().to_string(),
     })
 }
 
-/// 建好撤销日志文件并验证可写。源目录优先，失败退临时目录，都不行才报错。
-fn open_undo_log(sidecar_dir: Option<&Path>) -> AppResult<(PathBuf, std::fs::File)> {
-    let name = format!("Baobox 重命名撤销 {}.jsonl", chrono_stamp());
+/// 把整份计划一次写进日志并 `sync_all`，确认落盘后才返回路径。
+/// 源目录优先，写不进（只读盘/权限/写一半失败）就换临时目录，都不行才报错。
+pub(crate) fn write_ahead_log<T: Serialize>(
+    sidecar_dir: Option<&Path>,
+    name: &str,
+    plan: &[T],
+) -> AppResult<PathBuf> {
+    let mut body = String::new();
+    for e in plan {
+        if let Ok(line) = serde_json::to_string(e) {
+            body.push_str(&line);
+            body.push('\n');
+        }
+    }
+
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(d) = sidecar_dir {
-        candidates.push(d.join(&name));
+        candidates.push(d.join(name));
     }
-    candidates.push(std::env::temp_dir().join(&name));
+    candidates.push(std::env::temp_dir().join(name));
 
     for path in &candidates {
-        if let Ok(f) = std::fs::OpenOptions::new()
+        if let Ok(mut f) = std::fs::OpenOptions::new()
             .create(true)
             .write(true)
             .truncate(true)
             .open(long_path(path))
         {
-            return Ok((path.clone(), f));
+            // 写全 + sync_all 都成功才算数；写一半失败就删掉半截、试下一个候选
+            if f.write_all(body.as_bytes()).is_ok() && f.sync_all().is_ok() {
+                return Ok(path.clone());
+            }
+            let _ = std::fs::remove_file(long_path(path));
         }
     }
     Err(AppError::new("err.undoLogFailed"))
 }
 
 /// 按撤销日志把名字改回去。日志是 JSONL（一行一条），逐行解析。
+///
+/// 只有「没有任何一条真的还原失败」时才删日志。若 5 条里 4 条还原、
+/// 1 条失败（目标名被占等），日志保留，用户可以再撤一次——
+/// 不能因为删早了让最后一个永远回不去。当初没改成的条目（`to` 不存在）
+/// 直接跳过，不算失败。
 #[tauri::command]
 pub fn rename_undo(log_path: String) -> AppResult<usize> {
     let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
@@ -255,14 +281,21 @@ pub fn rename_undo(log_path: String) -> AppResult<usize> {
         .filter(|l| !l.trim().is_empty())
         .filter_map(|l| serde_json::from_str(l).ok())
         .collect();
-    let mut restored = 0usize;
+    let (mut restored, mut failed) = (0usize, 0usize);
     // 倒序还原，避免链式重命名时中途撞名
     for e in entries.iter().rev() {
-        if std::fs::rename(long_path(Path::new(&e.to)), long_path(Path::new(&e.from))).is_ok() {
+        let to = PathBuf::from(&e.to);
+        // 当初就没改成（或已还原过）的，跳过，不算失败
+        if !long_path(&to).exists() {
+            continue;
+        }
+        if std::fs::rename(long_path(&to), long_path(Path::new(&e.from))).is_ok() {
             restored += 1;
+        } else {
+            failed += 1;
         }
     }
-    if restored > 0 {
+    if failed == 0 {
         let _ = std::fs::remove_file(long_path(Path::new(&log_path)));
     }
     Ok(restored)

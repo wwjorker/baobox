@@ -678,48 +678,68 @@ pub struct ArrangeResult {
 /// 都是「挑出若干原页、按新顺序、各带一个旋转」。前端的缩略图组织器把
 /// 勾选、拖拽、转向都收敛成这份 `ops` 清单，后端照单执行即可。
 ///
-/// 实现沿用「倒序」那条稳妥路线：每页克隆整份文档、只留这一页，再按 ops
-/// 顺序合并。直接改页树的 Kids 数组更快，但嵌套页节点一多就容易改坏。
+/// **只打开文档一次、只改引用**：给每个选中的页重新挂到一个新建的扁平页树上
+/// （顺序即 `ops` 顺序），旋转累加到它已有的 `/Rotate`，最后剪掉不再被引用的
+/// 对象。早先的实现「每保留一页就克隆整份文档、最后合并」——4 页的测试全绿，
+/// 但一份 200MB / 200 页的 PDF 会同时持有上百份文档克隆，内存可能爆到几十 GB。
+/// 现在全程只有一份文档在内存里。
 pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize)> {
-    let doc = open(src)?;
+    let mut doc = open(src)?;
     let pages = doc.get_pages();
     if pages.is_empty() {
         return Err(AppError::new("err.pdfNoPages"));
     }
-    // 原文档的页码，升序。ops 里的 page 是「第几页」，据此映射到真实页号。
+    // 原文档页码升序；ops.page 是「第几页」，据此映射到真实页对象 id。
     let nums: Vec<u32> = pages.keys().copied().collect();
-
-    let mut singles: Vec<Document> = Vec::with_capacity(ops.len());
+    let mut picked: Vec<(ObjectId, i64)> = Vec::new();
     for op in ops {
-        let Some(&keep_num) = nums.get((op.page.saturating_sub(1)) as usize) else {
-            continue;
-        };
-        let mut one = doc.clone();
-        let drop: Vec<u32> = nums.iter().copied().filter(|p| *p != keep_num).collect();
-        one.delete_pages(&drop);
-        one.adjust_zero_pages();
-
-        if op.rotate != 0 {
-            for id in one.get_pages().values() {
-                if let Ok(obj) = one.get_object_mut(*id) {
-                    if let Ok(dict) = obj.as_dict_mut() {
-                        let cur = dict.get(b"Rotate").and_then(|o| o.as_i64()).unwrap_or(0);
-                        dict.set("Rotate", ((cur + op.rotate) % 360 + 360) % 360);
-                    }
-                }
+        if let Some(&pnum) = nums.get(op.page.saturating_sub(1) as usize) {
+            if let Some(&id) = pages.get(&pnum) {
+                picked.push((id, op.rotate));
             }
         }
-        singles.push(one);
     }
-
-    if singles.is_empty() {
+    if picked.is_empty() {
         return Err(AppError::new("err.pdfNoPagesPicked"));
     }
-    let n = singles.len();
-    let mut merged = merge_docs(singles)?;
+    let n = picked.len();
+
+    // 新建一个扁平页树根：选中的页重挂到它下面，旋转就地累加。
+    // 每个选中页的 MediaBox 等属性本就在页字典上（或经继承），这里连同
+    // Parent 一起改，和 merge_docs 扁平化的做法一致。
+    let pages_id = doc.new_object_id();
+    for (id, rot) in &picked {
+        if let Ok(dict) = doc.get_object_mut(*id).and_then(|o| o.as_dict_mut()) {
+            dict.set("Parent", pages_id);
+            if *rot != 0 {
+                let cur = dict.get(b"Rotate").and_then(|o| o.as_i64()).unwrap_or(0);
+                dict.set("Rotate", ((cur + rot) % 360 + 360) % 360);
+            }
+        }
+    }
+
+    let kids: Vec<Object> = picked.iter().map(|(id, _)| Object::Reference(*id)).collect();
+    let mut pages_dict = lopdf::Dictionary::new();
+    pages_dict.set("Type", "Pages");
+    pages_dict.set("Count", n as u32);
+    pages_dict.set("Kids", kids);
+    doc.objects.insert(pages_id, Object::Dictionary(pages_dict));
+
+    let mut catalog = lopdf::Dictionary::new();
+    catalog.set("Type", "Catalog");
+    catalog.set("Pages", pages_id);
+    let catalog_id = doc.add_object(Object::Dictionary(catalog));
+    doc.trailer.set("Root", catalog_id);
+
+    // 剪掉不再被 Root 触及的对象：旧页树、没选中的页、以及只被它们引用的资源。
+    // 选中页仍需要的共享资源（字体/图片）因为还被引用，会保留。
+    doc.prune_objects();
+    doc.renumber_objects();
+    doc.adjust_zero_pages();
+
     let dir = output_dir_for(src)?;
     let dst = unique_path(&dir, &format!("{} 整理", stem_of(src)), "pdf");
-    save(&mut merged, &dst)?;
+    save(&mut doc, &dst)?;
     Ok((dst, n))
 }
 

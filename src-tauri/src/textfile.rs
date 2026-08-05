@@ -827,54 +827,62 @@ struct TouchUndoEntry {
 /// 毫无意义。正因为动了原件，就得像重命名一样留后路：动手前先把每个文件的
 /// 原时间记下来，撤销即可一键回到从前。**日志必须先能落盘才允许改第一个**，
 /// 建不起来（磁盘满 / 无权限）就直接报错、一个都不动。
+///
+/// 走**写前日志**：先把每个文件的原时间都读出来、整份写进日志并 `sync_all`
+/// 确认落盘，成功了才开始改。读时间和写日志都在动手之前完成，所以「改到一半
+/// 磁盘写满、日志缺项」这种情况从结构上就不会发生。日志写不进去就报错、一个不动。
 #[tauri::command]
 #[allow(non_snake_case)]
 pub fn touch_apply(paths: Vec<String>, shiftHours: i64) -> AppResult<TouchResult> {
-    use std::io::Write;
+    // 先把能读到原时间的文件收成完整计划。读不到时间的（无法 stat）后面也改不了。
+    let plan: Vec<TouchUndoEntry> = paths
+        .iter()
+        .filter_map(|p| {
+            let src = PathBuf::from(p);
+            read_mtime(&src).map(|secs| TouchUndoEntry {
+                path: src.to_string_lossy().to_string(),
+                secs,
+            })
+        })
+        .collect();
+    let unreadable = paths.len() - plan.len();
+
+    if plan.is_empty() {
+        return Ok(TouchResult {
+            done: 0,
+            failed: unreadable,
+            undo_log: String::new(),
+        });
+    }
+
     let sidecar_dir = paths
         .first()
         .map(PathBuf::from)
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
-    let (log_path, mut log_file) = open_touch_log(sidecar_dir.as_deref())?;
+    // 复用重命名那套写前日志：整份计划先落盘 + sync_all，成功才动手
+    let log_path = crate::rename::write_ahead_log(
+        sidecar_dir.as_deref(),
+        &format!("Baobox 改时间撤销 {}.jsonl", touch_stamp()),
+        &plan,
+    )?;
 
     let (mut done, mut failed) = (0usize, 0usize);
-    for p in &paths {
-        let src = PathBuf::from(p);
-        // 先记原时间，再改。改成功却没记下原时间的，不写进日志（宁可不给撤销）
-        let original = read_mtime(&src);
-        match set_times(&src, shiftHours, None) {
-            Ok(_) => {
-                done += 1;
-                if let Some(secs) = original {
-                    let entry = TouchUndoEntry {
-                        path: src.to_string_lossy().to_string(),
-                        secs,
-                    };
-                    if let Ok(line) = serde_json::to_string(&entry) {
-                        let _ = writeln!(log_file, "{line}");
-                        let _ = log_file.flush();
-                    }
-                }
-            }
+    for e in &plan {
+        match set_times(Path::new(&e.path), shiftHours, None) {
+            Ok(_) => done += 1,
             Err(_) => failed += 1,
         }
     }
-    drop(log_file);
 
-    let undo_log = if done > 0 {
-        log_path.to_string_lossy().to_string()
-    } else {
-        let _ = std::fs::remove_file(long_path(&log_path));
-        String::new()
-    };
     Ok(TouchResult {
         done,
-        failed,
-        undo_log,
+        failed: failed + unreadable,
+        undo_log: log_path.to_string_lossy().to_string(),
     })
 }
 
 /// 按日志把时间改回去。用 set_to 设回原来的精确时刻。
+/// 只有全部还原成功才删日志；有失败就留着可再试。
 #[tauri::command]
 pub fn touch_undo(log_path: String) -> AppResult<usize> {
     let data = std::fs::read_to_string(long_path(Path::new(&log_path)))?;
@@ -883,37 +891,18 @@ pub fn touch_undo(log_path: String) -> AppResult<usize> {
         .filter(|l| !l.trim().is_empty())
         .filter_map(|l| serde_json::from_str(l).ok())
         .collect();
-    let mut restored = 0usize;
+    let (mut restored, mut failed) = (0usize, 0usize);
     for e in &entries {
         if set_times(Path::new(&e.path), 0, Some(e.secs)).is_ok() {
             restored += 1;
+        } else {
+            failed += 1;
         }
     }
-    if restored > 0 {
+    if failed == 0 {
         let _ = std::fs::remove_file(long_path(Path::new(&log_path)));
     }
     Ok(restored)
-}
-
-/// 建好改时间的撤销日志并验证可写。源目录优先，失败退临时目录。
-fn open_touch_log(sidecar_dir: Option<&Path>) -> AppResult<(PathBuf, std::fs::File)> {
-    let name = format!("Baobox 改时间撤销 {}.jsonl", touch_stamp());
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Some(d) = sidecar_dir {
-        candidates.push(d.join(&name));
-    }
-    candidates.push(std::env::temp_dir().join(&name));
-    for path in &candidates {
-        if let Ok(f) = std::fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(long_path(path))
-        {
-            return Ok((path.clone(), f));
-        }
-    }
-    Err(AppError::new("err.undoLogFailed"))
 }
 
 fn touch_stamp() -> String {

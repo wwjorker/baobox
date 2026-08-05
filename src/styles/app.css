@@ -325,19 +325,19 @@
 }
 .cardstar {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   background: transparent;
   border: none;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1;
   /* 常驻淡色。之前默认 opacity:0、只在 hover 冒出来——绝大多数人根本
      不知道能收藏。让空心星一直在，「这里能钉」一眼可见。 */
-  color: rgba(20, 17, 9, 0.24);
+  color: rgba(20, 17, 9, 0.38);
   transition: color 0.14s, transform 0.14s var(--spring);
   z-index: 2;
 }
@@ -378,7 +378,7 @@
   font-size: 14px;
   letter-spacing: -0.01em;
   /* 给常驻的星标让出右上角，名字和徽标不会钻到星底下 */
-  padding-right: 22px;
+  padding-right: 26px;
 }
 .card__desc {
   font-size: 11.5px;
@@ -1054,28 +1054,33 @@
 .pagecard__bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: 2px;
+  padding: 3px 4px;
 }
 .pagecard__no {
   font-family: var(--f-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--dim);
-  margin-right: auto;
+  margin: 0 auto;
 }
 .pagecard__btn {
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: 11px;
   line-height: 1;
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   display: grid;
   place-items: center;
   border-radius: var(--rad);
+  color: var(--ink);
 }
 .pagecard__btn:hover {
   background: var(--bg-soft);
+}
+.pagecard__btn:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 /* 「拖动可排序」这类提示挤到右边，用正常字重，不套标签的全大写 */
 .pdfpages__hint {

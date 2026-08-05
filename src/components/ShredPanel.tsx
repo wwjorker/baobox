@@ -247,11 +247,21 @@ export function ShredPanel() {
             <p className="confirm__warn">
               {t("shred.confirmWarn", { count: rows.length, size: fmtSize(totalBytes) })}
             </p>
+            {/* 不可逆销毁，最后一步必须把每个文件都摆出来核对（安全红线 4）。
+                容器可滚动，多少都能翻完。 */}
+            <div className="confirm__list">
+              {rows.map((r) => (
+                <div key={r.path} className="confirm__row" title={r.path}>
+                  {r.path}
+                </div>
+              ))}
+            </div>
             <p className="confirm__lead">{t("shred.confirmType", { phrase: CONFIRM_PHRASE })}</p>
+            {/* 不 autoFocus 输入框：默认焦点留给「取消」，要粉碎得先自己点进来打字。
+                打字确认（红线 3）和焦点在取消（红线 4）两条都守住。 */}
             <input
               className="shredinput"
               value={typed}
-              autoFocus
               placeholder={CONFIRM_PHRASE}
               onChange={(e) => setTyped(e.target.value)}
               onKeyDown={(e) => {
@@ -260,7 +270,7 @@ export function ShredPanel() {
             />
             <div className="confirm__actions">
               {/* 默认焦点、也是视觉重心，仍然是「取消」——手滑的代价太大 */}
-              <button className="go" onClick={() => setConfirming(false)}>
+              <button className="go" autoFocus onClick={() => setConfirming(false)}>
                 {t("run.cancel")}
               </button>
               <button

@@ -292,6 +292,32 @@ fn main() {
         "别在用户目录里留垃圾".into(),
     );
 
+    // 写前日志：3 个文件，日志应在「动手之前」就写全 3 条——
+    // 一旦执行到一半磁盘满，日志也不会缺项。这里在撤销前先核日志行数。
+    let mut many = Vec::new();
+    for i in 0..3 {
+        let f = tmp.join(format!("wal_{i}.bin"));
+        std::fs::write(&f, b"y").unwrap();
+        many.push(f.to_string_lossy().to_string());
+    }
+    let r3 = touch_apply(many.clone(), 3).unwrap();
+    let lines = std::fs::read_to_string(&r3.undo_log)
+        .unwrap_or_default()
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .count();
+    check(
+        "整份计划在动手前就落盘",
+        r3.done == 3 && lines == 3,
+        format!("日志 {lines} 条 / 改了 {} 个", r3.done),
+    );
+    let back3 = touch_undo(r3.undo_log.clone()).unwrap();
+    check(
+        "三个都能还原",
+        back3 == 3 && !std::path::Path::new(&r3.undo_log).exists(),
+        format!("还原 {back3} 个", ),
+    );
+
     let _ = std::fs::remove_dir_all(&tmp);
     println!("\n======== 通过 {pass} / 失败 {fail} ========");
     if fail > 0 {
