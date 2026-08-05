@@ -1,5 +1,6 @@
 import { useI18n } from "../i18n";
-import { PILLARS, PILLAR_GLYPH, toolsOf, type Pillar } from "../tools/registry";
+import { PILLARS, toolsOf, type Pillar } from "../tools/registry";
+import { ToolIcon, pillarOf } from "../tools/icons";
 
 interface Props {
   active: Pillar;
@@ -25,12 +26,14 @@ export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) 
         return (
           <button
             key={p}
-            className="nav"
+            className="nav nav--pillar"
             aria-current={p === active}
             title={full ? undefined : t("pillar.readyCount", { ready, total: all.length })}
             onClick={() => onPillar(p)}
           >
-            <span className="nav__glyph">{PILLAR_GLYPH[p]}</span>
+            <span className={`nav__ico nav__ico--${p}`}>
+              <ToolIcon id={p} />
+            </span>
             {t(`pillar.${p}` as never)}
             <span className={`nav__count${full ? "" : " is-partial"}`}>
               {full ? all.length : `${ready}/${all.length}`}
@@ -45,8 +48,10 @@ export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) 
         <>
           <div className="sidebar__label">{t("fav.section")}</div>
           {favorites.map((id) => (
-            <button key={id} className="nav" onClick={() => onTool(id)}>
-              <span className="nav__glyph is-star">★</span>
+            <button key={id} className="nav nav--sm" onClick={() => onTool(id)}>
+              <span className={`nav__mini nav__mini--${pillarOf(id)}`}>
+                <ToolIcon id={id} />
+              </span>
               {t(`tool.${id}.name` as never)}
             </button>
           ))}
@@ -57,8 +62,10 @@ export function Sidebar({ active, recent, favorites, onPillar, onTool }: Props) 
         <>
           <div className="sidebar__label">{t("pillar.recent")}</div>
           {recent.map((id) => (
-            <button key={id} className="nav" onClick={() => onTool(id)}>
-              <span className="nav__glyph">·</span>
+            <button key={id} className="nav nav--sm" onClick={() => onTool(id)}>
+              <span className={`nav__mini nav__mini--${pillarOf(id)}`}>
+                <ToolIcon id={id} />
+              </span>
               {t(`tool.${id}.name` as never)}
             </button>
           ))}

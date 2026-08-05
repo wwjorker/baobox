@@ -27,6 +27,15 @@
   --blue: #1467c8;
   --green: #0f9b54;
   --bad: #d3132b;
+  --gold: #f5a623;
+
+  /* 分类即颜色：四大支柱各一色，工具图标底、侧栏图标、卡片都跟着走，
+     用久了「绿的就是 PDF」形成肌肉记忆。这是设计系统，不是随手配色。
+     朱红只留给「动作/强调」，黄色只做「框/点缀」，这四色只用来分类。 */
+  --img: #ff7a52;  --img-bg: #ffe0d6;  --img-ink: #c0492a;
+  --ocr: #3d8bf0;  --ocr-bg: #d8e8ff;  --ocr-ink: #235fb0;
+  --pdf: #17b877;  --pdf-bg: #d3f3e4;  --pdf-ink: #0d7a4e;
+  --file: #e6a417; --file-bg: #ffeec2; --file-ink: #9a6c00;
 
   /* 三级边框 */
   --b1: 3px solid var(--ink);

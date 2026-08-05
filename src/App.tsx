@@ -15,6 +15,7 @@ import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
 import { ShredPanel } from "./components/ShredPanel";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
+import { ToolIcon, pillarOf } from "./tools/icons";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
 import { useFavorites } from "./useFavorites";
@@ -229,17 +230,25 @@ export default function App() {
                 const rest = tools.filter((tl) => !isFavorite(tl.id));
                 const card = (tl: (typeof tools)[number]) => (
                   <div key={tl.id} className="cardwrap">
-                    <button className="card" onClick={() => openTool(tl.id)}>
-                      <span className="card__name">
-                        {t(`tool.${tl.id}.name` as never)}
-                        {tl.highlight && (
-                          <span className="badge is-highlight">{t("status.highlight")}</span>
-                        )}
-                        {tl.status !== "ready" && (
-                          <span className="badge">{t(`status.${tl.status}` as never)}</span>
-                        )}
+                    <button
+                      className={`card card--${pillarOf(tl.id)}`}
+                      onClick={() => openTool(tl.id)}
+                    >
+                      <span className="card__ico">
+                        <ToolIcon id={tl.id} />
                       </span>
-                      <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
+                      <span className="card__body">
+                        <span className="card__name">
+                          {t(`tool.${tl.id}.name` as never)}
+                          {tl.highlight && (
+                            <span className="badge is-highlight">{t("status.highlight")}</span>
+                          )}
+                          {tl.status !== "ready" && (
+                            <span className="badge">{t(`status.${tl.status}` as never)}</span>
+                          )}
+                        </span>
+                        <span className="card__desc">{t(`tool.${tl.id}.desc` as never)}</span>
+                      </span>
                     </button>
                     {/* 星标是独立按钮、不嵌在卡片按钮里（按钮不能套按钮）。
                         平时淡淡的，钉上了变实心金色。 */}

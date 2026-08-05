@@ -184,6 +184,45 @@
   color: #f5a623;
   font-size: 13px;
 }
+/* 四大类导航：带黑边的分类色图标块（分类即颜色，见 theme.css）。 */
+.nav__ico {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  background: var(--bg-soft);
+}
+.nav__ico svg {
+  width: 18px;
+  height: 18px;
+}
+.nav__ico--image { background: var(--img-bg); color: var(--img-ink); }
+.nav__ico--ocr { background: var(--ocr-bg); color: var(--ocr-ink); }
+.nav__ico--pdf { background: var(--pdf-bg); color: var(--pdf-ink); }
+.nav__ico--file { background: var(--file-bg); color: var(--file-ink); }
+/* 收藏 / 最近：小一号、无边框的分类色 glyph */
+.nav--sm {
+  padding: 6px 9px;
+  font-weight: 600;
+}
+.nav__mini {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.nav__mini svg {
+  width: 17px;
+  height: 17px;
+}
+.nav__mini--image { color: var(--img); }
+.nav__mini--ocr { color: var(--ocr); }
+.nav__mini--pdf { color: var(--pdf); }
+.nav__mini--file { color: var(--file); }
 .nav__count {
   margin-left: auto;
   font-family: var(--f-mono);
@@ -359,29 +398,55 @@
   text-align: left;
   background: var(--paper);
   border: var(--b2);
-  padding: 12px 13px;
+  border-radius: 6px;
+  padding: 11px 13px 11px 11px;
+  /* 图标块 + 名字/说明的横排：一眼扫到图标，再看名字。 */
   display: flex;
-  flex-direction: column;
-  gap: 5px;
-  /* 一句话和两句话的卡片高度差一截，整片网格就参差不齐。
-     锁定描述占两行，一行的补白、超过的截断。 */
-  min-height: 92px;
+  align-items: center;
+  gap: 11px;
+  min-height: 66px;
+  box-shadow: 3px 3px 0 var(--ink);
   transition: transform 0.14s var(--spring), box-shadow 0.14s;
 }
 .card:hover {
-  transform: translate(-2px, -2px);
+  transform: translate(-2px, -3px);
   box-shadow: var(--sh);
 }
 .card:active {
-  transform: translate(2px, 2px);
+  transform: translate(1px, 1px);
   box-shadow: none;
+}
+/* 分类色图标块（分类即颜色）。 */
+.card__ico {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: var(--b2);
+  border-radius: var(--rad);
+  background: var(--bg-soft);
+}
+.card__ico svg {
+  width: 26px;
+  height: 26px;
+}
+.card--image .card__ico { background: var(--img-bg); color: var(--img-ink); }
+.card--ocr .card__ico { background: var(--ocr-bg); color: var(--ocr-ink); }
+.card--pdf .card__ico { background: var(--pdf-bg); color: var(--pdf-ink); }
+.card--file .card__ico { background: var(--file-bg); color: var(--file-ink); }
+.card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 .card__name {
   font-family: var(--f-display);
   font-size: 14px;
   letter-spacing: -0.01em;
   /* 给常驻的星标让出右上角，名字和徽标不会钻到星底下 */
-  padding-right: 26px;
+  padding-right: 22px;
 }
 .card__desc {
   font-size: 11.5px;
