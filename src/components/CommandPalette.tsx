@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../i18n";
 import { TOOLS } from "../tools/registry";
+import { ToolIcon, pillarOf } from "../tools/icons";
 
 /**
  * Ctrl+K 命令面板。
@@ -27,12 +28,15 @@ export function CommandPalette({
     const scored = TOOLS.map((tool) => ({
       tool,
       name: t(`tool.${tool.id}.name` as never),
+      desc: t(`tool.${tool.id}.desc` as never),
     }));
     if (!q) return scored;
-    // 名称和工具 id 都参与匹配，这样输 "pdf" 能把整组 PDF 工具捞出来
+    // 名称、id、说明都参与匹配——输 "pdf" 捞出整组 PDF，输 "乱码" 也能找到「乱码修复」
     return scored.filter(
-      ({ tool, name }) =>
-        name.toLowerCase().includes(q) || tool.id.toLowerCase().includes(q),
+      ({ tool, name, desc }) =>
+        name.toLowerCase().includes(q) ||
+        tool.id.toLowerCase().includes(q) ||
+        desc.toLowerCase().includes(q),
     );
   }, [query, t]);
 
@@ -97,6 +101,9 @@ export function CommandPalette({
                 onClose();
               }}
             >
+              <span className={`palette__ico palette__ico--${pillarOf(tool.id)}`}>
+                <ToolIcon id={tool.id} />
+              </span>
               {name}
               {/* 还没实现的工具在这里就标出来，别让人点进去才发现 */}
               {tool.status !== "ready" && (
