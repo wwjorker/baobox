@@ -41,7 +41,11 @@ export function Home({
 }: Props) {
   const { t } = useI18n();
 
+  // 点箱子蹦一下：Mascot 本就支持,只是一直没接上触发
+  const [cheer, setCheer] = useState(0);
+
   const pickFiles = async () => {
+    setCheer((c) => c + 1);
     const sel = await open({ multiple: true });
     if (Array.isArray(sel)) onFiles(sel);
     else if (typeof sel === "string") onFiles([sel]);
@@ -83,7 +87,7 @@ export function Home({
           title={t("home.pickTitle")}
         >
           <div className="catch__spot" />
-          <Mascot open={over} />
+          <Mascot open={over} cheerKey={cheer} />
           <div className="catch__text">
             <div className="catch__hi">{t("home.heroTitle")}</div>
             <div className="catch__sub">{dropHint ?? t("home.heroSub")}</div>
