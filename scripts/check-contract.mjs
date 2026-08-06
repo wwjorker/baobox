@@ -213,6 +213,11 @@ const gKeys = new Set([...icons.matchAll(/^\s{2}([a-z0-9]+):\s*\(<>/gm)].map((m)
 const iconMap = {};
 for (const m of icons.matchAll(/"([^"]+)":\s*"([a-z0-9]+)",/g)) iconMap[m[1]] = m[2];
 const pillarOf = (id) => id.split(".")[0];
+// 侧栏、工具页顶用 <ToolIcon id={pillar} /> 直接渲染裸支柱图标,
+// 它走 G[pillar] 这条路——G 里少一个支柱,那一整类就空白（OCR 就这么空了一版）。
+for (const pl of ["image", "ocr", "pdf", "file"]) {
+  if (!gKeys.has(pl)) p(`D [支柱无图标] 支柱 "${pl}" 在 G 里没有通用 glyph——侧栏和该类工具页顶的图标会空白`);
+}
 const glyphUsers = {};
 for (const t of tools) {
   const glyph = iconMap[t.id];

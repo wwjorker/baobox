@@ -15,6 +15,8 @@ const G: Record<string, ReactElement> = {
   screen: (<><path d="M4 8V5h3M20 8V5h-3M4 16v3h3M20 16v3h-3" /><path d="M9 15l2.5-6 2.5 6M9.8 13h3.4" /></>),
   pdf: (<><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 12h6M9 15h6M9 18h4" /></>),
   file: (<><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>),
+  // OCR 支柱通用：画面框里认出一个「A」+ 文字行,表示「从图像识别文字」
+  ocr: (<><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7.5 15l2.3-6.5 2.3 6.5M8.2 12.8h3.6" /><path d="M15 11.5h3.5M15 15h3.5" /></>),
 
   // —— 图片 ——
   compress: (<><rect x="6" y="6" width="12" height="12" rx="1" /><path d="M3 9V4h5M21 9V4h-5M3 15v5h5M21 15v5h-5M9 12h6" /></>),
