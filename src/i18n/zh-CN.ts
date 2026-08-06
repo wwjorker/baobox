@@ -70,6 +70,7 @@ export default {
     emptyHint: "跑过的工具会记在这儿，方便你找回产物、或一键再来一次。粉碎和涂黑密文不记录。",
     pages: "{n} 页",
     items: "{n} 个",
+    chars: "识别 {n} 字",
   },
 
   // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），

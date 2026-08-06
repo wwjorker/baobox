@@ -28,7 +28,13 @@ interface Rect {
   h: number;
 }
 
-export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
+export function ScreenOcrPanel({
+  autoStart,
+  onHistory,
+}: {
+  autoStart?: number;
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
+}) {
   const { t } = useI18n();
   const [shot, setShot] = useState<ScreenShot | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
@@ -114,6 +120,13 @@ export function ScreenOcrPanel({ autoStart }: { autoStart?: number }) {
         lang: null,
       });
       setText(got);
+      if (got.trim()) {
+        onHistory?.({
+          toolId: "ocr.screen",
+          summary: t("history.chars", { n: got.trim().length }),
+          outPath: null,
+        });
+      }
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));

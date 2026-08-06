@@ -51,11 +51,13 @@ const PHASE_KEY: Record<string, string> = {
 export function DedupePanel({
   onSaved,
   onDone,
+  onHistory,
 }: {
   onSaved: (bytes: number) => void;
   /** 扫描结束时回调本次耗时。全盘扫描是整个软件里最长的操作，
       也最可能被切走去干别的，提示音在这里最有意义。 */
   onDone?: (elapsedMs: number) => void;
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
 }) {
   const { t } = useI18n();
   const [roots, setRoots] = useState<string[]>([]);
@@ -146,6 +148,13 @@ export function DedupePanel({
     const okPaths = new Set(results.filter((r) => r.ok).map((r) => r.path));
     const freed = doomedList.filter((f) => okPaths.has(f.path)).reduce((n, f) => n + f.size, 0);
     onSaved(freed);
+    if (okPaths.size > 0) {
+      onHistory?.({
+        toolId: "file.dedupe",
+        summary: `${t("history.items", { n: okPaths.size })} · ${fmtSize(freed)}`,
+        outPath: null,
+      });
+    }
     setConfirming(false);
     // 删掉的从结果里移走，剩下的继续可操作
     setReport((prev) =>

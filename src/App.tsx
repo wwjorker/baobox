@@ -211,7 +211,7 @@ export default function App() {
             // 绝不与普通删除共用任何组件（安全红线 3）
             <ShredPanel />
           ) : tool?.id === "ocr.screen" ? (
-            <ScreenOcrPanel autoStart={hotkeyTick} />
+            <ScreenOcrPanel autoStart={hotkeyTick} onHistory={pushHistory} />
           ) : tool?.id === "file.rename" ? (
             <RenamePanel onHistory={pushHistory} />
           ) : tool?.id === "file.touch" ? (
@@ -220,7 +220,7 @@ export default function App() {
           ) : tool?.id === "file.dedupe" ? (
             // 「扫描 → 分组 → 勾选 → 删除」和通用的「拖入 → 配置 → 执行」
             // 是两种流程，硬套一个框架只会两边都别扭
-            <DedupePanel onSaved={addSaved} onDone={chime} />
+            <DedupePanel onSaved={addSaved} onDone={chime} onHistory={pushHistory} />
           ) : tool ? (
             <ToolRunner
               key={tool.id}

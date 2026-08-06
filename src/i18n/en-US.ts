@@ -72,6 +72,7 @@ const enUS: typeof zhCN = {
     emptyHint: "Tools you run are logged here so you can find the output or run it again. Shredding and redaction are never recorded.",
     pages: "{n} pages",
     items: "{n} items",
+    chars: "{n} chars recognized",
   },
 
   tool: {
