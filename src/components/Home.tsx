@@ -4,6 +4,7 @@ import { useI18n } from "../i18n";
 import { findTool } from "../tools/registry";
 import { ToolIcon, pillarOf } from "../tools/icons";
 import { fmtSize } from "../useSaved";
+import { CountUp } from "../CountUp";
 import { Mascot } from "./Mascot";
 import { ToolCard } from "./ToolCard";
 
@@ -95,7 +96,7 @@ export function Home({
         </button>
         <button className="plate" onClick={onOpenSaved}>
           <span className="plate__label">{t("app.saved")}</span>
-          <span className="plate__val">{fmtSize(saved)}</span>
+          <span className="plate__val"><CountUp value={saved} format={fmtSize} /></span>
           <span className="plate__sub">{t("home.savedSub")}</span>
         </button>
       </div>

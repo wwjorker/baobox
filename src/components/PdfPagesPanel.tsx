@@ -6,6 +6,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { stampDone } from "../stamp";
 import { ToolHead } from "./ToolHead";
 
 /**
@@ -227,6 +228,7 @@ export function PdfPagesPanel({
       setResult(r);
       onHistory?.({ toolId: "pdf.split", summary: t("history.pages", { n: r.pages }), outPath: r.out_path });
       burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82);
+      stampDone();
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));

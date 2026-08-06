@@ -20,6 +20,7 @@ import { ToolCard } from "./components/ToolCard";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { ToolIcon } from "./tools/icons";
 import { fmtSize, useSaved } from "./useSaved";
+import { CountUp } from "./CountUp";
 import { useRecent } from "./useRecent";
 import { useFavorites } from "./useFavorites";
 import { useHistory } from "./useHistory";
@@ -352,7 +353,7 @@ export default function App() {
             点开能看到口径，也能归零。 */}
         <button className="savedplate" onClick={() => setSavedOpen(true)}>
           <span className="savedplate__label">{t("app.saved")}</span>
-          <span className="savedplate__value">{fmtSize(saved)}</span>
+          <span className="savedplate__value"><CountUp value={saved} format={fmtSize} /></span>
         </button>
       </footer>
 

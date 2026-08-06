@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { stampDone } from "../stamp";
 import { ToolHead } from "./ToolHead";
 
 /**
@@ -110,6 +111,7 @@ export function RenamePanel({
       if (r.done > 0) {
         onHistory?.({ toolId: "file.rename", summary: t("history.items", { n: r.done }), outPath: null });
         burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82);
+        stampDone();
       }
       // 名字变了，路径也就变了，清空重来避免拿旧路径继续操作
       setPaths([]);

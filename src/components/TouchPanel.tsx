@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { stampDone } from "../stamp";
 import { ToolHead } from "./ToolHead";
 
 /**
@@ -67,6 +68,7 @@ export function TouchPanel({
       if (r.done > 0) {
         onHistory?.({ toolId: "file.touch", summary: t("history.items", { n: r.done }), outPath: null });
         burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82);
+        stampDone();
       }
       // 时间已改，这一批不再重复操作，清空重来
       setPaths([]);

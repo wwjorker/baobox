@@ -9,6 +9,7 @@ import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { stampDone } from "../stamp";
 import { ToolHead } from "./ToolHead";
 import { BoxMark } from "./BoxMark";
 import type { OptionDef, ToolDef } from "../tools/registry";
@@ -309,6 +310,7 @@ export function ToolRunner({
       const okCount = results.filter((o) => o.ok).length;
       if (okCount > 0) {
         burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82, Math.min(84, 34 + okCount * 6));
+        stampDone();
         const savedBytes = tool.savesSpace
           ? results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0)
           : 0;
