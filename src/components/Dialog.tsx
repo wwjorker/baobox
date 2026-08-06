@@ -1,5 +1,8 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useI18n } from "../i18n";
+
+const FOCUSABLE =
+  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /**
  * 说明性弹层。
@@ -27,12 +30,42 @@ export function Dialog({
   onClose: () => void;
 }) {
   const { t } = useI18n();
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // 焦点管理：打开时把焦点移进弹层，Tab 在里面循环，关闭后还给原来的元素。
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    const box = boxRef.current;
+    if (box) (box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !box) return;
+      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, []);
+
   return (
     <div className="confirm" onMouseDown={onClose}>
       <div
         className="confirm__box is-info"
         role="dialog"
         aria-modal="true"
+        tabIndex={-1}
+        ref={boxRef}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 className="confirm__title">{title}</h2>
