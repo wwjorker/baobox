@@ -39,7 +39,11 @@ const NEW_RULE: Record<string, Rule> = {
   case: { kind: "case", mode: "lower" },
 };
 
-export function RenamePanel() {
+export function RenamePanel({
+  onHistory,
+}: {
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
+}) {
   const { t } = useI18n();
   const [paths, setPaths] = useState<string[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -101,6 +105,9 @@ export function RenamePanel() {
       setResult(r);
       // undo_log 为空表示后端没能存下撤销日志（磁盘满/无权限），此时不给撤销按钮
       setUndoLog(r.undo_log || null);
+      if (r.done > 0) {
+        onHistory?.({ toolId: "file.rename", summary: t("history.items", { n: r.done }), outPath: null });
+      }
       // 名字变了，路径也就变了，清空重来避免拿旧路径继续操作
       setPaths([]);
       setPreview([]);
@@ -135,7 +142,7 @@ export function RenamePanel() {
   const problems = preview.filter((p) => p.conflict || p.invalid).length;
 
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">{t("tool.file.rename.name")}</h1>
       <p className="lede">{t("tool.file.rename.desc")}</p>
 
@@ -327,6 +334,6 @@ export function RenamePanel() {
           <span>{err}</span>
         </div>
       )}
-    </>
+    </div>
   );
 }

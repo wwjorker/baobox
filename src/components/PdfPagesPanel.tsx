@@ -29,9 +29,15 @@ interface Card {
   orig: number;
   rotate: number;
   removed: boolean;
+  /** 勾选（用于批量转/删）。几十上百页时一个个点太慢。 */
+  sel: boolean;
 }
 
-export function PdfPagesPanel() {
+export function PdfPagesPanel({
+  onHistory,
+}: {
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
+}) {
   const { t } = useI18n();
   const [src, setSrc] = useState<string | null>(null);
   const [thumbs, setThumbs] = useState<string[]>([]);
@@ -44,6 +50,8 @@ export function PdfPagesPanel() {
   );
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [rangeFrom, setRangeFrom] = useState(1);
+  const [rangeTo, setRangeTo] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
   // 加载代号：换 PDF 时递增，只有最新那次的结果能落地。
   // 否则先点 A 后点 B、A 后返回，会出现「src 是 B、缩略图却是 A」，
@@ -68,6 +76,7 @@ export function PdfPagesPanel() {
           orig: i + 1,
           rotate: 0,
           removed: false,
+          sel: false,
         })),
       );
     } catch (e) {
@@ -126,8 +135,30 @@ export function PdfPagesPanel() {
     setCards((cs) =>
       [...cs]
         .sort((a, b) => a.orig - b.orig)
-        .map((c) => ({ ...c, rotate: 0, removed: false })),
+        .map((c) => ({ ...c, rotate: 0, removed: false, sel: false })),
     );
+
+  const toggleSel = (key: number) =>
+    setCards((cs) => cs.map((c) => (c.key === key ? { ...c, sel: !c.sel } : c)));
+
+  // 批量勾选：按原页码判断奇偶/范围，一次选一片，几十上百页不用一个个点。
+  const selectBy = (pred: (c: Card) => boolean) =>
+    setCards((cs) => cs.map((c) => ({ ...c, sel: pred(c) })));
+  const selectAll = () => selectBy(() => true);
+  const selectNone = () => selectBy(() => false);
+  const selectInvert = () => setCards((cs) => cs.map((c) => ({ ...c, sel: !c.sel })));
+  const selectOdd = () => selectBy((c) => c.orig % 2 === 1);
+  const selectEven = () => selectBy((c) => c.orig % 2 === 0);
+  const selectRange = () => {
+    const a = Math.min(rangeFrom, rangeTo);
+    const b = Math.max(rangeFrom, rangeTo);
+    selectBy((c) => c.orig >= a && c.orig <= b);
+  };
+  // 对勾选的批量转/删
+  const rotateSel = () =>
+    setCards((cs) => cs.map((c) => (c.sel ? { ...c, rotate: (c.rotate + 90) % 360 } : c)));
+  const removeSel = () =>
+    setCards((cs) => cs.map((c) => (c.sel ? { ...c, removed: true, sel: false } : c)));
 
   // 拖拽重排：用 Pointer Events 自己实现，不用原生 HTML5 拖放。
   // Tauri 开着「拖文件进来」（dragDropEnabled）时会在系统层截走 HTML5 拖放，
@@ -192,6 +223,7 @@ export function PdfPagesPanel() {
         ops,
       });
       setResult(r);
+      onHistory?.({ toolId: "pdf.split", summary: t("history.pages", { n: r.pages }), outPath: r.out_path });
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));
@@ -200,8 +232,10 @@ export function PdfPagesPanel() {
     }
   };
 
+  const selCount = cards.filter((c) => c.sel).length;
+
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">{t("tool.pdf.split.name")}</h1>
       <p className="lede">{t("pdfpages.desc")}</p>
 
@@ -231,26 +265,56 @@ export function PdfPagesPanel() {
         </div>
       ) : (
         <>
-          <div className="optbar">
-            <span className="opt__label">
+          <div className="pagebar">
+            <button className="chip" onClick={selectAll}>{t("pdfpages.selAll")}</button>
+            <button className="chip" onClick={selCount ? selectNone : selectInvert}>
+              {selCount ? t("pdfpages.selNone") : t("pdfpages.selInvert")}
+            </button>
+            <button className="chip" onClick={selectOdd}>{t("pdfpages.selOdd")}</button>
+            <button className="chip" onClick={selectEven}>{t("pdfpages.selEven")}</button>
+            <span className="pagebar__range">
+              {t("pdfpages.pageWord")}
+              <input
+                type="number"
+                min={1}
+                value={rangeFrom}
+                onChange={(e) => setRangeFrom(Math.max(1, +e.target.value || 1))}
+                aria-label={t("pdfpages.rangeFrom")}
+              />
+              –
+              <input
+                type="number"
+                min={1}
+                value={rangeTo}
+                onChange={(e) => setRangeTo(Math.max(1, +e.target.value || 1))}
+                aria-label={t("pdfpages.rangeTo")}
+              />
+              <button className="chip" onClick={selectRange}>{t("pdfpages.rangeGo")}</button>
+            </span>
+            <span className="pagebar__sep" />
+            {selCount > 0 && (
+              <>
+                <button className="chip is-strong" onClick={rotateSel}>
+                  {t("pdfpages.rotateSel", { n: selCount })}
+                </button>
+                <button className="chip is-strong" onClick={removeSel}>
+                  {t("pdfpages.removeSel", { n: selCount })}
+                </button>
+                <span className="pagebar__sep" />
+              </>
+            )}
+            <button className="chip" onClick={rotateAll}>{t("pdfpages.rotateAll")}</button>
+            <button className="chip" onClick={reset}>{t("pdfpages.reset")}</button>
+            <span className="pagebar__count">
               {t("pdfpages.kept", { kept: kept.length, total: cards.length })}
             </span>
-            <div className="opt">
-              <button className="chip" onClick={rotateAll}>
-                {t("pdfpages.rotateAll")}
-              </button>
-              <button className="chip" onClick={reset}>
-                {t("pdfpages.reset")}
-              </button>
-            </div>
-            <span className="opt__label pdfpages__hint">{t("pdfpages.dragHint")}</span>
           </div>
 
           <div className="pagegrid" ref={gridRef}>
             {cards.map((c, i) => (
               <div
                 key={c.key}
-                className={`pagecard${c.removed ? " is-removed" : ""}${
+                className={`pagecard${c.removed ? " is-removed" : ""}${c.sel ? " is-sel" : ""}${
                   overIdx === i && dragIdx !== i ? " is-over" : ""
                 }${dragIdx === i ? " is-dragging" : ""}`}
                 onPointerDown={(e) => startDrag(e, i)}
@@ -259,6 +323,14 @@ export function PdfPagesPanel() {
                 onPointerCancel={dragIdx === i ? (e) => endDrag(e, i) : undefined}
               >
                 <div className="pagecard__thumb">
+                  <button
+                    className="pagecard__check"
+                    aria-pressed={c.sel}
+                    title={c.sel ? t("pdfpages.deselect") : t("pdfpages.select")}
+                    onClick={() => toggleSel(c.key)}
+                  >
+                    {c.sel ? "✓" : ""}
+                  </button>
                   <img
                     src={thumbs[c.orig - 1]}
                     alt={`page ${c.orig}`}
@@ -331,6 +403,6 @@ export function PdfPagesPanel() {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

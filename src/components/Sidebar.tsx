@@ -6,14 +6,27 @@ interface Props {
   active: Pillar;
   /** 当前是否在仪表盘首页 */
   home: boolean;
+  /** 当前是否在历史记录视图 */
+  histActive: boolean;
   recent: string[];
   favorites: string[];
   onHome: () => void;
+  onHistory: () => void;
   onPillar: (p: Pillar) => void;
   onTool: (id: string) => void;
 }
 
-export function Sidebar({ active, home, recent, favorites, onHome, onPillar, onTool }: Props) {
+export function Sidebar({
+  active,
+  home,
+  histActive,
+  recent,
+  favorites,
+  onHome,
+  onHistory,
+  onPillar,
+  onTool,
+}: Props) {
   const { t } = useI18n();
 
   return (
@@ -84,6 +97,16 @@ export function Sidebar({ active, home, recent, favorites, onHome, onPillar, onT
           ))}
         </>
       )}
+
+      <button className="nav nav--foot" aria-current={histActive} onClick={onHistory}>
+        <span className="nav__ico nav__ico--home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8" />
+            <path d="M12 8v4l3 2" />
+          </svg>
+        </span>
+        {t("history.title")}
+      </button>
     </nav>
   );
 }

@@ -59,6 +59,19 @@ export default {
     tip5: "重命名和改时间都能一键撤销，放心动。",
   },
 
+  history: {
+    title: "历史记录",
+    note: "只存在本地，不上传 · 粉碎、涂黑不记录",
+    clear: "清空",
+    today: "今天",
+    yesterday: "昨天",
+    again: "再来一次",
+    emptyTitle: "还没有记录",
+    emptyHint: "跑过的工具会记在这儿，方便你找回产物、或一键再来一次。粉碎和涂黑密文不记录。",
+    pages: "{n} 页",
+    items: "{n} 个",
+  },
+
   // 按支柱嵌套。工具 id 里含点号（如 image.compress-target），
   // 而 t() 是按点号逐级下钻的，所以字典结构必须跟 id 的分段一致。
   tool: {
@@ -565,6 +578,19 @@ export default {
     rotateAll: "全部转 90°",
     reset: "重置",
     dragHint: "拖动缩略图可重新排序",
+    selAll: "全选",
+    selNone: "取消选择",
+    selInvert: "反选",
+    selOdd: "奇数页",
+    selEven: "偶数页",
+    pageWord: "页码",
+    rangeFrom: "起始页",
+    rangeTo: "结束页",
+    rangeGo: "选中",
+    rotateSel: "转选中 {n}",
+    removeSel: "删选中 {n}",
+    select: "选中这一页",
+    deselect: "取消选中",
     rotate: "旋转这一页",
     moveLeft: "往前挪",
     moveRight: "往后挪",

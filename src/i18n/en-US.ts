@@ -61,6 +61,19 @@ const enUS: typeof zhCN = {
     tip5: "Rename and timestamp changes both undo in one click, so go ahead.",
   },
 
+  history: {
+    title: "History",
+    note: "Stored locally, never uploaded · shredding and redaction aren't recorded",
+    clear: "Clear",
+    today: "Today",
+    yesterday: "Yesterday",
+    again: "Do it again",
+    emptyTitle: "Nothing here yet",
+    emptyHint: "Tools you run are logged here so you can find the output or run it again. Shredding and redaction are never recorded.",
+    pages: "{n} pages",
+    items: "{n} items",
+  },
+
   tool: {
     image: {
       "compress-target": {
@@ -569,6 +582,19 @@ const enUS: typeof zhCN = {
     rotateAll: "Rotate all 90°",
     reset: "Reset",
     dragHint: "Drag thumbnails to reorder",
+    selAll: "Select all",
+    selNone: "Clear selection",
+    selInvert: "Invert",
+    selOdd: "Odd pages",
+    selEven: "Even pages",
+    pageWord: "Pages",
+    rangeFrom: "First page",
+    rangeTo: "Last page",
+    rangeGo: "Select",
+    rotateSel: "Rotate {n}",
+    removeSel: "Remove {n}",
+    select: "Select this page",
+    deselect: "Deselect",
     rotate: "Rotate this page",
     moveLeft: "Move earlier",
     moveRight: "Move later",

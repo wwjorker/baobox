@@ -223,6 +223,10 @@
 .nav__mini--ocr { color: var(--ocr); }
 .nav__mini--pdf { color: var(--pdf); }
 .nav__mini--file { color: var(--file); }
+/* 首页/历史那种「中性」图标块：不带分类色 */
+.nav__ico--home { background: var(--paper); color: var(--ink); }
+/* 历史钉在侧栏最底 */
+.nav--foot { margin-top: auto; }
 .nav__count {
   margin-left: auto;
   font-family: var(--f-mono);
@@ -604,6 +608,123 @@
   border-radius: 3px;
   flex: none;
 }
+
+/* ============================================ 历史记录 */
+.histhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.histhead .h1 {
+  font-size: 24px;
+}
+.hist__note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dim);
+}
+.hist__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex: none;
+}
+.histhead__clear {
+  margin-left: auto;
+}
+.histlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.histgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.histday {
+  font-family: var(--f-display);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+  margin: 6px 2px 0;
+}
+.histrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border: var(--b2);
+  border-radius: 6px;
+  padding: 9px 13px;
+  transition: transform 0.12s var(--spring), box-shadow 0.12s;
+}
+.histrow:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--sh-sm);
+}
+.histrow__ico {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border: var(--b2);
+  border-radius: var(--rad);
+  display: grid;
+  place-items: center;
+  background: var(--bg-soft);
+}
+.histrow__ico svg {
+  width: 22px;
+  height: 22px;
+}
+.histrow__ico--image { background: var(--img-bg); color: var(--img-ink); }
+.histrow__ico--ocr { background: var(--ocr-bg); color: var(--ocr-ink); }
+.histrow__ico--pdf { background: var(--pdf-bg); color: var(--pdf-ink); }
+.histrow__ico--file { background: var(--file-bg); color: var(--file-ink); }
+.histrow__main {
+  flex: 1;
+  min-width: 0;
+}
+.histrow__t {
+  font-family: var(--f-display);
+  font-size: 13.5px;
+}
+.histrow__meta {
+  font-family: var(--f-body);
+  font-weight: 600;
+  color: var(--dim);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.histrow__loc {
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--f-mono);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.histrow__time {
+  font-size: 11.5px;
+  color: var(--dim);
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+.histrow__acts {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+.histrow__acts .chip {
+  padding: 4px 9px;
+  font-size: 11.5px;
+}
+
 /* 卡片外面套一层，好让星标绝对定位在角上——按钮不能嵌按钮，
    所以卡片和星标是这层里的两个兄弟。 */
 .cardwrap {
@@ -1318,6 +1439,79 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 12px;
+}
+/* 网格内部滚，工具条和导出常驻可见 */
+.toolpage > .pagegrid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+/* 页面整理工具条：全选 / 奇偶 / 范围 / 批量转删，常驻在网格上方 */
+.pagebar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  background: var(--paper);
+  border: var(--b2);
+  border-radius: var(--rad);
+  padding: 8px 11px;
+  box-shadow: var(--sh-sm);
+}
+.pagebar__range {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.pagebar__range input {
+  width: 52px;
+  border: var(--b2);
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+.pagebar__sep {
+  width: 2px;
+  height: 20px;
+  background: rgba(20, 17, 9, 0.2);
+}
+.pagebar__count {
+  margin-left: auto;
+  font-family: var(--f-display);
+  font-size: 13px;
+}
+.chip.is-strong {
+  background: var(--ink);
+  color: var(--bg-soft);
+  border-color: var(--ink);
+}
+/* 勾选框（批量转/删用），压在缩略图左上角 */
+.pagecard__check {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border: var(--b2);
+  border-radius: 3px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.pagecard.is-sel {
+  outline: 3px solid var(--red);
+  outline-offset: -1px;
+}
+.pagecard.is-sel .pagecard__check {
+  background: var(--red);
+  color: #fff;
 }
 .pagecard {
   border: var(--b2);

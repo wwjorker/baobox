@@ -15,11 +15,13 @@ import { ScreenOcrPanel } from "./components/ScreenOcrPanel";
 import { RedactPanel } from "./components/RedactPanel";
 import { ShredPanel } from "./components/ShredPanel";
 import { Home } from "./components/Home";
+import { History } from "./components/History";
 import { ToolCard } from "./components/ToolCard";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
 import { useFavorites } from "./useFavorites";
+import { useHistory } from "./useHistory";
 import { useChime } from "./useChime";
 import "./styles/app.css";
 
@@ -48,6 +50,8 @@ export default function App() {
   const [toolId, setToolId] = useState<string | null>(null);
   /** 落地页是仪表盘首页；点某支柱或拖入文件才离开首页去看工具网格 */
   const [home, setHome] = useState(true);
+  /** 历史记录视图 */
+  const [hist, setHist] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [offlineOpen, setOfflineOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
@@ -58,6 +62,7 @@ export default function App() {
   const { saved, addSaved, resetSaved } = useSaved();
   const { recent, push: pushRecent } = useRecent();
   const { favorites, toggle: toggleFav, isFavorite } = useFavorites();
+  const { history, pushHistory, clearHistory } = useHistory();
   const { chimeEnabled, toggleChime, chime } = useChime();
   /** 热键触发的计数器，变化即表示要立刻开抓 */
   const [hotkeyTick, setHotkeyTick] = useState(0);
@@ -71,6 +76,7 @@ export default function App() {
       setPillar(def.pillar);
       setToolId(id);
       setHome(false);
+      setHist(false);
       // 只把真能用的工具计入「最近」——计划中的（如「设置 PDF 密码」还没做）
       // 记进去只会让人点开发现用不了
       if (def.status === "ready") pushRecent(id);
@@ -154,11 +160,20 @@ export default function App() {
       <div className="body">
         <Sidebar
           active={pillar}
-          home={home && !tool}
+          home={home && !hist && !tool}
+          histActive={hist && !tool}
           recent={recent}
           favorites={favorites}
           onHome={() => {
             setHome(true);
+            setHist(false);
+            setToolId(null);
+            setPending(null);
+            setDropHint(null);
+          }}
+          onHistory={() => {
+            setHist(true);
+            setHome(false);
             setToolId(null);
             setPending(null);
             setDropHint(null);
@@ -167,6 +182,7 @@ export default function App() {
             setPillar(p);
             setToolId(null);
             setHome(false);
+            setHist(false);
             // 换支柱等于换了件事做，之前接住的文件和上一条提示都不该跟过去
             setPending(null);
             setDropHint(null);
@@ -189,7 +205,7 @@ export default function App() {
           ) : tool?.id === "pdf.split" ? (
             // 缩略图上勾选 / 拖动排序 / 逐页旋转，是「逐页摆布一份文档」，
             // 和通用的「一批文件一组参数」两码事，走专用面板
-            <PdfPagesPanel />
+            <PdfPagesPanel onHistory={pushHistory} />
           ) : tool?.id === "file.shred" ? (
             // 唯一不可逆销毁数据的功能，独立面板、独立确认流程，
             // 绝不与普通删除共用任何组件（安全红线 3）
@@ -197,10 +213,10 @@ export default function App() {
           ) : tool?.id === "ocr.screen" ? (
             <ScreenOcrPanel autoStart={hotkeyTick} />
           ) : tool?.id === "file.rename" ? (
-            <RenamePanel />
+            <RenamePanel onHistory={pushHistory} />
           ) : tool?.id === "file.touch" ? (
             // 直接改原文件的时间，得像重命名一样先记原时间、给一键撤销
-            <TouchPanel />
+            <TouchPanel onHistory={pushHistory} />
           ) : tool?.id === "file.dedupe" ? (
             // 「扫描 → 分组 → 勾选 → 删除」和通用的「拖入 → 配置 → 执行」
             // 是两种流程，硬套一个框架只会两边都别扭
@@ -211,12 +227,15 @@ export default function App() {
               tool={tool}
               initialPaths={pending}
               onSaved={addSaved}
+              onHistory={pushHistory}
               onDone={(ms) => {
                 chime(ms);
                 // 已经跑过了，退回支柱页时不该还挂着「收下了 3 个文件」
                 setPending(null);
               }}
             />
+          ) : hist ? (
+            <History history={history} onClear={clearHistory} onOpenTool={openTool} />
           ) : home ? (
             <Home
               favorites={favorites}
@@ -225,7 +244,7 @@ export default function App() {
               over={over}
               dropHint={dropHint}
               onOpenTool={openTool}
-              onOpenSaved={() => setSavedOpen(true)}
+              onOpenSaved={() => setHist(true)}
               isFavorite={isFavorite}
               onToggleFav={toggleFav}
             />

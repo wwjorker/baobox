@@ -16,7 +16,11 @@ import { asAppErr } from "../errText";
 
 const PRESETS = [-8, -1, 1, 8];
 
-export function TouchPanel() {
+export function TouchPanel({
+  onHistory,
+}: {
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
+}) {
   const { t } = useI18n();
   const [paths, setPaths] = useState<string[]>([]);
   const [hours, setHours] = useState(0);
@@ -58,6 +62,9 @@ export function TouchPanel() {
       });
       setResult(r);
       setUndoLog(r.undo_log || null);
+      if (r.done > 0) {
+        onHistory?.({ toolId: "file.touch", summary: t("history.items", { n: r.done }), outPath: null });
+      }
       // 时间已改，这一批不再重复操作，清空重来
       setPaths([]);
     } catch (e) {
@@ -89,7 +96,7 @@ export function TouchPanel() {
   const fileName = (p: string) => p.replace(/^.*[\\/]/, "");
 
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">{t("tool.file.touch.name")}</h1>
       <p className="lede">{t("tool.file.touch.desc")}</p>
 
@@ -176,6 +183,6 @@ export function TouchPanel() {
           <span>{err}</span>
         </div>
       )}
-    </>
+    </div>
   );
 }

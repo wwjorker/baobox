@@ -127,7 +127,7 @@ export function ShredPanel() {
   const okCount = rows.filter((r) => r.done === "ok").length;
 
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">
         {t("tool.file.shred.name")}
         <span className="badge is-danger">{t("shred.danger")}</span>
@@ -284,6 +284,6 @@ export function ShredPanel() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

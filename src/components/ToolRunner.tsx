@@ -82,6 +82,7 @@ export function ToolRunner({
   initialPaths,
   onSaved,
   onDone,
+  onHistory,
 }: {
   tool: ToolDef;
   /** 在首页拖进来、还没送进任何工具的文件 */
@@ -89,6 +90,8 @@ export function ToolRunner({
   onSaved: (bytes: number) => void;
   /** 跑完一批后回调，参数是本次耗时——由调用方决定要不要出声 */
   onDone?: (elapsedMs: number) => void;
+  /** 成功跑完后记一笔历史（粉碎/涂黑走各自面板，不经这里，天然不记） */
+  onHistory?: (e: { toolId: string; summary: string; outPath: string | null }) => void;
 }) {
   const { t } = useI18n();
   const [rows, setRows] = useState<Row[]>([]);
@@ -301,10 +304,16 @@ export function ToolRunner({
           results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0),
         );
       }
-      // 有成功就撒一把纸屑庆祝（叮声由 onDone 那边响）。
+      // 有成功就撒一把纸屑庆祝（叮声由 onDone 那边响），并记一笔历史。
       const okCount = results.filter((o) => o.ok).length;
       if (okCount > 0) {
         burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82, Math.min(84, 34 + okCount * 6));
+        const savedBytes = tool.savesSpace
+          ? results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0)
+          : 0;
+        let sum = t("run.sumOk", { ok: okCount });
+        if (savedBytes > 0) sum += " · " + t("run.sumSaved", { saved: fmtSize(savedBytes) });
+        onHistory?.({ toolId: tool.id, summary: sum, outPath: outputDirRef.current });
       }
     } catch (e) {
       // 整个命令被拒（反序列化失败、后端 panic、spawn 失败等）。
