@@ -204,12 +204,35 @@ for (const k of emitted) {
   if (!enKeys.has(k)) p(`C [en 缺] 后端发出 "${k}" 无英文`);
 }
 
+// ---- D. 图标覆盖 ------------------------------------------------------------
+// 每个工具都得有能认出来的图标。MAP 里 glyph key 写错了不会报编译错——
+// ToolIcon 会静默回退到「支柱通用图标」，于是这个工具的图标悄悄变成了泛用款。
+// 而同一根支柱下两个工具共用一个 glyph，颜色又一样，界面上就分不出谁是谁。
+const icons = fs.readFileSync(path.join(ROOT, "src/tools/icons.tsx"), "utf8");
+const gKeys = new Set([...icons.matchAll(/^\s{2}([a-z0-9]+):\s*\(<>/gm)].map((m) => m[1]));
+const iconMap = {};
+for (const m of icons.matchAll(/"([^"]+)":\s*"([a-z0-9]+)",/g)) iconMap[m[1]] = m[2];
+const pillarOf = (id) => id.split(".")[0];
+const glyphUsers = {};
+for (const t of tools) {
+  const glyph = iconMap[t.id];
+  if (!glyph) { p(`D [无图标] 工具 ${t.id} 不在 icons.tsx 的 MAP 里，会落到支柱通用图标`); continue; }
+  if (!gKeys.has(glyph)) p(`D [图标失效] 工具 ${t.id} 映射到 glyph "${glyph}"，但 G 里没有它——会静默回退`);
+  (glyphUsers[glyph] ??= []).push(t.id);
+}
+for (const [glyph, ids] of Object.entries(glyphUsers)) {
+  if (ids.length < 2) continue;
+  const pillars = new Set(ids.map(pillarOf));
+  if (pillars.size === 1) // 同支柱同色又同图标 = 认不出
+    p(`D [图标撞车] glyph "${glyph}" 被同一支柱的多个工具共用，颜色也一样、分不出：${ids.join(", ")}`);
+}
+
 // ---- 汇报 -------------------------------------------------------------------
 const ready = tools.filter((t) => t.status === "ready").length;
 const planned = tools.filter((t) => t.status === "planned").length;
 console.log(`工具 ${tools.length}（ready ${ready} / planned ${planned}）· Rust 命令 ${Object.keys(cmds).length} · i18n key 中 ${zhKeys.size} / 英 ${enKeys.size}`);
 if (problems.length === 0) {
-  console.log("契约检查通过：前后端参数、命令注册、中英文案全部对得上。");
+  console.log("契约检查通过：前后端参数、命令注册、中英文案、每个工具的图标全部对得上。");
   process.exit(0);
 } else {
   console.error(`\n发现 ${problems.length} 个契约问题：`);
