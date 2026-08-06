@@ -336,6 +336,8 @@ export function PdfPagesPanel({
                   <img
                     src={thumbs[c.orig - 1]}
                     alt={`page ${c.orig}`}
+                    loading="lazy"
+                    decoding="async"
                     // 转 90/270 后长边会顶出固定高的框，缩一点避免被裁
                     style={{
                       transform: `rotate(${c.rotate}deg)${c.rotate % 180 !== 0 ? " scale(0.72)" : ""}`,

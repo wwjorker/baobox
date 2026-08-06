@@ -18,6 +18,7 @@ import { Home } from "./components/Home";
 import { History } from "./components/History";
 import { ToolCard } from "./components/ToolCard";
 import { findTool, toolsOf, type Pillar } from "./tools/registry";
+import { ToolIcon } from "./tools/icons";
 import { fmtSize, useSaved } from "./useSaved";
 import { useRecent } from "./useRecent";
 import { useFavorites } from "./useFavorites";
@@ -262,7 +263,12 @@ export default function App() {
             />
           ) : (
             <>
-              <h1 className="h1">{t(`pillar.${pillar}` as never)}</h1>
+              <div className="pillarhead">
+                <span className={`pillarhead__ico pillarhead__ico--${pillar}`}>
+                  <ToolIcon id={pillar} />
+                </span>
+                <h1 className="h1">{t(`pillar.${pillar}` as never)}</h1>
+              </div>
               {/* 每根支柱写自己的介绍。早先这里复用了 App 的标语，
                   四个支柱下面都是同一句「本地文件工作台」，等于没说。 */}
               <p className="lede">{t(`pillar.${pillar}Desc` as never)}</p>
