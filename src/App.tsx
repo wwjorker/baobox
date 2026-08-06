@@ -244,7 +244,7 @@ export default function App() {
               over={over}
               dropHint={dropHint}
               onOpenTool={openTool}
-              onOpenSaved={() => setHist(true)}
+              onOpenSaved={() => setSavedOpen(true)}
               isFavorite={isFavorite}
               onToggleFav={toggleFav}
             />
