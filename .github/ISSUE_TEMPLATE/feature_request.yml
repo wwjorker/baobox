@@ -1,0 +1,57 @@
+name: Feature request / 功能建议
+description: Something you wish it could do / 希望它能做的事
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Baobox is local-only: no network, no AI, Windows-only, and it never
+        overwrites your originals. Suggestions that fit those lines are the ones
+        most likely to happen. A few things are deliberately out of scope —
+        see the README before filing.
+
+        百宝箱是纯本地的：不联网、不接 AI、仅 Windows，也绝不覆盖你的原文件。
+        符合这些前提的建议最有可能被采纳。有几样是刻意不做的，提之前请先看 README。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do / 你想解决什么
+      description: >
+        The actual task, not just a feature name. "A client sends me 200 photos
+        and I need them all under 500 KB" tells me more than "add batch
+        compression".
+        实际要做的事，而不只是功能名。「客户发来 200 张图，我要全压到 500KB
+        以下」比「加个批量压缩」信息量大得多。
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How do you do it now / 现在你怎么应付
+      description: >
+        Another tool, a website, by hand? It helps me judge what "good enough"
+        looks like. 用别的软件、网站，还是手动？帮我判断做到什么程度算够用。
+
+  - type: dropdown
+    id: pillar
+    attributes:
+      label: Which area / 属于哪一类
+      options:
+        - Image / 图片
+        - OCR / 文字识别
+        - PDF
+        - Files / 文件
+        - Something else / 其它
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Fits the project / 符合项目定位
+      options:
+        - label: >
+            It can work fully offline, with no AI, on Windows — and it doesn't
+            need to modify my original files in place.
+            它能完全离线、不接 AI、在 Windows 上跑，也不需要就地改我的原文件。
+          required: true
