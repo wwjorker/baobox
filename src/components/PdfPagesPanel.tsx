@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
+import { burstConfetti } from "../confetti";
 
 /**
  * PDF 页面可视化整理：拆分 / 提取 / 删页 / 重排 / 逐页旋转，一处做完。
@@ -224,6 +225,7 @@ export function PdfPagesPanel({
       });
       setResult(r);
       onHistory?.({ toolId: "pdf.split", summary: t("history.pages", { n: r.pages }), outPath: r.out_path });
+      burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82);
     } catch (e) {
       const ae = asAppErr(e);
       setErr(t(ae.key as never, ae.vars));
