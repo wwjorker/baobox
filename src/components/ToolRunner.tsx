@@ -8,6 +8,7 @@ import { fmtSize } from "../useSaved";
 import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
 import { asAppErr } from "../errText";
+import { burstConfetti } from "../confetti";
 import { BoxMark } from "./BoxMark";
 import type { OptionDef, ToolDef } from "../tools/registry";
 
@@ -300,6 +301,11 @@ export function ToolRunner({
           results.reduce((n, o) => n + (o.ok ? Math.max(0, o.in_bytes - o.out_bytes) : 0), 0),
         );
       }
+      // 有成功就撒一把纸屑庆祝（叮声由 onDone 那边响）。
+      const okCount = results.filter((o) => o.ok).length;
+      if (okCount > 0) {
+        burstConfetti(window.innerWidth / 2, window.innerHeight * 0.82, Math.min(84, 34 + okCount * 6));
+      }
     } catch (e) {
       // 整个命令被拒（反序列化失败、后端 panic、spawn 失败等）。
       // 之前没有 catch，界面只会停转、一句提示都没有。
@@ -354,7 +360,7 @@ export function ToolRunner({
   const pct = rows.length ? Math.min(100, Math.round((doneCount / rows.length) * 100)) : 0;
 
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">
         {t(`tool.${tool.id}.name` as never)}
         {tool.highlight && <span className="badge is-highlight">{t("status.highlight")}</span>}
@@ -653,7 +659,7 @@ export function ToolRunner({
           )}
         </>
       )}
-    </>
+    </div>
   );
 }
 

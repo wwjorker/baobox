@@ -256,6 +256,26 @@
   gap: 12px;
   min-width: 0;
 }
+/* 工具页填满 main 剩余高度，让「中间的文件列表」自己内部滚，
+   头部（名字/说明/选项）和底部（输出/执行/结果）常驻可见，整页不用滚。 */
+.toolpage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.toolpage > * {
+  flex: none;
+}
+.toolpage > .filelist {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.toolpage > .empty {
+  flex: 1 1 auto;
+}
 .crumb {
   font-size: 11.5px;
   color: var(--dim);
