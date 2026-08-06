@@ -50,6 +50,7 @@ const enUS: typeof zhCN = {
   home: {
     heroTitle: "Drop a file in → I'll take it from here",
     heroSub: "Images go to images, PDFs go to PDFs — it figures out where. Nothing uploaded, nothing online.",
+    pickTitle: "Drop files here, or click to choose",
     savedSub: "Total size squeezed out over time · click for details",
     noFav: "Tap the star on a tool card to pin your regulars here for one-tap access.",
     discover: "Try these · you may not have used them",

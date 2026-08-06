@@ -412,6 +412,10 @@
   padding: 15px 20px;
   position: relative;
   overflow: hidden;
+  cursor: copy;
+  font: inherit;
+  color: inherit;
+  text-align: left;
   transition: transform 0.16s var(--spring), background 0.16s, border-color 0.16s;
 }
 .catch.is-over {

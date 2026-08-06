@@ -171,7 +171,7 @@ export function DedupePanel({
   };
 
   return (
-    <>
+    <div className="toolpage">
       <h1 className="h1">{t("tool.file.dedupe.name")}</h1>
       <p className="lede">{t("tool.file.dedupe.desc")}</p>
 
@@ -330,6 +330,6 @@ export function DedupePanel({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

@@ -99,6 +99,26 @@ export default function App() {
     };
   }, []);
 
+  // 收下一批文件：认出类型就跳到对应支柱、把文件挂在那儿等用户点工具；
+  // 认不出就给条提示。拖入和「点英雄区选文件」都走这里。
+  const receiveFiles = useCallback(
+    (paths: string[]) => {
+      if (paths.length === 0) return;
+      const guess = guessPillar(paths);
+      if (guess) {
+        setDropHint(null);
+        setPillar(guess);
+        setPending(paths);
+        setHome(false);
+        setHist(false);
+      } else {
+        const ext = paths[0]?.split(".").pop()?.toUpperCase() ?? "?";
+        setDropHint(t("run.homeDropUnknown", { ext }));
+      }
+    },
+    [t],
+  );
+
   // 首页拖拽识别：拖 PDF 跳 PDF 工具，拖图片跳图片工具。
   // 网页版做不到这个——它拿不到真实文件类型也没法预先分流。
   useEffect(() => {
@@ -113,21 +133,12 @@ export default function App() {
       }
       setOver(false);
       if (e.payload.type !== "drop") return;
-      const guess = guessPillar(e.payload.paths);
-      if (guess) {
-        setDropHint(null);
-        setPillar(guess);
-        setPending(e.payload.paths);
-        setHome(false);
-      } else {
-        const ext = e.payload.paths[0]?.split(".").pop()?.toUpperCase() ?? "?";
-        setDropHint(t("run.homeDropUnknown", { ext }));
-      }
+      receiveFiles(e.payload.paths);
     });
     return () => {
       un.then((f) => f());
     };
-  }, [tool, openTool, t]);
+  }, [tool, receiveFiles]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -245,6 +256,7 @@ export default function App() {
               dropHint={dropHint}
               onOpenTool={openTool}
               onOpenSaved={() => setSavedOpen(true)}
+              onFiles={receiveFiles}
               isFavorite={isFavorite}
               onToggleFav={toggleFav}
             />

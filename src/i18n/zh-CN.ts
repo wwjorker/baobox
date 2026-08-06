@@ -48,6 +48,7 @@ export default {
   home: {
     heroTitle: "丢个文件进来 → 剩下的交给我",
     heroSub: "图片跳图片、PDF 跳 PDF——它自己认该去哪。不上传、不联网。",
+    pickTitle: "拖文件进来，或点这里选",
     savedSub: "累计帮你压掉的体积 · 点开看口径",
     noFav: "点工具卡片右上角的星，把常用钉在这儿，下次一步直达。",
     discover: "试试看 · 你可能还没用过",

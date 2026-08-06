@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { findTool } from "../tools/registry";
 import { ToolIcon, pillarOf } from "../tools/icons";
@@ -20,6 +21,8 @@ interface Props {
   dropHint: string | null;
   onOpenTool: (id: string) => void;
   onOpenSaved: () => void;
+  /** 点英雄区选文件（拖不方便时的另一条路），交给 App 认类型并跳转 */
+  onFiles: (paths: string[]) => void;
   isFavorite: (id: string) => boolean;
   onToggleFav: (id: string) => void;
 }
@@ -32,10 +35,17 @@ export function Home({
   dropHint,
   onOpenTool,
   onOpenSaved,
+  onFiles,
   isFavorite,
   onToggleFav,
 }: Props) {
   const { t } = useI18n();
+
+  const pickFiles = async () => {
+    const sel = await open({ multiple: true });
+    if (Array.isArray(sel)) onFiles(sel);
+    else if (typeof sel === "string") onFiles([sel]);
+  };
   const favTools = favorites.map(findTool).filter((x): x is NonNullable<typeof x> => !!x);
   const discover = DISCOVER.map(findTool).filter(
     (x): x is NonNullable<typeof x> => !!x && x.status === "ready",
@@ -66,14 +76,19 @@ export function Home({
   return (
     <div className="home">
       <div className="home__hero">
-        <div className={`catch${over ? " is-over" : ""}`}>
+        <button
+          type="button"
+          className={`catch${over ? " is-over" : ""}`}
+          onClick={pickFiles}
+          title={t("home.pickTitle")}
+        >
           <div className="catch__spot" />
           <Mascot open={over} />
           <div className="catch__text">
             <div className="catch__hi">{t("home.heroTitle")}</div>
             <div className="catch__sub">{dropHint ?? t("home.heroSub")}</div>
           </div>
-        </div>
+        </button>
         <button className="plate" onClick={onOpenSaved}>
           <span className="plate__label">{t("app.saved")}</span>
           <span className="plate__val">{fmtSize(saved)}</span>
