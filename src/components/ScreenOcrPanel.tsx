@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
+import { ToolHead } from "./ToolHead";
 
 /**
  * 截图取字
@@ -170,10 +171,9 @@ export function ScreenOcrPanel({
 
   return (
     <>
-      <h1 className="h1">
-        {t("tool.ocr.screen.name")}
+      <ToolHead id="ocr.screen">
         <span className="badge is-highlight">{t("status.highlight")}</span>
-      </h1>
+      </ToolHead>
       <p className="lede">{t("tool.ocr.screen.desc")}</p>
 
       {err && (

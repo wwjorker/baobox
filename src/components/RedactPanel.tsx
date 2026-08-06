@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
+import { ToolHead } from "./ToolHead";
 import { noteText, type Note } from "../notes";
 
 /**
@@ -126,10 +127,9 @@ export function RedactPanel() {
 
   return (
     <>
-      <h1 className="h1">
-        {t("tool.image.redact.name")}
+      <ToolHead id="image.redact">
         <span className="badge is-highlight">{t("status.highlight")}</span>
-      </h1>
+      </ToolHead>
       <p className="lede">{t("tool.image.redact.desc")}</p>
 
       <button className="addbar" onClick={pick}>

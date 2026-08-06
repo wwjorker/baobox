@@ -9,6 +9,7 @@ import { useOutDir } from "../useOutDir";
 import { noteText, type Note } from "../notes";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { ToolHead } from "./ToolHead";
 import { BoxMark } from "./BoxMark";
 import type { OptionDef, ToolDef } from "../tools/registry";
 
@@ -370,11 +371,10 @@ export function ToolRunner({
 
   return (
     <div className="toolpage">
-      <h1 className="h1">
-        {t(`tool.${tool.id}.name` as never)}
+      <ToolHead id={tool.id}>
         {tool.highlight && <span className="badge is-highlight">{t("status.highlight")}</span>}
         {notReady && <span className="badge">{t(`status.${tool.status}` as never)}</span>}
-      </h1>
+      </ToolHead>
       <p className="lede">{t(`tool.${tool.id}.desc` as never)}</p>
 
       {notReady && (

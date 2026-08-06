@@ -4,6 +4,7 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
+import { ToolHead } from "./ToolHead";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -128,10 +129,9 @@ export function ShredPanel() {
 
   return (
     <div className="toolpage">
-      <h1 className="h1">
-        {t("tool.file.shred.name")}
+      <ToolHead id="file.shred">
         <span className="badge is-danger">{t("shred.danger")}</span>
-      </h1>
+      </ToolHead>
       <p className="lede">{t("tool.file.shred.desc")}</p>
 
       {/* 永远摆在最上面的警告——不是弹出来一次就算，是全程可见 */}

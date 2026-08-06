@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { ToolHead } from "./ToolHead";
 
 /**
  * 批量重命名
@@ -145,7 +146,7 @@ export function RenamePanel({
 
   return (
     <div className="toolpage">
-      <h1 className="h1">{t("tool.file.rename.name")}</h1>
+      <ToolHead id="file.rename" />
       <p className="lede">{t("tool.file.rename.desc")}</p>
 
       <button className="addbar" onClick={pick}>

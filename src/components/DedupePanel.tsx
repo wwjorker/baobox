@@ -5,6 +5,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
+import { ToolHead } from "./ToolHead";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -172,7 +173,7 @@ export function DedupePanel({
 
   return (
     <div className="toolpage">
-      <h1 className="h1">{t("tool.file.dedupe.name")}</h1>
+      <ToolHead id="file.dedupe" />
       <p className="lede">{t("tool.file.dedupe.desc")}</p>
 
       <button className="addbar" onClick={pickFolder}>

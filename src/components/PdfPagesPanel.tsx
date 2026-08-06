@@ -6,6 +6,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { burstConfetti } from "../confetti";
+import { ToolHead } from "./ToolHead";
 
 /**
  * PDF 页面可视化整理：拆分 / 提取 / 删页 / 重排 / 逐页旋转，一处做完。
@@ -238,7 +239,7 @@ export function PdfPagesPanel({
 
   return (
     <div className="toolpage">
-      <h1 className="h1">{t("tool.pdf.split.name")}</h1>
+      <ToolHead id="pdf.split" />
       <p className="lede">{t("pdfpages.desc")}</p>
 
       <button className="addbar" onClick={pick} disabled={loading}>
