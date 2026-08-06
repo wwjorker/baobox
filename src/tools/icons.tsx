@@ -71,12 +71,32 @@ const G: Record<string, ReactElement> = {
   sortlines: (<><path d="M5 7h13M5 12h9M5 17h5" /><path d="M18 14l2.5 3 2.5-3" /></>),
   shred: (<><rect x="4" y="3" width="16" height="6" rx="1" /><path d="M2 12h20" /><path d="M6 15v5M10 15v3M14 15v5M18 15v3" /></>),
   splitfile: (<><rect x="8" y="3" width="8" height="6" rx="1" /><rect x="3" y="15" width="6" height="6" rx="1" /><rect x="15" y="15" width="6" height="6" rx="1" /><path d="M12 9v2M12 11l-6 3M12 11l6 3" /></>),
+
+  // —— 成对「产出 / 反向」工具的区分图标 ——
+  // 同一根支柱下,make 与 split、to 与 from 若共用一个 glyph 就完全认不出谁是谁,
+  // 所以「反向那一侧」各给一个带方向暗示的专属图标。
+  // 图片装进 PDF：pdf 页里嵌着一张照片
+  pdfimg: (<><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><circle cx="10" cy="12" r="1.1" /><path d="M8 18l2.3-2.8 1.8 1.4 2.4-2.9" /></>),
+  // 从 PDF 里抠出内嵌图片：照片 + 斜向外的箭头
+  extractimg: (<><rect x="3" y="10" width="10" height="9" rx="1" /><circle cx="6.2" cy="13" r="1" /><path d="M3 17l3-2.4 2.4 1.9" /><path d="M14 9h6v6M20 9l-6 6" /></>),
+  // GIF 拆帧：主胶片旁分出一格
+  gifsplit: (<><rect x="3" y="6" width="10" height="12" rx="1" /><path d="M3 10h10M3 14h10M7 6v12" /><rect x="16" y="9" width="5" height="6" rx="1" /><path d="M13 12h3" /></>),
+  // 识别二维码：三个定位角 + 一道扫描线
+  qrscan: (<><path d="M4 4h5v5H4zM15 4h5v5h-5zM4 15h5v5H4z" /><path d="M2 12h20" /></>),
+  // 解压：开盖的箱子,东西往外抬
+  unzipbox: (<><rect x="5" y="8" width="14" height="12" rx="1.5" /><path d="M5 8l3-4h8l3 4" /><path d="M12 12v5M9.5 14.5L12 12l2.5 2.5" /></>),
+  // 删除/保留指定页：pdf 页 + 勾选,表示挑出要的那几页（区别于「页面整理」的缩略图网格）
+  pagepick: (<><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4" /><path d="M9 11h6" /><path d="M9 15.5l1.6 1.6 3.4-3.6" /></>),
+  // 自动色阶：直方图柱 + 基线（区别于「调色」的手动滑块）
+  autolevel: (<><path d="M4 20V11M9 20V5M14 20V14M19 20V8" /><path d="M3 20h18" /></>),
+  // 改宽高比：外框套内框、比例不同（区别于「缩放」的箭头撑大、「圆角描边」的等距套框）
+  aspect: (<><rect x="3" y="6" width="18" height="12" rx="1" /><rect x="8" y="6" width="8" height="12" /></>),
 };
 
 const MAP: Record<string, string> = {
   "image.adjust": "adjust",
-  "image.aspect": "resize",
-  "image.autolevel": "adjust",
+  "image.aspect": "aspect",
+  "image.autolevel": "autolevel",
   "image.base64": "code",
   "image.compress": "compress",
   "image.compress-target": "target",
@@ -84,7 +104,7 @@ const MAP: Record<string, string> = {
   "image.expand": "expand",
   "image.frame": "frame",
   "image.gif-make": "gif",
-  "image.gif-split": "gif",
+  "image.gif-split": "gifsplit",
   "image.grid": "grid9",
   "image.ico": "ico",
   "image.palette": "palette",
@@ -104,12 +124,12 @@ const MAP: Record<string, string> = {
   "pdf.crop": "crop",
   "pdf.decrypt": "unlock",
   "pdf.encrypt": "lock",
-  "pdf.extract-images": "image",
-  "pdf.from-image": "image",
+  "pdf.extract-images": "extractimg",
+  "pdf.from-image": "pdfimg",
   "pdf.merge": "merge",
   "pdf.nup": "nup",
   "pdf.ocr-layer": "ocrimage",
-  "pdf.pages": "organize",
+  "pdf.pages": "pagepick",
   "pdf.repair": "wrench",
   "pdf.reverse": "reverse",
   "pdf.rotate": "rotate",
@@ -125,14 +145,14 @@ const MAP: Record<string, string> = {
   "file.lines": "sortlines",
   "file.mkdirs": "folderplus",
   "file.qr-make": "qr",
-  "file.qr-read": "qr",
+  "file.qr-read": "qrscan",
   "file.rename": "rename",
   "file.replace": "findreplace",
   "file.shred": "shred",
   "file.split": "splitfile",
   "file.touch": "clock",
   "file.tree": "tree",
-  "file.unzip": "zipbox",
+  "file.unzip": "unzipbox",
   "file.zhconv": "zhconv",
   "file.zip-make": "zipbox",
 };
