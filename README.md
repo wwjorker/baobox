@@ -91,6 +91,7 @@ so this costs nothing and adds no bytes.
 | Find and replace · Directory tree | ✅ Regex supported; encoding detected |
 | Split and rejoin large files | ✅ Byte-identical round trip, verified |
 | Dedupe, sort, count lines · CSV ↔ JSON · Shift timestamps | ✅ |
+| **Zip up files** | ✅ Files or folders into one archive |
 | **Extract archives, repairing mangled names** | ✅ GBK entry names that Windows itself destroys |
 | Create folders from a list | ✅ |
 | **Shred a file** | ✅ Overwrite-then-delete, its own panel with typed confirmation — separate from delete |
