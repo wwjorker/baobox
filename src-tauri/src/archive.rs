@@ -275,9 +275,19 @@ pub struct ExtractReport {
 }
 
 pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
+    // 防解压炸弹的三道闸：单条上限、累计上限、条目数上限。
+    // 原来用 read_to_end 会把整条解压进内存，一个高压缩比的小包就能撑爆内存；
+    // 改成流式写 + 这三个上限挡住。
+    const MAX_ENTRY_BYTES: u64 = 2u64 << 30; // 单条最多解出 2 GiB
+    const MAX_TOTAL_BYTES: u64 = 8u64 << 30; // 整包累计最多解出 8 GiB
+    const MAX_ENTRIES: usize = 100_000; // 条目数上限，挡「百万空条目」
+
     let file = std::fs::File::open(long_path(src))?;
     let mut zip = zip::ZipArchive::new(file)
         .map_err(|e| AppError::new("err.badArchive").detail(e))?;
+    if zip.len() > MAX_ENTRIES {
+        return Err(AppError::new("err.archiveTooLarge"));
+    }
 
     // 自动建同名文件夹：一个包里几十个文件倒进同一层是灾难
     let base = output_dir_for(src)?.join(stem_of(src));
@@ -302,9 +312,10 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
     }
     let enc = pick_encoding(&raw_names);
 
+    let mut total_out: u64 = 0;
     for i in 0..zip.len() {
         // 加密条目在取的时候就会失败，逐条容错而不是整包放弃
-        let mut entry = match password {
+        let entry = match password {
             Some(p) if !p.is_empty() => match zip.by_index_decrypt(i, p.as_bytes()) {
                 Ok(e) => e,
                 Err(_) => {
@@ -338,16 +349,46 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
             std::fs::create_dir_all(long_path(parent))?;
         }
 
-        let mut buf = Vec::with_capacity(entry.size().min(64 << 20) as usize);
-        if entry.read_to_end(&mut buf).is_err() {
-            // 不支持的压缩方法（lzma / bzip2 等）会在这里失败
-            rep.unsupported += 1;
+        // 声明尺寸就超单条上限：直接拒，连写句柄都不开
+        if entry.size() > MAX_ENTRY_BYTES {
+            rep.rejected += 1;
             continue;
         }
-        std::fs::write(long_path(&dst), &buf)?;
-        rep.files += 1;
-        if fixed {
-            rep.fixed_names += 1;
+        // 加上这条会超累计上限：拒掉，但继续看后面的小条目
+        if total_out.saturating_add(entry.size()) > MAX_TOTAL_BYTES {
+            rep.rejected += 1;
+            continue;
+        }
+        let mut out = match std::fs::File::create(long_path(&dst)) {
+            Ok(f) => f,
+            Err(_) => {
+                rep.unsupported += 1;
+                continue;
+            }
+        };
+        // 流式写，不把整条读进内存。take 是第二道保险：哪怕 size 字段撒谎，
+        // 最多也只读到上限 +1 字节就判为炸弹。
+        let mut capped = entry.take(MAX_ENTRY_BYTES + 1);
+        match std::io::copy(&mut capped, &mut out) {
+            Ok(n) if n > MAX_ENTRY_BYTES => {
+                // 实际解压超上限（声明尺寸撒谎的炸弹）——删半成品、判拒绝
+                drop(out);
+                let _ = std::fs::remove_file(long_path(&dst));
+                rep.rejected += 1;
+            }
+            Ok(n) => {
+                total_out += n;
+                rep.files += 1;
+                if fixed {
+                    rep.fixed_names += 1;
+                }
+            }
+            Err(_) => {
+                // 不支持的压缩方法（lzma / bzip2 等）会在这里失败，清理半成品
+                drop(out);
+                let _ = std::fs::remove_file(long_path(&dst));
+                rep.unsupported += 1;
+            }
         }
     }
 

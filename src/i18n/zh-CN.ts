@@ -703,6 +703,7 @@ export default {
     zipTooMany: "文件太多了（超过 {max} 个）。分几次打包，或先把不需要的挑出去。",
     archiveUnsupported: "包里的条目都用了不支持的压缩方式（或需要密码）。目前只支持最常见的 deflate。",
     archiveEmpty: "这个压缩包是空的。",
+    archiveTooLarge: "这个压缩包的条目太多，超出安全上限——为防解压炸弹撑爆内存或磁盘，已停止处理。",
     noDirsMade: "一个文件夹都没建成——清单可能是空的，或者要建的都已存在。",
     shredNoDir: "粉碎只处理单个文件，不能对文件夹使用。",
     shredNotConfirmed: "确认短语不对，已中止。没有任何文件被改动。",

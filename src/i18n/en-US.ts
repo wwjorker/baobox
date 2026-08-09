@@ -707,6 +707,7 @@ const enUS: typeof zhCN = {
     zipTooMany: "Too many files (over {max}). Pack them in a few batches, or drop fewer at once.",
     archiveUnsupported: "Every entry uses an unsupported compression method, or needs a password. Only the common deflate method is supported.",
     archiveEmpty: "This archive is empty.",
+    archiveTooLarge: "This archive has too many entries, beyond the safety limit — stopped to guard against a decompression bomb.",
     noDirsMade: "No folders were created — the list may be empty, or they all exist already.",
     shredNoDir: "Shredding handles single files only, not folders.",
     shredNotConfirmed: "The confirmation phrase did not match. Aborted — nothing was touched.",
