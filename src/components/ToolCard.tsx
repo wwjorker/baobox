@@ -39,6 +39,7 @@ export function ToolCard({
       <button
         className={`cardstar${fav ? " is-on" : ""}`}
         title={fav ? t("fav.remove") : t("fav.add")}
+        aria-label={fav ? t("fav.remove") : t("fav.add")}
         aria-pressed={fav}
         onClick={onFav}
       >

@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { useI18n } from "../i18n";
 
 const FOCUSABLE =
@@ -31,6 +31,7 @@ export function Dialog({
 }) {
   const { t } = useI18n();
   const boxRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
 
   // 焦点管理：打开时把焦点移进弹层，Tab 在里面循环，关闭后还给原来的元素。
   useEffect(() => {
@@ -64,11 +65,12 @@ export function Dialog({
         className="confirm__box is-info"
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         tabIndex={-1}
         ref={boxRef}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 className="confirm__title">{title}</h2>
+        <h2 className="confirm__title" id={titleId}>{title}</h2>
         {children}
         <div className="confirm__actions is-end">
           {aside}

@@ -62,6 +62,10 @@ export function PdfPagesPanel({
   const loadGen = useRef(0);
 
   const load = useCallback(async (path: string) => {
+    // Keep the preview/result bound to the document that is currently exporting.
+    // A dropped replacement PDF during export would otherwise make the old result
+    // appear under the new document.
+    if (busy) return;
     const gen = ++loadGen.current;
     setSrc(path);
     setLoading(true);
@@ -90,7 +94,7 @@ export function PdfPagesPanel({
     } finally {
       if (gen === loadGen.current) setLoading(false);
     }
-  }, [t]);
+  }, [busy, t]);
 
   // 只收第一份 PDF——可视化整理是对着一份文档逐页摆布，多份没有意义
   const takeFirstPdf = useCallback(
@@ -212,6 +216,12 @@ export function PdfPagesPanel({
     });
   };
 
+  const cancelDrag = () => {
+    cancelAnimationFrame(rafRef.current);
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+
   const kept = cards.filter((c) => !c.removed);
 
   const exportPdf = async () => {
@@ -244,7 +254,7 @@ export function PdfPagesPanel({
       <ToolHead id="pdf.split" />
       <p className="lede">{t("pdfpages.desc")}</p>
 
-      <button className="addbar" onClick={pick} disabled={loading}>
+      <button className="addbar" onClick={pick} disabled={loading || busy}>
         <span className="addbar__plus">＋</span>
         {src ? t("pdfpages.pickAnother") : t("pdfpages.pick")}
       </button>
@@ -325,12 +335,13 @@ export function PdfPagesPanel({
                 onPointerDown={(e) => startDrag(e, i)}
                 onPointerMove={dragIdx === i ? onDragMove : undefined}
                 onPointerUp={dragIdx === i ? (e) => endDrag(e, i) : undefined}
-                onPointerCancel={dragIdx === i ? (e) => endDrag(e, i) : undefined}
+                onPointerCancel={dragIdx === i ? cancelDrag : undefined}
               >
                 <div className="pagecard__thumb">
                   <button
                     className="pagecard__check"
                     aria-pressed={c.sel}
+                    aria-label={c.sel ? t("pdfpages.deselect") : t("pdfpages.select")}
                     title={c.sel ? t("pdfpages.deselect") : t("pdfpages.select")}
                     onClick={() => toggleSel(c.key)}
                   >

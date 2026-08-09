@@ -15,7 +15,7 @@
  *      #[tauri::command]；ToolRunner 自动传参的 option id 能对上 Rust 参数名。
  *   B. 前端所有 invoke("cmd", {..}) 手写调用的参数名对得上 Rust 参数。
  *   C. i18n：中英文 key 集合完全一致；每个工具的 name/desc、每个 option 的
- *      label/placeholder、后端发出的 err.* key 在两种语言里都有。
+ *      label/placeholder、后端发出的 err.* / note.* / run.* key 在两种语言里都有。
  *
  * Tauri v2 会把 Rust 的 snake_case 参数名自动转成前端的 camelCase，所以比对
  * 前统一折成 camelCase。app/window/state 这类由 Tauri 注入、不从前端传。
@@ -197,7 +197,7 @@ for (const k of need) {
 const emitted = new Set();
 for (const f of fs.readdirSync(rustDir).filter((x) => x.endsWith(".rs"))) {
   const src = fs.readFileSync(path.join(rustDir, f), "utf8");
-  for (const m of src.matchAll(/"(err\.[a-zA-Z0-9_.]+)"/g)) emitted.add(m[1]);
+  for (const m of src.matchAll(/"((?:err|note|run)\.[a-zA-Z0-9_.]+)"/g)) emitted.add(m[1]);
 }
 for (const k of emitted) {
   if (!zhKeys.has(k)) p(`C [zh 缺] 后端发出 "${k}" 无中文`);
