@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { storageGet, storageRemove, storageSet } from "./storage";
 
 /**
  * 输出位置。
@@ -16,14 +17,14 @@ import { open } from "@tauri-apps/plugin-dialog";
 const KEY = "baobox.outDir";
 
 export function useOutDir() {
-  const [outDir, setOutDir] = useState<string | null>(() => localStorage.getItem(KEY));
+  const [outDir, setOutDir] = useState<string | null>(() => storageGet(KEY));
 
   // 后端保存的是进程内状态，每次启动都要重新告诉它一遍
   useEffect(() => {
     invoke("set_output_dir", { dir: outDir }).catch(() => {
       // 目录被删了或换了盘符——退回默认，别让接下来整批任务都写不出去
       setOutDir(null);
-      localStorage.removeItem(KEY);
+      storageRemove(KEY);
     });
   }, [outDir]);
 
@@ -31,12 +32,12 @@ export function useOutDir() {
     const sel = await open({ directory: true, multiple: false });
     if (typeof sel !== "string") return;
     setOutDir(sel);
-    localStorage.setItem(KEY, sel);
+    storageSet(KEY, sel);
   }, []);
 
   const resetOutDir = useCallback(() => {
     setOutDir(null);
-    localStorage.removeItem(KEY);
+    storageRemove(KEY);
   }, []);
 
   return { outDir, pickOutDir, resetOutDir };

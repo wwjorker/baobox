@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { storageGet, storageSet } from "./storage";
 
 /**
  * 批量任务完成时的提示音。
@@ -16,10 +17,10 @@ const KEY = "baobox.chime";
 const MIN_MS = 1500;
 
 export function useChime() {
-  const [enabled, setEnabled] = useState(() => localStorage.getItem(KEY) === "1");
+  const [enabled, setEnabled] = useState(() => storageGet(KEY) === "1");
 
   useEffect(() => {
-    localStorage.setItem(KEY, enabled ? "1" : "0");
+    storageSet(KEY, enabled ? "1" : "0");
   }, [enabled]);
 
   const chime = useCallback(

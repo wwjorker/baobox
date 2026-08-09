@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { storageGet, storageSet } from "./storage";
 import { findTool } from "./tools/registry";
 
 /**
@@ -13,10 +14,14 @@ const MAX = 4;
 export function useRecent() {
   const [recent, setRecent] = useState<string[]>(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+      const raw = JSON.parse(storageGet(KEY) ?? "[]");
       // 工具可能被改名或移除，存下来的 id 得再验一遍
       return Array.isArray(raw)
-        ? raw.filter((id): id is string => typeof id === "string" && !!findTool(id)).slice(0, MAX)
+        ? raw
+            .filter((id): id is string =>
+              typeof id === "string" && findTool(id)?.status === "ready",
+            )
+            .slice(0, MAX)
         : [];
     } catch {
       return [];
@@ -24,7 +29,7 @@ export function useRecent() {
   });
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(recent));
+    storageSet(KEY, JSON.stringify(recent));
   }, [recent]);
 
   const push = useCallback((id: string) => {

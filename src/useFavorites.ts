@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { storageGet, storageSet } from "./storage";
 import { findTool } from "./tools/registry";
 
 /**
@@ -16,7 +17,7 @@ const KEY = "baobox.favorites";
 export function useFavorites() {
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
-      const raw = JSON.parse(localStorage.getItem(KEY) ?? "[]");
+      const raw = JSON.parse(storageGet(KEY) ?? "[]");
       return Array.isArray(raw)
         ? raw.filter((id): id is string => typeof id === "string" && !!findTool(id))
         : [];
@@ -26,7 +27,7 @@ export function useFavorites() {
   });
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify(favorites));
+    storageSet(KEY, JSON.stringify(favorites));
   }, [favorites]);
 
   const toggle = useCallback((id: string) => {

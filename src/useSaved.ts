@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { storageGet, storageSet } from "./storage";
 
 /**
  * 累计「已省下多少」。
@@ -10,13 +11,13 @@ const KEY = "baobox.savedBytes";
 
 export function useSaved() {
   const [saved, setSaved] = useState<number>(() => {
-    const raw = localStorage.getItem(KEY);
+    const raw = storageGet(KEY);
     const n = raw ? Number(raw) : 0;
     return Number.isFinite(n) && n >= 0 ? n : 0;
   });
 
   useEffect(() => {
-    localStorage.setItem(KEY, String(saved));
+    storageSet(KEY, String(saved));
   }, [saved]);
 
   const addSaved = useCallback((bytes: number) => {
@@ -34,5 +35,5 @@ export function fmtSize(bytes: number): string {
   if (bytes >= 1 << 30) return `${(bytes / (1 << 30)).toFixed(2)} GB`;
   if (bytes >= 1 << 20) return `${(bytes / (1 << 20)).toFixed(1)} MB`;
   if (bytes >= 1 << 10) return `${Math.round(bytes / (1 << 10))} KB`;
-  return `${bytes} B`;
+  return `${Math.round(bytes)} B`;
 }

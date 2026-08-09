@@ -8,6 +8,7 @@ import {
 } from "react";
 import zhCN from "./zh-CN";
 import enUS from "./en-US";
+import { storageGet, storageSet } from "../storage";
 
 /**
  * 界面国际化。
@@ -56,7 +57,7 @@ function interpolate(tpl: string, vars?: TVars): string {
 const STORAGE_KEY = "baobox.locale";
 
 function detectLocale(): Locale {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = storageGet(STORAGE_KEY);
   if (saved && saved in LOCALES) return saved as Locale;
   return navigator.language.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
 }
@@ -73,7 +74,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(detectLocale);
 
   const setLocale = useCallback((l: Locale) => {
-    localStorage.setItem(STORAGE_KEY, l);
+    storageSet(STORAGE_KEY, l);
     setLocaleState(l);
     document.documentElement.lang = l;
   }, []);
