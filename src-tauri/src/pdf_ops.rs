@@ -115,6 +115,10 @@ pub fn merge_docs(docs: Vec<Document>) -> AppResult<Document> {
 
     let mut out = Document::with_version("1.5");
     out.objects = objects;
+    // `new_object_id` only increments `max_id`; assigning an existing object
+    // map does not update it.  Keep it in sync before allocating the new page
+    // tree, otherwise Pages/Catalog can overwrite imported objects.
+    out.max_id = out.objects.keys().map(|id| id.0).max().unwrap_or(0);
 
     // 页树的根节点要重建，各来源文档自带的 Pages / Catalog 一律丢弃
     let pages_id = out.new_object_id();
@@ -143,7 +147,6 @@ pub fn merge_docs(docs: Vec<Document>) -> AppResult<Document> {
     let catalog_id = out.add_object(Object::Dictionary(catalog));
 
     out.trailer.set("Root", catalog_id);
-    out.max_id = out.objects.len() as u32;
     out.renumber_objects();
     out.adjust_zero_pages();
     Ok(out)
