@@ -1,8 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { useI18n } from "../i18n";
-
-const FOCUSABLE =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+import { useFocusTrap } from "../useFocusTrap";
 
 /**
  * 说明性弹层。
@@ -33,31 +31,8 @@ export function Dialog({
   const boxRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  // 焦点管理：打开时把焦点移进弹层，Tab 在里面循环，关闭后还给原来的元素。
-  useEffect(() => {
-    const prev = document.activeElement as HTMLElement | null;
-    const box = boxRef.current;
-    if (box) (box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Tab" || !box) return;
-      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (items.length === 0) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      prev?.focus?.();
-    };
-  }, []);
+  // 焦点圈闭 + Esc 关闭；关闭后把焦点还给打开前的元素。
+  useFocusTrap(boxRef, true, onClose);
 
   return (
     <div className="confirm" onMouseDown={onClose}>

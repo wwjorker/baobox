@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { ToolHead } from "./ToolHead";
+import { useFocusTrap } from "../useFocusTrap";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -127,6 +128,10 @@ export function ShredPanel() {
   const totalBytes = rows.reduce((n, r) => n + r.bytes, 0);
   const okCount = rows.filter((r) => r.done === "ok").length;
 
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const confirmTitleId = useId();
+  useFocusTrap(confirmRef, confirming, () => setConfirming(false));
+
   return (
     <div className="toolpage">
       <ToolHead id="file.shred">
@@ -240,10 +245,15 @@ export function ShredPanel() {
         <div className="confirm" onMouseDown={() => setConfirming(false)}>
           <div
             className="confirm__box"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={confirmTitleId}
+            tabIndex={-1}
+            ref={confirmRef}
             onMouseDown={(e) => e.stopPropagation()}
             style={{ maxWidth: 520 }}
           >
-            <h2 className="confirm__title">{t("shred.confirmTitle")}</h2>
+            <h2 className="confirm__title" id={confirmTitleId}>{t("shred.confirmTitle")}</h2>
             <p className="confirm__warn">
               {t("shred.confirmWarn", { count: rows.length, size: fmtSize(totalBytes) })}
             </p>
@@ -270,7 +280,7 @@ export function ShredPanel() {
             />
             <div className="confirm__actions">
               {/* 默认焦点、也是视觉重心，仍然是「取消」——手滑的代价太大 */}
-              <button className="go" autoFocus onClick={() => setConfirming(false)}>
+              <button className="go" data-autofocus onClick={() => setConfirming(false)}>
                 {t("run.cancel")}
               </button>
               <button

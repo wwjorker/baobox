@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -6,6 +6,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useI18n } from "../i18n";
 import { asAppErr } from "../errText";
 import { ToolHead } from "./ToolHead";
+import { useFocusTrap } from "../useFocusTrap";
 import { fmtSize } from "../useSaved";
 
 /**
@@ -171,6 +172,10 @@ export function DedupePanel({
     setDoomed(new Set());
   };
 
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const confirmTitleId = useId();
+  useFocusTrap(confirmRef, confirming, () => setConfirming(false));
+
   return (
     <div className="toolpage">
       <ToolHead id="file.dedupe" />
@@ -296,8 +301,16 @@ export function DedupePanel({
 
       {confirming && (
         <div className="confirm" onMouseDown={() => setConfirming(false)}>
-          <div className="confirm__box" onMouseDown={(e) => e.stopPropagation()}>
-            <h2 className="confirm__title">{t("dedupe.confirmTitle")}</h2>
+          <div
+            className="confirm__box"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={confirmTitleId}
+            tabIndex={-1}
+            ref={confirmRef}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h2 className="confirm__title" id={confirmTitleId}>{t("dedupe.confirmTitle")}</h2>
             <p className="confirm__lead">
               {t("dedupe.confirmLead", {
                 count: doomedList.length,
@@ -321,7 +334,7 @@ export function DedupePanel({
             <p className="confirm__safe">{t("dedupe.recycleNote")}</p>
             <div className="confirm__actions">
               {/* 默认焦点在取消：这类操作宁可多点一次，也不能手滑 */}
-              <button className="go" autoFocus onClick={() => setConfirming(false)}>
+              <button className="go" data-autofocus onClick={() => setConfirming(false)}>
                 {t("run.cancel")}
               </button>
               <button className="chip is-danger" onClick={doDelete}>
