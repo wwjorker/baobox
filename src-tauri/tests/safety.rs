@@ -149,3 +149,103 @@ fn merge_keeps_both_documents_content() {
         "两页的内容流都应保留（原 bug 会让新建的 /Pages、/Catalog 覆盖掉它们）",
     );
 }
+
+/// 安全红线 7（PDF 侧）：清元数据必须把 XMP 那份独立 XML 真正从产物里删掉，
+/// 不能只从 Catalog 摘掉引用、把流对象留在文件里。造一份挂着 XMP 流的 PDF，
+/// 清完后在「产物原始字节」和「重载后的对象表」两头都确认那段 XML 不见了。
+#[test]
+fn clean_metadata_actually_removes_xmp() {
+    use lopdf::{dictionary, Document, Object, Stream};
+
+    const MARK: &str = "x:xmpmeta-BAOBOX-PROBE";
+
+    let mut doc = Document::with_version("1.5");
+    let xmp = format!("<?xpacket begin='' id=''?><x:xmpmeta>{MARK}</x:xmpmeta><?xpacket end='w'?>");
+    let xmp_id = doc.add_object(Stream::new(
+        dictionary! { "Type" => "Metadata", "Subtype" => "XML" },
+        xmp.into_bytes(),
+    ));
+    let pages_id = doc.new_object_id();
+    let page_id = doc.add_object(dictionary! {
+        "Type" => "Page",
+        "Parent" => pages_id,
+        "MediaBox" => vec![0.into(), 0.into(), 200.into(), 200.into()],
+    });
+    doc.objects.insert(
+        pages_id,
+        Object::Dictionary(dictionary! {
+            "Type" => "Pages",
+            "Kids" => vec![page_id.into()],
+            "Count" => 1,
+        }),
+    );
+    let catalog_id = doc.add_object(dictionary! {
+        "Type" => "Catalog",
+        "Pages" => pages_id,
+        "Metadata" => xmp_id,
+    });
+    doc.trailer.set("Root", catalog_id);
+
+    let tmp = std::env::temp_dir().join("baobox_xmp_test");
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(&tmp).unwrap();
+    let src = tmp.join("has_xmp.pdf");
+    doc.save(&src).unwrap();
+
+    let has_mark = |bytes: &[u8]| bytes.windows(MARK.len()).any(|w| w == MARK.as_bytes());
+    assert!(
+        has_mark(&std::fs::read(&src).unwrap()),
+        "fixture 本应带 XMP marker"
+    );
+
+    let (dst, removed) = baobox_lib::pdf_ops::clean_metadata(&src, false).expect("清元数据应成功");
+    assert!(removed.iter().any(|r| r == "XMP"), "应报告清掉了 XMP");
+
+    // 产物的原始字节里不该再搜得到那段 XML（不是只断引用、把流留在文件里）
+    assert!(
+        !has_mark(&std::fs::read(&dst).unwrap()),
+        "清元数据后产物字节里仍有 XMP——那份 XML 没被真正删掉（红线 7）",
+    );
+
+    // 重载后也不该再有 Metadata 流对象残留
+    let reloaded = Document::load(&dst).unwrap();
+    let has_meta_stream = reloaded.objects.values().any(|o| {
+        o.as_stream()
+            .ok()
+            .and_then(|s| s.dict.get(b"Type").ok())
+            .and_then(|t| t.as_name().ok())
+            == Some(&b"Metadata"[..])
+    });
+    assert!(!has_meta_stream, "清元数据后仍残留 Metadata 流对象");
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+/// ZIP 解压零成功时，本次建的输出目录要整棵清掉、不留空壳（Codex 复审）。
+#[test]
+fn zip_extract_cleans_up_when_nothing_extracted() {
+    use zip::write::SimpleFileOptions;
+
+    let tmp = std::env::temp_dir().join("baobox_zip_cleanup");
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(&tmp).unwrap();
+
+    // 只有一个目录条目、没有任何文件——解压一个文件都不会成功
+    let zip_path = tmp.join("only_dirs.zip");
+    {
+        let f = std::fs::File::create(&zip_path).unwrap();
+        let mut w = zip::ZipWriter::new(f);
+        w.add_directory("emptydir/", SimpleFileOptions::default())
+            .unwrap();
+        w.finish().unwrap();
+    }
+
+    let res = baobox_lib::archive::extract(&zip_path, None);
+    assert!(res.is_err(), "只有目录的包应判为空、返回错误");
+
+    // 本次建的 Baobox_output/only_dirs 应被整棵删掉
+    let out = tmp.join("Baobox_output").join("only_dirs");
+    assert!(!out.exists(), "零成功解压后不该残留空的输出目录");
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}

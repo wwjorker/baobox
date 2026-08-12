@@ -5,8 +5,6 @@
 //! 损坏的 PDF。这里逐个喂进去，看它们是**干净地报错**还是崩掉、
 //! 或者更糟——悄悄产出一个坏文件。
 
-use std::path::PathBuf;
-
 fn main() {
     let dir = std::env::temp_dir().join("baobox_edge_test");
     let _ = std::fs::remove_dir_all(&dir);
