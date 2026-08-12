@@ -280,6 +280,22 @@
 .toolpage > .empty {
   flex: 1 1 auto;
 }
+/* 打码 / 截图取字这类面板：预览图或识别文本会变高，包一层内部滚动容器，
+   让内容在里面滚、把执行栏钉在底部（不被长内容推出可视区）。 */
+.toolpage > .toolpage__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.toolpage__body > * {
+  flex: none;
+}
+.toolpage__body > .empty {
+  flex: 1 1 auto;
+}
 .crumb {
   font-size: 11.5px;
   color: var(--dim);

@@ -126,7 +126,7 @@ export function RedactPanel() {
   const boxes = [...regions, ...(drag ? [drag] : [])];
 
   return (
-    <>
+    <div className="toolpage">
       <ToolHead id="image.redact">
         <span className="badge is-highlight">{t("status.highlight")}</span>
       </ToolHead>
@@ -137,6 +137,7 @@ export function RedactPanel() {
         {paths.length === 0 ? t("redact.pick") : t("redact.picked", { count: paths.length })}
       </button>
 
+      <div className="toolpage__body">
       {!preview ? (
         <div className="empty">
           <div className="empty__box">▨</div>
@@ -214,6 +215,7 @@ export function RedactPanel() {
           ))}
         </div>
       )}
+      </div>
 
       <div className="runbar">
         <button
@@ -229,6 +231,6 @@ export function RedactPanel() {
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }

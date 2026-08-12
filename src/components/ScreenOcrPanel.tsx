@@ -170,12 +170,13 @@ export function ScreenOcrPanel({
   })();
 
   return (
-    <>
+    <div className="toolpage">
       <ToolHead id="ocr.screen">
         <span className="badge is-highlight">{t("status.highlight")}</span>
       </ToolHead>
       <p className="lede">{t("tool.ocr.screen.desc")}</p>
 
+      <div className="toolpage__body">
       {err && (
         <div className="notice notice--bad">
           <span className="notice__mark">!</span>
@@ -230,12 +231,13 @@ export function ScreenOcrPanel({
           )}
         </div>
       )}
+      </div>
 
       <div className="runbar">
         <button className="go" onClick={capture} disabled={busy}>
           {busy ? t("screen.working") : shot ? t("screen.again") : t("screen.start")}
         </button>
       </div>
-    </>
+    </div>
   );
 }
