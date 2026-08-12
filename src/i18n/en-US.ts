@@ -49,7 +49,7 @@ const enUS: typeof zhCN = {
 
   home: {
     heroTitle: "Drop a file in → I'll take it from here",
-    heroSub: "Images go to images, PDFs go to PDFs — it figures out where. Nothing uploaded, nothing online.",
+    heroSub: "Images to images, PDFs to PDFs; for anything else, pick a tool on the left. Nothing uploaded, nothing online.",
     pickTitle: "Drop files here, or click to choose",
     savedSub: "Total size squeezed out over time · click for details",
     noFav: "Tap the star on a tool card to pin your regulars here for one-tap access.",
@@ -57,7 +57,7 @@ const enUS: typeof zhCN = {
     tipTag: "Tip",
     tip1: "Screen OCR has a global hotkey, Ctrl+Shift+S — grab text from any app.",
     tip2: "Press Ctrl+K to search every tool instead of hunting through the list.",
-    tip3: "Drop a file anywhere on the window and it jumps to the right tool.",
+    tip3: "Images aren't just for editing — for text, drop one into OCR.",
     tip4: "Everything runs fully offline — works with no network, nothing is ever uploaded.",
     tip5: "Rename and timestamp changes both undo in one click, so go ahead.",
   },
@@ -300,7 +300,7 @@ const enUS: typeof zhCN = {
     moreRows: "Showing the first {shown}; {rest} more are not listed — all of them still get processed.",
     homeDropTitle: "Drop files anywhere here",
     homeDropHint: "PDFs flip to the PDF tools, images to the image tools — then whichever tool you pick gets the files.",
-    homeDropUnknown: "Don't know what to do with {ext} yet. Images and PDFs are supported.",
+    homeDropUnknown: "{ext} isn't auto-routed here — pick a tool on the left and drop it in there.",
     dropped: "Got {count} files — pick a tool and they go straight in",
     droppedClear: "Never mind",
     ready: "{count} files ready · {size} total",

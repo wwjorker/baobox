@@ -47,7 +47,7 @@ export default {
 
   home: {
     heroTitle: "丢个文件进来 → 剩下的交给我",
-    heroSub: "图片跳图片、PDF 跳 PDF——它自己认该去哪。不上传、不联网。",
+    heroSub: "图片跳图片、PDF 跳 PDF，其它文件从左边选工具。不上传、不联网。",
     pickTitle: "拖文件进来，或点这里选",
     savedSub: "累计帮你压掉的体积 · 点开看口径",
     noFav: "点工具卡片右上角的星，把常用钉在这儿，下次一步直达。",
@@ -55,7 +55,7 @@ export default {
     tipTag: "小贴士",
     tip1: "截图取字有全局热键 Ctrl+Shift+S，在别的软件里也能随手唤起。",
     tip2: "按 Ctrl+K 直接搜全部工具，不用一个个找。",
-    tip3: "拖个文件到窗口任意处，它会自动跳到该用的工具。",
+    tip3: "图片不只是处理——想识字就拖进「OCR 识字」。",
     tip4: "所有工具全程离线，断网也照跑——文件一个字节都不会上传。",
     tip5: "重命名和改时间都能一键撤销，放心动。",
   },
@@ -294,7 +294,7 @@ export default {
     moreRows: "只列出前 {shown} 个，还有 {rest} 个不显示——处理时一个都不会漏。",
     homeDropTitle: "文件直接拖进来",
     homeDropHint: "拖 PDF 自动翻到 PDF、拖图片自动翻到图片，之后点哪个工具文件就跟到哪个。",
-    homeDropUnknown: "不认识这类文件：{ext}。目前支持图片和 PDF。",
+    homeDropUnknown: "{ext} 不走首页自动跳——从左边选个工具，拖进去就行。",
     dropped: "收下了 {count} 个文件，挑一个工具就直接开工",
     droppedClear: "不用了",
     ready: "{count} 个文件已就绪 · 共 {size}",
