@@ -1422,6 +1422,10 @@ pub fn clean_metadata(src: &Path, keep_dates: bool) -> AppResult<(PathBuf, Vec<S
             if let Ok(Object::Dictionary(d)) = doc.get_object_mut(root_id) {
                 d.remove(b"Metadata");
             }
+            // 只从 Catalog 摘掉引用还不够：XMP 流对象仍躺在对象表里，save 会把它
+            // 原样写回。prune 掉现在不可达的对象，才真正把这份 XML 从产物里抹掉
+            // （安全红线 7——界面承诺「XMP 那份独立副本也一起清」）。
+            doc.prune_objects();
             removed.push("XMP".into());
         }
     }
