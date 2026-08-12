@@ -70,8 +70,12 @@ fn main() {
     let a = tmp.join("a.png");
     let b = tmp.join("b.png");
     // 故意给不同宽度，验证「对齐到最窄、只缩不放」
-    RgbImage::from_pixel(400, 100, Rgb([200, 30, 30])).save(&a).unwrap();
-    RgbImage::from_pixel(200, 100, Rgb([30, 30, 200])).save(&b).unwrap();
+    RgbImage::from_pixel(400, 100, Rgb([200, 30, 30]))
+        .save(&a)
+        .unwrap();
+    RgbImage::from_pixel(200, 100, Rgb([30, 30, 200]))
+        .save(&b)
+        .unwrap();
 
     let (dst, n) = stitch(&[a.clone(), b.clone()], true, 0).unwrap();
     let joined = image::open(&dst).unwrap();
@@ -84,7 +88,10 @@ fn main() {
     check(
         "高度是各张之和",
         joined.height() == 50 + 100,
-        format!("高 {}（400×100 缩到 200 宽是 50 高，加 100）", joined.height()),
+        format!(
+            "高 {}（400×100 缩到 200 宽是 50 高，加 100）",
+            joined.height()
+        ),
     );
     // 上半应是红的、下半是蓝的，顺序不能反
     let top = joined.get_pixel(100, 10).0;
@@ -138,7 +145,9 @@ fn main() {
     );
 
     let solid = tmp.join("solid.png");
-    RgbImage::from_pixel(50, 50, Rgb([255, 255, 255])).save(&solid).unwrap();
+    RgbImage::from_pixel(50, 50, Rgb([255, 255, 255]))
+        .save(&solid)
+        .unwrap();
     check(
         "整张同色时明确报错",
         trim_file(&solid, 10).is_err(),
@@ -149,7 +158,9 @@ fn main() {
     println!("\n======== 圆角与边框 ========");
 
     let plain = tmp.join("plain.png");
-    RgbImage::from_pixel(200, 200, Rgb([200, 30, 30])).save(&plain).unwrap();
+    RgbImage::from_pixel(200, 200, Rgb([200, 30, 30]))
+        .save(&plain)
+        .unwrap();
 
     let (fdst, _) = frame_file(&plain, 25, 0, false).unwrap();
     let framed = image::open(&fdst).unwrap().to_rgba8();
@@ -174,14 +185,20 @@ fn main() {
     check(
         "边框把画布撑大",
         bordered_img.width() == 220 && bordered_img.height() == 220,
-        format!("{}×{}（两边各 10）", bordered_img.width(), bordered_img.height()),
+        format!(
+            "{}×{}（两边各 10）",
+            bordered_img.width(),
+            bordered_img.height()
+        ),
     );
 
     // ---------------------------------------------------------- 调色
     println!("\n======== 调色 ========");
 
     let mid = tmp.join("mid.png");
-    RgbImage::from_pixel(40, 40, Rgb([120, 120, 120])).save(&mid).unwrap();
+    RgbImage::from_pixel(40, 40, Rgb([120, 120, 120]))
+        .save(&mid)
+        .unwrap();
 
     let bright = adjust_file(&mid, 50, 0, 0, "none").unwrap();
     let bi = image::open(&bright).unwrap();
@@ -192,7 +209,9 @@ fn main() {
     );
 
     let colored = tmp.join("colored.png");
-    RgbImage::from_pixel(40, 40, Rgb([200, 60, 60])).save(&colored).unwrap();
+    RgbImage::from_pixel(40, 40, Rgb([200, 60, 60]))
+        .save(&colored)
+        .unwrap();
     let gray = adjust_file(&colored, 0, 0, 0, "gray").unwrap();
     let gi = image::open(&gray).unwrap().to_rgb8();
     let gp = gi.get_pixel(20, 20).0;
@@ -216,8 +235,8 @@ fn main() {
 
     // 真的 GBK 字节，不是假数据。「中文测试内容」的 GBK 编码。
     let gbk_bytes: Vec<u8> = vec![
-        0xD6, 0xD0, 0xCE, 0xC4, 0xB2, 0xE2, 0xCA, 0xD4, 0xC4, 0xDA, 0xC8, 0xDD, 0x0D, 0x0A,
-        0xB0, 0xD9, 0xB1, 0xA6, 0xCF, 0xE4,
+        0xD6, 0xD0, 0xCE, 0xC4, 0xB2, 0xE2, 0xCA, 0xD4, 0xC4, 0xDA, 0xC8, 0xDD, 0x0D, 0x0A, 0xB0,
+        0xD9, 0xB1, 0xA6, 0xCF, 0xE4,
     ];
     let gbk_file = tmp.join("gbk.txt");
     std::fs::write(&gbk_file, &gbk_bytes).unwrap();

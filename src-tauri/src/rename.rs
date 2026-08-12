@@ -50,7 +50,10 @@ pub struct Preview {
 const FORBIDDEN: &[char] = &['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
 
 fn split_name(p: &Path) -> (String, String) {
-    let stem = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let stem = p
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
     let ext = p
         .extension()
         .map(|s| format!(".{}", s.to_string_lossy()))
@@ -77,7 +80,11 @@ fn apply_rules(stem: &str, rules: &[Rule], index: usize) -> String {
             }
             Rule::Prefix { text } => format!("{text}{s}"),
             Rule::Suffix { text } => format!("{s}{text}"),
-            Rule::Number { start, digits, prefix } => {
+            Rule::Number {
+                start,
+                digits,
+                prefix,
+            } => {
                 let n = *start as usize + index;
                 let num = format!("{:0width$}", n, width = *digits as usize);
                 if *prefix {
@@ -219,10 +226,7 @@ pub fn rename_apply(paths: Vec<String>, rules: Vec<Rule>) -> AppResult<RenameRes
 
     let (mut done, mut failed) = (0usize, 0usize);
     for e in &plan {
-        match std::fs::rename(
-            long_path(Path::new(&e.from)),
-            long_path(Path::new(&e.to)),
-        ) {
+        match std::fs::rename(long_path(Path::new(&e.from)), long_path(Path::new(&e.to))) {
             Ok(_) => done += 1,
             Err(_) => failed += 1,
         }

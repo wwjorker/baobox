@@ -86,7 +86,11 @@ fn flatten_on_white(img: &DynamicImage) -> image::RgbImage {
     for (x, y, p) in src.enumerate_pixels() {
         let a = p.0[3] as f32 / 255.0;
         let blend = |c: u8| (c as f32 * a + 255.0 * (1.0 - a)).round() as u8;
-        out.put_pixel(x, y, image::Rgb([blend(p.0[0]), blend(p.0[1]), blend(p.0[2])]));
+        out.put_pixel(
+            x,
+            y,
+            image::Rgb([blend(p.0[0]), blend(p.0[1]), blend(p.0[2])]),
+        );
     }
     out
 }
@@ -353,7 +357,9 @@ pub async fn expand_inputs(paths: Vec<String>, accepts: Vec<String>) -> Vec<Stri
                     continue;
                 }
                 // 别把上一轮的产物当输入再跑一遍
-                if p.components().any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR) {
+                if p.components()
+                    .any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR)
+                {
                     continue;
                 }
                 out.push(p.to_string_lossy().to_string());
@@ -402,7 +408,12 @@ fn thumb_of(src: &Path) -> Option<String> {
     let small = img.thumbnail(THUMB_PX, THUMB_PX).to_rgb8();
     let mut buf = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 70)
-        .encode(&small, small.width(), small.height(), image::ExtendedColorType::Rgb8)
+        .encode(
+            &small,
+            small.width(),
+            small.height(),
+            image::ExtendedColorType::Rgb8,
+        )
         .ok()?;
     use base64::Engine;
     Some(format!(
@@ -446,7 +457,9 @@ fn img_compress_target_blocking(
     let target = (target_kb as usize) * 1024;
     let want = OutFmt::parse(&format);
     run_batch(&app, paths, |src| {
-        let src_len = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0) as usize;
+        let src_len = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0) as usize;
 
         // 原图本来就达标，且换格式只会更大——直接原样复制。
         // 用户点了「压缩」结果文件变大，是说不过去的。
@@ -487,11 +500,7 @@ fn img_compress_target_blocking(
     })
 }
 
-fn img_compress_blocking(
-    app: AppHandle,
-    paths: Vec<String>,
-    quality: u8,
-) -> Vec<FileOutcome> {
+fn img_compress_blocking(app: AppHandle, paths: Vec<String>, quality: u8) -> Vec<FileOutcome> {
     run_batch(&app, paths, move |src| {
         let img = load(src)?;
         let fmt = OutFmt::Keep.resolve(src);
@@ -557,8 +566,11 @@ fn has_gps(bytes: &[u8]) -> bool {
     let Ok(exif) = exif::Reader::new().read_from_container(&mut cur) else {
         return false;
     };
-    exif.get_field(exif::Tag::GPSLatitude, exif::In::PRIMARY).is_some()
-        || exif.get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY).is_some()
+    exif.get_field(exif::Tag::GPSLatitude, exif::In::PRIMARY)
+        .is_some()
+        || exif
+            .get_field(exif::Tag::GPSLongitude, exif::In::PRIMARY)
+            .is_some()
 }
 
 /// 读 EXIF 里的方向标记（1–8）。没有则返回 1（正常）。
@@ -697,7 +709,9 @@ pub async fn img_strip_exif(
     paths: Vec<String>,
     keepOrientation: bool,
 ) -> Vec<FileOutcome> {
-    tauri::async_runtime::spawn_blocking(move || img_strip_exif_blocking(app, paths, keepOrientation))
-        .await
-        .unwrap_or_default()
+    tauri::async_runtime::spawn_blocking(move || {
+        img_strip_exif_blocking(app, paths, keepOrientation)
+    })
+    .await
+    .unwrap_or_default()
 }

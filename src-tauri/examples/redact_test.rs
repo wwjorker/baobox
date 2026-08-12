@@ -1,4 +1,4 @@
-﻿//! 打码验收
+//! 打码验收
 //!
 //! 唯一重要的问题：被遮住的像素**是不是真的没了**。
 //! 网页上那种在原图上盖一层黑矩形的做法，原始数据还躺在文件里，
@@ -32,16 +32,29 @@ fn main() {
     }
     let before = img.clone();
 
-    let regions = [Region { x: 0.0, y: 0.0, w: 0.5, h: 1.0 }];
+    let regions = [Region {
+        x: 0.0,
+        y: 0.0,
+        w: 0.5,
+        h: 1.0,
+    }];
 
     let mut pass = 0;
     let mut fail = 0;
     let mut check = |label: &str, ok: bool, detail: String| {
-        if ok { pass += 1; println!("  [OK]   {label:<20} {detail}"); }
-        else { fail += 1; println!("  [FAIL] {label:<20} {detail}"); }
+        if ok {
+            pass += 1;
+            println!("  [OK]   {label:<20} {detail}");
+        } else {
+            fail += 1;
+            println!("  [FAIL] {label:<20} {detail}");
+        }
     };
 
-    for (name, mode) in [("涂黑", RedactMode::Blackout), ("马赛克", RedactMode::Pixelate)] {
+    for (name, mode) in [
+        ("涂黑", RedactMode::Blackout),
+        ("马赛克", RedactMode::Pixelate),
+    ] {
         let mut work = before.clone();
         let n = redact_image(&mut work, &regions, mode);
 

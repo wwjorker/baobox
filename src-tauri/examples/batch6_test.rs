@@ -137,7 +137,10 @@ fn main() {
             check(
                 "产物是 zip 且名字带「打包」",
                 zip_path.extension().and_then(|e| e.to_str()) == Some("zip")
-                    && zip_path.file_stem().map(|s| s.to_string_lossy().contains("打包")).unwrap_or(false)
+                    && zip_path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().contains("打包"))
+                        .unwrap_or(false)
                     && zip_path.is_file(),
                 zip_path.file_name().unwrap().to_string_lossy().into_owned(),
             );
@@ -149,8 +152,7 @@ fn main() {
                     let top = rep.dir.join("打包源");
                     check(
                         "文件夹名和子目录层次都保住了",
-                        top.join("甲.txt").is_file()
-                            && top.join("子目录").join("乙.txt").is_file(),
+                        top.join("甲.txt").is_file() && top.join("子目录").join("乙.txt").is_file(),
                         "打包源/甲.txt、打包源/子目录/乙.txt".into(),
                     );
                     check(
@@ -181,7 +183,11 @@ fn main() {
         Ok((zip_path, _)) => match extract(&zip_path, None) {
             Ok(rep) => check(
                 "单分支目录不压扁",
-                rep.dir.join("只有一枝").join("里层").join("独苗.txt").is_file(),
+                rep.dir
+                    .join("只有一枝")
+                    .join("里层")
+                    .join("独苗.txt")
+                    .is_file(),
                 "文件夹名和中间层都在".into(),
             ),
             Err(e) => check("单分支目录不压扁", false, format!("解压报错 {}", e.key)),
@@ -265,7 +271,9 @@ fn main() {
     .enumerate()
     {
         let p = tmp.join(format!("f{}.png", i + 1));
-        image::RgbImage::from_pixel(*w, *h, image::Rgb(*c)).save(&p).unwrap();
+        image::RgbImage::from_pixel(*w, *h, image::Rgb(*c))
+            .save(&p)
+            .unwrap();
         frames.push(p);
     }
 
@@ -287,9 +295,10 @@ fn main() {
     // 尺寸不同的第三张应该被统一到 200×150。
     // 注意产物在 out/Baobox_output 里——gif 本身就在 out 里，
     // 而输出目录一律建在输入文件旁边，所以嵌了一层。
-    let f3 = out
-        .join("Baobox_output")
-        .join(format!("{}_帧003.png", gif.file_stem().unwrap().to_string_lossy()));
+    let f3 = out.join("Baobox_output").join(format!(
+        "{}_帧003.png",
+        gif.file_stem().unwrap().to_string_lossy()
+    ));
     if f3.exists() {
         let i3 = image::open(&f3).unwrap();
         check(
@@ -372,11 +381,21 @@ fn main() {
             check(
                 "救回来了",
                 pages == 3,
-                format!("{pages} 页 · {}", if raster { "降级为图片" } else { "原样重建" }),
+                format!(
+                    "{pages} 页 · {}",
+                    if raster {
+                        "降级为图片"
+                    } else {
+                        "原样重建"
+                    }
+                ),
             );
             check(
                 "产物能正常打开",
-                Document::load(&dst).map(|d| d.get_pages().len()).unwrap_or(0) == 3,
+                Document::load(&dst)
+                    .map(|d| d.get_pages().len())
+                    .unwrap_or(0)
+                    == 3,
                 "重新读回来 3 页".into(),
             );
             if !raster {
@@ -484,7 +503,11 @@ fn crc32(data: &[u8]) -> u32 {
     for &b in data {
         crc ^= b as u32;
         for _ in 0..8 {
-            crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc

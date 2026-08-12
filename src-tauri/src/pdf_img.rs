@@ -131,7 +131,11 @@ fn undo_predictor(data: Vec<u8>, params: Option<&Dictionary>) -> Vec<u8> {
 
 fn paeth(a: u8, b: u8, c: u8) -> u8 {
     let p = a as i16 + b as i16 - c as i16;
-    let (pa, pb, pc) = ((p - a as i16).abs(), (p - b as i16).abs(), (p - c as i16).abs());
+    let (pa, pb, pc) = (
+        (p - a as i16).abs(),
+        (p - b as i16).abs(),
+        (p - c as i16).abs(),
+    );
     if pa <= pb && pa <= pc {
         a
     } else if pb <= pc {
@@ -143,12 +147,7 @@ fn paeth(a: u8, b: u8, c: u8) -> u8 {
 
 /// 把裸像素包成 image 的对象。颜色空间不认识就返回 None——
 /// Indexed / ICCBased 要查调色板或色彩配置，猜错了导出来是花的。
-pub fn to_image(
-    stream: &Stream,
-    raw: &[u8],
-    w: u32,
-    h: u32,
-) -> Option<image::DynamicImage> {
+pub fn to_image(stream: &Stream, raw: &[u8], w: u32, h: u32) -> Option<image::DynamicImage> {
     let cs = match stream.dict.get(b"ColorSpace") {
         Ok(Object::Name(n)) => String::from_utf8_lossy(n).to_string(),
         _ => return None,

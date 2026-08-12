@@ -66,9 +66,10 @@ fn main() {
     match Document::load(&dst) {
         Ok(doc) => {
             let np = doc.get_pages().len();
-            let embedded = doc.objects.values().any(|o| {
-                matches!(o, Object::Stream(s) if s.dict.get(b"Length1").is_ok())
-            });
+            let embedded = doc
+                .objects
+                .values()
+                .any(|o| matches!(o, Object::Stream(s) if s.dict.get(b"Length1").is_ok()));
             println!(
                 "  [3] 产物结构    {} 页（原 {pages} 页），字体已嵌入: {}",
                 np, embedded
@@ -94,7 +95,10 @@ fn main() {
     };
     let img_path = sandbox.join("rendered.png");
     std::fs::write(&img_path, &png).unwrap();
-    println!("  [4] 渲染        首页 → PNG {:.0} KB", png.len() as f64 / 1024.0);
+    println!(
+        "  [4] 渲染        首页 → PNG {:.0} KB",
+        png.len() as f64 / 1024.0
+    );
 
     // 页码是水平实色的，OCR 读得了；水印是 45 度旋转 + 25% 透明的，
     // OCR 读不了——那不是缺陷，恰恰是水印该有的样子。两者走的是同一套
@@ -110,7 +114,9 @@ fn main() {
             // 也不可靠——单独子集化会得到另一套编号。所以直接看渲染结果：
             // 加过水印的页面，着墨的像素必然明显变多。
             let ink = |png: &[u8]| -> f64 {
-                let Ok(img) = image::load_from_memory(png) else { return 0.0 };
+                let Ok(img) = image::load_from_memory(png) else {
+                    return 0.0;
+                };
                 let g = img.to_luma8();
                 let dark = g.pixels().filter(|p| p.0[0] < 240).count();
                 dark as f64 / g.pixels().len() as f64 * 100.0

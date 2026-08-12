@@ -40,7 +40,9 @@ impl AppError {
 
     pub fn unknown(e: impl std::fmt::Display) -> Self {
         let msg = e.to_string();
-        Self::new("err.unknown").var("detail", msg.clone()).detail(msg)
+        Self::new("err.unknown")
+            .var("detail", msg.clone())
+            .detail(msg)
     }
 }
 

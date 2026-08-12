@@ -46,14 +46,20 @@ fn main() {
     let secs = t0.elapsed().as_secs_f32();
 
     println!("\n扫描 {} 个文件，耗时 {secs:.1}s", report.scanned);
-    println!("跳过云端占位文件 {} 个（读它们会触发下载）", report.skipped_cloud);
+    println!(
+        "跳过云端占位文件 {} 个（读它们会触发下载）",
+        report.skipped_cloud
+    );
     println!("读取失败 {} 个", report.unreadable);
     println!(
         "找到 {} 组重复，其中 {} 组全部归程序/环境管辖（一份都不建议删）",
         report.groups.len(),
         report.managed_groups
     );
-    println!("真正建议删除的可回收量: {}\n", fmt(report.total_reclaimable));
+    println!(
+        "真正建议删除的可回收量: {}\n",
+        fmt(report.total_reclaimable)
+    );
 
     println!("收益最高的前 10 组:");
     for g in report.groups.iter().take(10) {
@@ -83,10 +89,16 @@ fn main() {
     let mut checked = 0;
     let mut mismatched = 0;
     for g in report.groups.iter().take(5) {
-        let Some(base) = g.files.first() else { continue };
-        let Ok(a) = std::fs::read(&base.path) else { continue };
+        let Some(base) = g.files.first() else {
+            continue;
+        };
+        let Ok(a) = std::fs::read(&base.path) else {
+            continue;
+        };
         for other in g.files.iter().skip(1) {
-            let Ok(b) = std::fs::read(&other.path) else { continue };
+            let Ok(b) = std::fs::read(&other.path) else {
+                continue;
+            };
             checked += 1;
             if a != b {
                 mismatched += 1;

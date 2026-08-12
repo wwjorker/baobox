@@ -136,7 +136,10 @@ fn main() {
     std::fs::write(sub.join("c.jpg"), b"x").unwrap();
     std::fs::write(mine.join("上一轮的产物.jpg"), b"x").unwrap();
 
-    let accepts: Vec<String> = ["jpg", "jpeg", "png"].iter().map(|s| s.to_string()).collect();
+    let accepts: Vec<String> = ["jpg", "jpeg", "png"]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let found = tauri::async_runtime::block_on(baobox_lib::image_ops::expand_inputs(
         vec![root.to_string_lossy().to_string()],
         accepts.clone(),
@@ -145,7 +148,10 @@ fn main() {
     check(
         "递归收齐子目录",
         found.len() == 3,
-        format!("找到 {} 个（a.jpg / b.PNG / 子文件夹里的 c.jpg）", found.len()),
+        format!(
+            "找到 {} 个（a.jpg / b.PNG / 子文件夹里的 c.jpg）",
+            found.len()
+        ),
     );
     check(
         "扩展名大小写不敏感",
@@ -169,7 +175,11 @@ fn main() {
         vec![root.join("a.jpg").to_string_lossy().to_string()],
         accepts,
     ));
-    check("单个文件原样通过", direct.len() == 1, "1 个进 1 个出".into());
+    check(
+        "单个文件原样通过",
+        direct.len() == 1,
+        "1 个进 1 个出".into(),
+    );
 
     println!("\n======== 取消不是失败 ========");
 
@@ -214,17 +224,28 @@ fn main() {
         thumbs.len() == 3,
         format!("3 个输入 → {} 条", thumbs.len()),
     );
-    let img = thumbs.iter().find(|t| t.path.ends_with("真图.png")).unwrap();
+    let img = thumbs
+        .iter()
+        .find(|t| t.path.ends_with("真图.png"))
+        .unwrap();
     check(
         "图片生成 data URI",
-        img.data_url.as_deref().is_some_and(|s| s.starts_with("data:image/jpeg;base64,")),
-        format!("{} 字节", img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)),
+        img.data_url
+            .as_deref()
+            .is_some_and(|s| s.starts_with("data:image/jpeg;base64,")),
+        format!(
+            "{} 字节",
+            img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)
+        ),
     );
     // 一张缩略图几 KB 就够，太大说明没缩放，几千个塞进界面会撑爆内存
     check(
         "缩略图足够小",
         img.data_url.as_ref().map(|s| s.len()).unwrap_or(usize::MAX) < 8_000,
-        format!("{} 字节 < 8 KB", img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)),
+        format!(
+            "{} 字节 < 8 KB",
+            img.data_url.as_ref().map(|s| s.len()).unwrap_or(0)
+        ),
     );
     check(
         "非图片安静返回空",

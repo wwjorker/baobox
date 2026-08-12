@@ -73,7 +73,9 @@ pub fn prepare(text: &str) -> AppResult<EmbeddedFont> {
         if !std::path::Path::new(path).exists() {
             continue;
         }
-        let Ok(data) = std::fs::read(path) else { continue };
+        let Ok(data) = std::fs::read(path) else {
+            continue;
+        };
         let Ok(face) = ttf_parser::Face::parse(&data, *index) else {
             continue;
         };
@@ -152,7 +154,10 @@ pub fn embed(doc: &mut Document, font: &EmbeddedFont) -> ObjectId {
     descriptor.set("Flags", 4i64);
     descriptor.set(
         "FontBBox",
-        font.bbox.iter().map(|v| Object::Integer(*v as i64)).collect::<Vec<_>>(),
+        font.bbox
+            .iter()
+            .map(|v| Object::Integer(*v as i64))
+            .collect::<Vec<_>>(),
     );
     descriptor.set("ItalicAngle", 0i64);
     descriptor.set("Ascent", font.ascent as i64);

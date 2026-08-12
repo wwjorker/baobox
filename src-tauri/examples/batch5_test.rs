@@ -150,7 +150,11 @@ fn main() {
         r > 200 && b < 60,
         format!("{top} 占 {pct:.0}%"),
     );
-    check("占比接近七成", (*pct - 70.0).abs() < 8.0, format!("{pct:.1}%"));
+    check(
+        "占比接近七成",
+        (*pct - 70.0).abs() < 8.0,
+        format!("{pct:.1}%"),
+    );
 
     // ---------------------------------------------------------- Base64
     println!("\n======== 转 Base64 ========");
@@ -210,13 +214,19 @@ fn main() {
     );
     check(
         "带 BOM 给 Excel",
-        std::fs::read(&cdst).unwrap().starts_with(&[0xEF, 0xBB, 0xBF]),
+        std::fs::read(&cdst)
+            .unwrap()
+            .starts_with(&[0xEF, 0xBB, 0xBF]),
         "否则中文列名在 Excel 里又是乱码".into(),
     );
 
     let bad = tmp.join("bad.json");
     std::fs::write(&bad, b"{not json").unwrap();
-    check("坏 JSON 明确报错", json_to_csv(&bad).is_err(), "err.badJson".into());
+    check(
+        "坏 JSON 明确报错",
+        json_to_csv(&bad).is_err(),
+        "err.badJson".into(),
+    );
 
     // ---------------------------------------------------------- 时间戳
     println!("\n======== 批量改时间 ========");
@@ -315,7 +325,7 @@ fn main() {
     check(
         "三个都能还原",
         back3 == 3 && !std::path::Path::new(&r3.undo_log).exists(),
-        format!("还原 {back3} 个", ),
+        format!("还原 {back3} 个",),
     );
 
     let _ = std::fs::remove_dir_all(&tmp);
@@ -327,7 +337,11 @@ fn main() {
 
 fn read_utf8(p: &PathBuf) -> String {
     let b = std::fs::read(p).unwrap();
-    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) { &b[3..] } else { &b[..] };
+    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &b[3..]
+    } else {
+        &b[..]
+    };
     String::from_utf8_lossy(body).to_string()
 }
 

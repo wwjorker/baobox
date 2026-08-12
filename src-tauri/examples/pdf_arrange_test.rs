@@ -123,8 +123,14 @@ fn main() {
     // 保留 3、1、4 页（丢掉第 2 页），第 1 页转 90、第 4 页转 270
     let ops = vec![
         PageOp { page: 3, rotate: 0 },
-        PageOp { page: 1, rotate: 90 },
-        PageOp { page: 4, rotate: 270 },
+        PageOp {
+            page: 1,
+            rotate: 90,
+        },
+        PageOp {
+            page: 4,
+            rotate: 270,
+        },
     ];
     match arrange_pages(&src, &ops) {
         Ok((dst, n, _)) => {
@@ -159,7 +165,13 @@ fn main() {
     // 单页提取 + 旋转累加：2 页都初始转 90，只留第 2 页再 +90 → 应得 180，且输出 1 页可读
     let pre = tmp.join("已转.pdf");
     make_pdf_rot(&pre, &[200, 210], &[90, 90]);
-    match arrange_pages(&pre, &[PageOp { page: 2, rotate: 90 }]) {
+    match arrange_pages(
+        &pre,
+        &[PageOp {
+            page: 2,
+            rotate: 90,
+        }],
+    ) {
         Ok((dst, n, _)) => {
             let pages = read_pages(&dst);
             check(
@@ -177,7 +189,13 @@ fn main() {
     // 换父节点会切断继承，必须先固化；不然导出页会丢尺寸、丢原始旋转。
     let inh = tmp.join("继承.pdf");
     make_pdf_inherited(&inh, 3, 175, 90);
-    match arrange_pages(&inh, &[PageOp { page: 2, rotate: 90 }]) {
+    match arrange_pages(
+        &inh,
+        &[PageOp {
+            page: 2,
+            rotate: 90,
+        }],
+    ) {
         Ok((dst, _, _)) => {
             let pages = read_pages(&dst);
             let (w, rot) = pages.first().copied().unwrap_or((0, -1));
@@ -209,7 +227,8 @@ fn main() {
         };
         let page_id = doc.add_object(page);
         doc.add_page_contents(page_id, Vec::new()).unwrap();
-        let pages = dictionary! { "Type" => "Pages", "Count" => 1i64, "Kids" => vec![page_id.into()] };
+        let pages =
+            dictionary! { "Type" => "Pages", "Count" => 1i64, "Kids" => vec![page_id.into()] };
         doc.objects.insert(pages_id, Object::Dictionary(pages));
         let outlines_id = doc.add_object(dictionary! { "Type" => "Outlines", "Count" => 0i64 });
         let catalog_id = doc.add_object(dictionary! {
@@ -223,7 +242,11 @@ fn main() {
     }
     match arrange_pages(&meta, &[PageOp { page: 1, rotate: 0 }]) {
         Ok((dst, _, dropped)) => {
-            check("有书签时标记 dropped", dropped, format!("dropped={dropped}"));
+            check(
+                "有书签时标记 dropped",
+                dropped,
+                format!("dropped={dropped}"),
+            );
             let out = Document::load(&dst).unwrap();
             let cat = out
                 .trailer

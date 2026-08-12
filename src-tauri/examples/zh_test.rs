@@ -53,7 +53,11 @@ fn main() {
     );
 
     let li = run("li", "里面有三里路", true);
-    check("一简对多繁·里", li.contains("裡面") || li.contains("裏面"), format!("「{li}」"));
+    check(
+        "一简对多繁·里",
+        li.contains("裡面") || li.contains("裏面"),
+        format!("「{li}」"),
+    );
 
     println!("\n======== 繁 → 简 ========");
 
@@ -71,7 +75,11 @@ fn main() {
     println!("\n======== 边界 ========");
 
     let ascii = run("ascii", "Hello, world! 12345", true);
-    check("非中文原样不动", ascii == "Hello, world! 12345", ascii.clone());
+    check(
+        "非中文原样不动",
+        ascii == "Hello, world! 12345",
+        ascii.clone(),
+    );
 
     let p = tmp.join("same.txt");
     std::fs::write(&p, "Hello".as_bytes()).unwrap();
@@ -84,7 +92,11 @@ fn main() {
 
     let empty = tmp.join("empty.txt");
     std::fs::write(&empty, b"").unwrap();
-    check("空文件明确报错", convert_zh(&cc, &empty, true).is_err(), "err.emptyFile".into());
+    check(
+        "空文件明确报错",
+        convert_zh(&cc, &empty, true).is_err(),
+        "err.emptyFile".into(),
+    );
 
     // GBK 的简体老文件应该也能直接转
     let gbk = tmp.join("gbk.txt");

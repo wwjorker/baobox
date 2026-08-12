@@ -13,7 +13,16 @@ fn main() {
     let root = PathBuf::from(r"F:\dev\百宝箱试用素材");
     // 幂等：只建目录、不删任何东西。用户可能已经在跑测试，
     // 产物和进度不能被二次生成毁掉。已存在的样本直接跳过。
-    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试", "压缩包", "GIF与动图", "建文件夹"] {
+    for sub in [
+        "图片",
+        "文本",
+        "PDF",
+        "大文件",
+        "时间戳测试",
+        "压缩包",
+        "GIF与动图",
+        "建文件夹",
+    ] {
         std::fs::create_dir_all(root.join(sub)).unwrap();
     }
 
@@ -189,7 +198,10 @@ fn main() {
     // ================================================== GIF
     // 一个三帧的动图，验拆帧；旁边放几张图验做动图
     make_gif(&gifd.join("三帧动图_拆帧用.gif"));
-    for (i, c) in [[230u8, 60, 60], [60, 200, 90], [70, 110, 230]].iter().enumerate() {
+    for (i, c) in [[230u8, 60, 60], [60, 200, 90], [70, 110, 230]]
+        .iter()
+        .enumerate()
+    {
         image::RgbImage::from_fn(240, 240, |x, y| {
             if (x / 30 + y / 30) % 2 == 0 {
                 image::Rgb(*c)
@@ -204,7 +216,8 @@ fn main() {
     // ================================================== 建文件夹清单
     std::fs::write(
         mkd.join("文件夹清单.txt"),
-        "一月\r\n二月\r\n三月\r\n2026/第一季度\r\n2026/第二季度\r\n项目A/设计\r\n项目A/开发\r\n".as_bytes(),
+        "一月\r\n二月\r\n三月\r\n2026/第一季度\r\n2026/第二季度\r\n项目A/设计\r\n项目A/开发\r\n"
+            .as_bytes(),
     )
     .unwrap();
 
@@ -219,14 +232,27 @@ fn main() {
 
     println!("素材已生成：{}", root.display());
     println!("共 {} 个文件，哈希清单见 _原文件哈希.txt\n", lines.len());
-    for sub in ["图片", "文本", "PDF", "大文件", "时间戳测试", "压缩包", "GIF与动图", "建文件夹"] {
-        let n = std::fs::read_dir(root.join(sub)).map(|d| d.count()).unwrap_or(0);
+    for sub in [
+        "图片",
+        "文本",
+        "PDF",
+        "大文件",
+        "时间戳测试",
+        "压缩包",
+        "GIF与动图",
+        "建文件夹",
+    ] {
+        let n = std::fs::read_dir(root.join(sub))
+            .map(|d| d.count())
+            .unwrap_or(0);
         println!("  {sub:<12} {n} 个");
     }
 }
 
 fn walk(dir: &Path, out: &mut Vec<String>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    let Ok(rd) = std::fs::read_dir(dir) else {
+        return;
+    };
     for e in rd.flatten() {
         let p = e.path();
         // 跳过工具产出的目录，别把测试产物记进「原文件」清单
@@ -235,7 +261,11 @@ fn walk(dir: &Path, out: &mut Vec<String>) {
         }
         if p.is_dir() {
             walk(&p, out);
-        } else if p.file_name().map(|n| n != "_原文件哈希.txt").unwrap_or(true) {
+        } else if p
+            .file_name()
+            .map(|n| n != "_原文件哈希.txt")
+            .unwrap_or(true)
+        {
             let data = std::fs::read(&p).unwrap_or_default();
             out.push(format!("{}  {}", blake3::hash(&data).to_hex(), p.display()));
         }
@@ -252,8 +282,13 @@ fn make_gif(path: &Path) {
     enc.set_repeat(Repeat::Infinite).unwrap();
     for c in [[220u8, 50, 50], [50, 200, 80], [60, 100, 220]] {
         let img = image::RgbaImage::from_pixel(200, 200, image::Rgba([c[0], c[1], c[2], 255]));
-        enc.encode_frame(Frame::from_parts(img, 0, 0, Delay::from_numer_denom_ms(400, 1)))
-            .unwrap();
+        enc.encode_frame(Frame::from_parts(
+            img,
+            0,
+            0,
+            Delay::from_numer_denom_ms(400, 1),
+        ))
+        .unwrap();
     }
 }
 
@@ -266,7 +301,8 @@ fn make_gbk_zip(path: &Path) {
             vec![
                 0xBC, 0xBE, 0xB6, 0xC8, 0xB1, 0xA8, 0xB8, 0xE6, b'.', b't', b'x', b't',
             ],
-            "这是季度报告的内容。\r\n如果文件名显示为乱码，说明解压工具没处理好 GBK 编码。".as_bytes(),
+            "这是季度报告的内容。\r\n如果文件名显示为乱码，说明解压工具没处理好 GBK 编码。"
+                .as_bytes(),
         ),
         // 图片/说明.txt
         (
@@ -279,7 +315,10 @@ fn make_gbk_zip(path: &Path) {
             "子目录里的说明文件。".as_bytes(),
         ),
         // readme.txt（纯 ASCII，不该被动）
-        (b"readme.txt".to_vec(), b"plain ascii name, should stay as-is"),
+        (
+            b"readme.txt".to_vec(),
+            b"plain ascii name, should stay as-is",
+        ),
     ];
 
     let mut f = std::fs::File::create(path).unwrap();
@@ -342,7 +381,11 @@ fn crc32(data: &[u8]) -> u32 {
     for &b in data {
         crc ^= b as u32;
         for _ in 0..8 {
-            crc = if crc & 1 != 0 { (crc >> 1) ^ 0xEDB8_8320 } else { crc >> 1 };
+            crc = if crc & 1 != 0 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
         }
     }
     !crc
@@ -548,7 +591,8 @@ fn make_scan_pdf(path: &Path) {
         "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
     });
     doc.add_page_contents(page, Vec::new()).unwrap();
-    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0)).unwrap();
+    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0))
+        .unwrap();
     doc.objects.insert(
         pages_id,
         Object::Dictionary(dictionary! {

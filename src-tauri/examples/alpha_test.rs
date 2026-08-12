@@ -36,7 +36,8 @@ fn main() {
                 // 看原本完全透明的角落变成了什么
                 let corner = rgba.get_pixel(5, 5).0;
                 let keeps_alpha = corner[3] < 10;
-                let is_black = corner[0] < 30 && corner[1] < 30 && corner[2] < 30 && corner[3] > 200;
+                let is_black =
+                    corner[0] < 30 && corner[1] < 30 && corner[2] < 30 && corner[3] > 200;
                 println!(
                     "  {name:<5} {:>6} KB  角落像素 RGBA{:?}  {}",
                     r.bytes.len() / 1024,

@@ -1,4 +1,4 @@
-﻿use crate::err::{AppError, AppResult};
+use crate::err::{AppError, AppResult};
 use crate::paths::long_path;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -83,7 +83,10 @@ fn managed_by(path: &str) -> Option<&'static str> {
         ("\\.ollama\\", "模型缓存"),
         ("\\huggingface\\", "模型缓存"),
     ];
-    MARKERS.iter().find(|(m, _)| p.contains(m)).map(|(_, label)| *label)
+    MARKERS
+        .iter()
+        .find(|(m, _)| p.contains(m))
+        .map(|(_, label)| *label)
 }
 
 #[derive(Serialize, Clone)]
@@ -188,7 +191,9 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
 
     for root in roots {
         for entry in jwalk::WalkDir::new(root).skip_hidden(false) {
-            if cancelled() { break; }
+            if cancelled() {
+                break;
+            }
             let Ok(e) = entry else {
                 unreadable += 1;
                 continue;
@@ -222,10 +227,8 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     }
 
     // 体积唯一的直接排除
-    let candidates: Vec<(u64, Vec<PathBuf>)> = by_size
-        .into_iter()
-        .filter(|(_, v)| v.len() > 1)
-        .collect();
+    let candidates: Vec<(u64, Vec<PathBuf>)> =
+        by_size.into_iter().filter(|(_, v)| v.len() > 1).collect();
 
     // ---- 阶段 ②：首尾快速哈希 ----
     let total_quick: usize = candidates.iter().map(|(_, v)| v.len()).sum();
@@ -233,7 +236,9 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     let mut by_quick: HashMap<(u64, [u8; 32]), Vec<PathBuf>> = HashMap::new();
     for (size, files) in candidates {
         for p in files {
-            if cancelled() { break; }
+            if cancelled() {
+                break;
+            }
             done += 1;
             if done % 50 == 0 {
                 emit("quick", done, total_quick);
@@ -257,7 +262,9 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
     let mut by_full: HashMap<(u64, [u8; 32]), Vec<PathBuf>> = HashMap::new();
     for (size, files) in finalists {
         for p in files {
-            if cancelled() { break; }
+            if cancelled() {
+                break;
+            }
             done += 1;
             if done % 20 == 0 {
                 emit("full", done, total_full);
@@ -282,7 +289,10 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
             .map(|p| {
                 let path = p.to_string_lossy().to_string();
                 DupFile {
-                    name: p.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default(),
+                    name: p
+                        .file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_default(),
                     modified: modified_secs(&p),
                     managed: managed_by(&path),
                     path,
@@ -308,13 +318,25 @@ pub fn scan(roots: &[String], progress: &dyn Fn(&'static str, usize, usize)) -> 
             managed_groups += 1;
         }
         total_reclaimable += reclaimable;
-        groups.push(DupGroup { size, files, reclaimable });
+        groups.push(DupGroup {
+            size,
+            files,
+            reclaimable,
+        });
     }
     // 能省得最多的排在最前，用户从上往下处理收益最高
     groups.sort_by(|a, b| b.reclaimable.cmp(&a.reclaimable));
 
     emit("done", scanned, scanned);
-    DupReport { groups, scanned, total_reclaimable, unreadable, skipped_cloud, managed_groups, cancelled: cancelled() }
+    DupReport {
+        groups,
+        scanned,
+        total_reclaimable,
+        unreadable,
+        skipped_cloud,
+        managed_groups,
+        cancelled: cancelled(),
+    }
 }
 
 #[tauri::command]
@@ -349,8 +371,16 @@ pub async fn delete_to_trash(paths: Vec<String>) -> Vec<TrashResult> {
         paths
             .into_iter()
             .map(|p| match trash::delete(&p) {
-                Ok(_) => TrashResult { path: p, ok: true, error: None },
-                Err(e) => TrashResult { path: p, ok: false, error: Some(e.to_string()) },
+                Ok(_) => TrashResult {
+                    path: p,
+                    ok: true,
+                    error: None,
+                },
+                Err(e) => TrashResult {
+                    path: p,
+                    ok: false,
+                    error: Some(e.to_string()),
+                },
             })
             .collect()
     })

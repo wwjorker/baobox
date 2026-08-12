@@ -5,8 +5,8 @@ use std::path::Path;
 use tauri::AppHandle;
 use windows::core::HSTRING;
 use windows::Data::Pdf::{PdfDocument, PdfPageRenderOptions};
-use windows::Storage::Streams::{DataReader, InMemoryRandomAccessStream};
 use windows::Storage::StorageFile;
+use windows::Storage::Streams::{DataReader, InMemoryRandomAccessStream};
 
 /// PDF 渲染成图片，用系统自带的 `Windows.Data.Pdf`。
 ///
@@ -48,7 +48,8 @@ pub fn render_page(src: &Path, page_index: u32, width: u32) -> AppResult<Vec<u8>
     let page = doc.GetPage(page_index).map_err(|e| AppError::unknown(e))?;
     let stream = InMemoryRandomAccessStream::new().map_err(|e| AppError::unknown(e))?;
     let opts = PdfPageRenderOptions::new().map_err(|e| AppError::unknown(e))?;
-    opts.SetDestinationWidth(width).map_err(|e| AppError::unknown(e))?;
+    opts.SetDestinationWidth(width)
+        .map_err(|e| AppError::unknown(e))?;
     page.RenderWithOptionsToStreamAsync(&stream, &opts)
         .and_then(|o| o.get())
         .map_err(|e| AppError::unknown(e))?;
@@ -63,7 +64,9 @@ pub fn render_page(src: &Path, page_index: u32, width: u32) -> AppResult<Vec<u8>
         .and_then(|o| o.get())
         .map_err(|e| AppError::unknown(e))?;
     let mut buf = vec![0u8; size as usize];
-    reader.ReadBytes(&mut buf).map_err(|e| AppError::unknown(e))?;
+    reader
+        .ReadBytes(&mut buf)
+        .map_err(|e| AppError::unknown(e))?;
     Ok(buf)
 }
 
@@ -97,7 +100,12 @@ fn encode_page(png: Vec<u8>, jpg: bool) -> AppResult<(&'static str, Vec<u8>)> {
         .to_rgb8();
     let mut buf: Vec<u8> = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 88)
-        .encode(&rgb, rgb.width(), rgb.height(), image::ExtendedColorType::Rgb8)
+        .encode(
+            &rgb,
+            rgb.width(),
+            rgb.height(),
+            image::ExtendedColorType::Rgb8,
+        )
         .map_err(|e| AppError::unknown(e))?;
     Ok(("jpg", buf))
 }
@@ -172,7 +180,9 @@ fn page_thumbs_blocking(path: String) -> AppResult<PageThumbs> {
         return Err(AppError::new("err.pdfNoPages"));
     }
     if total > MAX_ORGANIZER_PAGES {
-        return Err(AppError::new("err.pdfTooManyPages").var("max", MAX_ORGANIZER_PAGES.to_string()));
+        return Err(
+            AppError::new("err.pdfTooManyPages").var("max", MAX_ORGANIZER_PAGES.to_string())
+        );
     }
     let mut thumbs = Vec::with_capacity(total as usize);
     for i in 0..total {
@@ -182,7 +192,10 @@ fn page_thumbs_blocking(path: String) -> AppResult<PageThumbs> {
             base64::engine::general_purpose::STANDARD.encode(&png)
         ));
     }
-    Ok(PageThumbs { count: total, thumbs })
+    Ok(PageThumbs {
+        count: total,
+        thumbs,
+    })
 }
 
 #[tauri::command]

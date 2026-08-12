@@ -28,7 +28,11 @@ pub fn grid_file(
     square_first: bool,
 ) -> AppResult<(PathBuf, u32)> {
     let img = load(src)?;
-    let img = if square_first { center_square(&img) } else { img };
+    let img = if square_first {
+        center_square(&img)
+    } else {
+        img
+    };
     let (w, h) = img.dimensions();
 
     if w < cols || h < rows {
@@ -79,7 +83,12 @@ fn img_grid_blocking(
         let (last, n) = grid_file(src, rows, cols, square_first)?;
         Ok((
             last,
-            Some(Note::new("note.grid").with("rows", rows).with("cols", cols).with("n", n)),
+            Some(
+                Note::new("note.grid")
+                    .with("rows", rows)
+                    .with("cols", cols)
+                    .with("n", n),
+            ),
         ))
     })
 }
@@ -93,7 +102,13 @@ pub async fn img_grid(
     square_first: bool,
 ) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || {
-        img_grid_blocking(app, paths, rows.clamp(1, 10), cols.clamp(1, 10), square_first)
+        img_grid_blocking(
+            app,
+            paths,
+            rows.clamp(1, 10),
+            cols.clamp(1, 10),
+            square_first,
+        )
     })
     .await
     .unwrap_or_default()
@@ -207,7 +222,9 @@ pub async fn img_stitch(
         let total = srcs.len();
 
         let o = match stitch(&srcs, vertical, gap.min(200)) {
-            Ok((dst, n)) => FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.stitched").with("n", n))),
+            Ok((dst, n)) => {
+                FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.stitched").with("n", n)))
+            }
             Err(e) => FileOutcome::fail(&srcs[0], e),
         };
         // 同合并：产物一份挂第一个，其余各发一条「已并入」
@@ -337,7 +354,8 @@ pub fn frame_file(
             }
             let inner_x = x as i64 - border as i64;
             let inner_y = y as i64 - border as i64;
-            let in_bounds = inner_x >= 0 && inner_y >= 0 && (inner_x as u32) < w && (inner_y as u32) < h;
+            let in_bounds =
+                inner_x >= 0 && inner_y >= 0 && (inner_x as u32) < w && (inner_y as u32) < h;
             if in_bounds && inside_rounded(inner_x as u32, inner_y as u32, w, h, radius) {
                 canvas.put_pixel(x, y, *src_rgba.get_pixel(inner_x as u32, inner_y as u32));
             } else if border > 0 {
@@ -469,7 +487,8 @@ pub fn palette_of(src: &Path, count: usize) -> AppResult<Vec<(String, f32)>> {
     // 大图先缩小，主色调跟分辨率无关，全尺寸统计纯属浪费
     let small = img.thumbnail(200, 200).to_rgb8();
 
-    let mut buckets: std::collections::HashMap<(u8, u8, u8), u32> = std::collections::HashMap::new();
+    let mut buckets: std::collections::HashMap<(u8, u8, u8), u32> =
+        std::collections::HashMap::new();
     let mut total = 0u32;
     for p in small.pixels() {
         // 每通道压到 32 级，相近的颜色才会落进同一个桶
@@ -663,7 +682,10 @@ pub async fn img_expand(
     tauri::async_runtime::spawn_blocking(move || {
         run_batch(&app, paths, move |src| {
             let (dst, nw, nh) = expand_file(src, &ratio, dark)?;
-            Ok((dst, Some(Note::new("note.expanded").with("nw", nw).with("nh", nh))))
+            Ok((
+                dst,
+                Some(Note::new("note.expanded").with("nw", nw).with("nh", nh)),
+            ))
         })
     })
     .await
@@ -718,7 +740,11 @@ pub async fn gif_split(app: AppHandle, paths: Vec<String>, every: u32) -> Vec<Fi
             let (last, total, saved) = gif_frames(src, every)?;
             Ok((
                 last,
-                Some(Note::new("note.gifSplit").with("total", total).with("saved", saved)),
+                Some(
+                    Note::new("note.gifSplit")
+                        .with("total", total)
+                        .with("saved", saved),
+                ),
             ))
         })
     })
@@ -743,7 +769,11 @@ pub fn make_gif(srcs: &[PathBuf], delay_ms: u32) -> AppResult<(PathBuf, usize)> 
     let (w, h) = first.dimensions();
 
     let dir = output_dir_for(&srcs[0])?;
-    let dst = unique_path(&dir, &format!("{} 等 {} 帧", stem_of(&srcs[0]), srcs.len()), "gif");
+    let dst = unique_path(
+        &dir,
+        &format!("{} 等 {} 帧", stem_of(&srcs[0]), srcs.len()),
+        "gif",
+    );
 
     let out = std::fs::File::create(long_path(&dst))?;
     let mut enc = GifEncoder::new_with_speed(std::io::BufWriter::new(out), 10);

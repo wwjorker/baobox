@@ -182,7 +182,11 @@ fn pdf_merge_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
     let result = (|| -> AppResult<PathBuf> {
         let mut merged = merge_docs(docs.iter().map(|(_, d)| d.clone()).collect())?;
         let dir = output_dir_for(&first)?;
-        let dst = unique_path(&dir, &format!("{} 等 {} 份合并", stem_of(&first), total), "pdf");
+        let dst = unique_path(
+            &dir,
+            &format!("{} 等 {} 份合并", stem_of(&first), total),
+            "pdf",
+        );
         save(&mut merged, &dst)?;
         Ok(dst)
     })();
@@ -193,12 +197,19 @@ fn pdf_merge_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> {
         Ok(dst) => FileOutcome::ok(
             &first,
             dst,
-            Some(Note::new("note.merged").with("files", docs.len()).with("pages", count)),
+            Some(
+                Note::new("note.merged")
+                    .with("files", docs.len())
+                    .with("pages", count),
+            ),
         ),
         Err(e) => FileOutcome::fail(&first, e),
     };
     let rest: Vec<PathBuf> = docs.iter().skip(1).map(|(p, _)| p.clone()).collect();
-    for (i, o) in crate::batch::fold_outcomes(o, &rest).into_iter().enumerate() {
+    for (i, o) in crate::batch::fold_outcomes(o, &rest)
+        .into_iter()
+        .enumerate()
+    {
         crate::batch::emit(&app, i, total, &o);
         outcomes.insert(i, o);
     }
@@ -268,7 +279,11 @@ fn pdf_rotate_blocking(app: AppHandle, paths: Vec<String>, degrees: i64) -> Vec<
         let (dst, n) = rotate_file(src, degrees)?;
         Ok((
             dst,
-            Some(Note::new("note.pdfRotate").with("n", n).with("deg", degrees)),
+            Some(
+                Note::new("note.pdfRotate")
+                    .with("n", n)
+                    .with("deg", degrees),
+            ),
         ))
     })
 }
@@ -289,11 +304,19 @@ fn pdf_from_image_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcom
 
         for p in &paths {
             let src = PathBuf::from(p);
-            let img = lopdf::xobject::image(long_path(&src))
-                .map_err(|e| AppError::decode("图片", e))?;
+            let img =
+                lopdf::xobject::image(long_path(&src)).map_err(|e| AppError::decode("图片", e))?;
             // 用图片自身的像素尺寸当页面尺寸，避免留白或裁切
-            let w = img.dict.get(b"Width").and_then(|o| o.as_i64()).unwrap_or(595);
-            let h = img.dict.get(b"Height").and_then(|o| o.as_i64()).unwrap_or(842);
+            let w = img
+                .dict
+                .get(b"Width")
+                .and_then(|o| o.as_i64())
+                .unwrap_or(595);
+            let h = img
+                .dict
+                .get(b"Height")
+                .and_then(|o| o.as_i64())
+                .unwrap_or(842);
 
             let mut page = lopdf::Dictionary::new();
             page.set("Type", "Page");
@@ -392,7 +415,9 @@ fn recompress_image(stream: &mut lopdf::Stream, quality: u8) -> Option<(usize, u
 
     let gray = matches!(img, image::DynamicImage::ImageLuma8(_));
     stream.set_plain_content(jpeg.clone());
-    stream.dict.set("Filter", Object::Name(b"DCTDecode".to_vec()));
+    stream
+        .dict
+        .set("Filter", Object::Name(b"DCTDecode".to_vec()));
     stream.dict.set(
         "ColorSpace",
         Object::Name(if gray {
@@ -531,7 +556,11 @@ pub fn extract_images(src: &Path, min_px: u32) -> AppResult<(PathBuf, usize)> {
     Ok((last, n))
 }
 
-fn pdf_extract_images_blocking(app: AppHandle, paths: Vec<String>, min_px: u32) -> Vec<FileOutcome> {
+fn pdf_extract_images_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    min_px: u32,
+) -> Vec<FileOutcome> {
     run_batch(&app, paths, move |src| {
         let (last, n) = extract_images(src, min_px)?;
         Ok((last, Some(Note::new("note.pdfExtracted").with("n", n))))
@@ -554,17 +583,23 @@ pub fn parse_pages(spec: &str, total: u32) -> AppResult<Vec<u32>> {
         }
         if let Some((a, b)) = part.split_once('-') {
             let (a, b) = (a.trim(), b.trim());
-            let from: u32 = a.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?;
+            let from: u32 = a
+                .parse()
+                .map_err(|_| AppError::new("err.badPageSpec").var("got", part))?;
             // 「5-」表示从第 5 页到最后
             let to: u32 = if b.is_empty() {
                 total
             } else {
-                b.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?
+                b.parse()
+                    .map_err(|_| AppError::new("err.badPageSpec").var("got", part))?
             };
             let (lo, hi) = if from <= to { (from, to) } else { (to, from) };
             out.extend(lo..=hi);
         } else {
-            out.push(part.parse().map_err(|_| AppError::new("err.badPageSpec").var("got", part))?);
+            out.push(
+                part.parse()
+                    .map_err(|_| AppError::new("err.badPageSpec").var("got", part))?,
+            );
         }
     }
     out.retain(|p| *p >= 1 && *p <= total);
@@ -623,7 +658,10 @@ pub fn select_pages(src: &Path, spec: &str, keep_mode: bool) -> AppResult<(PathB
 
     let all: Vec<u32> = pages.keys().copied().collect();
     let drop: Vec<u32> = if keep_mode {
-        all.iter().copied().filter(|p| !listed.contains(p)).collect()
+        all.iter()
+            .copied()
+            .filter(|p| !listed.contains(p))
+            .collect()
     } else {
         listed.clone()
     };
@@ -653,7 +691,11 @@ fn pdf_pages_blocking(
         let (dst, total, left) = select_pages(src, &spec, keep_mode)?;
         Ok((
             dst,
-            Some(Note::new("note.pdfPages").with("total", total).with("left", left)),
+            Some(
+                Note::new("note.pdfPages")
+                    .with("total", total)
+                    .with("left", left),
+            ),
         ))
     })
 }
@@ -781,7 +823,10 @@ pub fn arrange_pages(src: &Path, ops: &[PageOp]) -> AppResult<(PathBuf, usize, b
         }
     }
 
-    let kids: Vec<Object> = picked.iter().map(|(id, _)| Object::Reference(*id)).collect();
+    let kids: Vec<Object> = picked
+        .iter()
+        .map(|(id, _)| Object::Reference(*id))
+        .collect();
     let mut pages_dict = lopdf::Dictionary::new();
     pages_dict.set("Type", "Pages");
     pages_dict.set("Count", n as u32);
@@ -895,8 +940,16 @@ pub fn repair_file(src: &Path) -> AppResult<(PathBuf, usize, bool)> {
         let Ok(image) = lopdf::xobject::image(long_path(&p)) else {
             continue;
         };
-        let w = image.dict.get(b"Width").and_then(|o| o.as_i64()).unwrap_or(1240) as f32;
-        let h = image.dict.get(b"Height").and_then(|o| o.as_i64()).unwrap_or(1754) as f32;
+        let w = image
+            .dict
+            .get(b"Width")
+            .and_then(|o| o.as_i64())
+            .unwrap_or(1240) as f32;
+        let h = image
+            .dict
+            .get(b"Height")
+            .and_then(|o| o.as_i64())
+            .unwrap_or(1754) as f32;
         // 按 A4 宽度换算成点，页面比例跟原件一致
         let pw = 595.0f32;
         let ph = pw * h / w.max(1.0);
@@ -1053,11 +1106,7 @@ pub fn nup_file(src: &Path, cols: u32, rows: u32, gap: f32) -> AppResult<(PathBu
     out.trailer.set("Root", catalog);
 
     let dir = output_dir_for(src)?;
-    let dst = unique_path(
-        &dir,
-        &format!("{} {}合1", stem_of(src), per_sheet),
-        "pdf",
-    );
+    let dst = unique_path(&dir, &format!("{} {}合1", stem_of(src), per_sheet), "pdf");
     save(&mut out, &dst)?;
     Ok((dst, total, sheets))
 }
@@ -1066,7 +1115,11 @@ pub fn nup_file(src: &Path, cols: u32, rows: u32, gap: f32) -> AppResult<(PathBu
 ///
 /// 页面的内容流、资源、以及它依赖的所有对象都得跟着搬到新文档里，
 /// 漏一个引用产物就是空白页——而且不会报错。
-fn page_to_form(src: &Document, out: &mut Document, page_id: lopdf::ObjectId) -> Option<lopdf::ObjectId> {
+fn page_to_form(
+    src: &Document,
+    out: &mut Document,
+    page_id: lopdf::ObjectId,
+) -> Option<lopdf::ObjectId> {
     let dict = src.get_object(page_id).ok()?.as_dict().ok()?;
 
     // 内容流可能是一个也可能是数组，拼成一份
@@ -1177,11 +1230,21 @@ fn page_box_of(doc: &Document, page_id: lopdf::ObjectId) -> (f32, f32, f32, f32)
         (v.len() == 4).then_some(v)
     };
     let b = read(b"MediaBox").unwrap_or_else(|| vec![0.0, 0.0, 595.0, 842.0]);
-    let (x0, y0, x1, y1) = (b[0].min(b[2]), b[1].min(b[3]), b[0].max(b[2]), b[1].max(b[3]));
+    let (x0, y0, x1, y1) = (
+        b[0].min(b[2]),
+        b[1].min(b[3]),
+        b[0].max(b[2]),
+        b[1].max(b[3]),
+    );
     (x0, y0, x1 - x0, y1 - y0)
 }
 
-fn pdf_nup_blocking(app: AppHandle, paths: Vec<String>, layout: String, gap: f32) -> Vec<FileOutcome> {
+fn pdf_nup_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    layout: String,
+    gap: f32,
+) -> Vec<FileOutcome> {
     let (cols, rows) = match layout.as_str() {
         "1x2" => (1u32, 2u32),
         "2x2" => (2, 2),
@@ -1369,7 +1432,11 @@ pub fn clean_metadata(src: &Path, keep_dates: bool) -> AppResult<(PathBuf, Vec<S
     Ok((dst, removed))
 }
 
-fn pdf_clean_meta_blocking(app: AppHandle, paths: Vec<String>, keep_dates: bool) -> Vec<FileOutcome> {
+fn pdf_clean_meta_blocking(
+    app: AppHandle,
+    paths: Vec<String>,
+    keep_dates: bool,
+) -> Vec<FileOutcome> {
     run_batch(&app, paths, move |src| {
         let (dst, removed) = clean_metadata(src, keep_dates)?;
         Ok((
@@ -1488,7 +1555,11 @@ fn pdf_crop_blocking(app: AppHandle, paths: Vec<String>, margin: f32) -> Vec<Fil
         let (dst, total, cropped) = crop_file(src, margin)?;
         Ok((
             dst,
-            Some(Note::new("note.cropped").with("total", total).with("n", cropped)),
+            Some(
+                Note::new("note.cropped")
+                    .with("total", total)
+                    .with("n", cropped),
+            ),
         ))
     })
 }
@@ -1506,7 +1577,11 @@ fn page_box(doc: &Document, page_id: lopdf::ObjectId) -> (f32, f32, f32, f32) {
         };
         let v: Vec<f32> = arr
             .iter()
-            .filter_map(|o| o.as_f32().ok().or_else(|| o.as_i64().ok().map(|i| i as f32)))
+            .filter_map(|o| {
+                o.as_f32()
+                    .ok()
+                    .or_else(|| o.as_i64().ok().map(|i| i as f32))
+            })
             .collect();
         (v.len() == 4).then_some(v)
     };
@@ -1554,7 +1629,8 @@ pub fn stamp_file(src: &Path, opt: &StampOptions) -> AppResult<(PathBuf, usize, 
         let mut ops = String::new();
 
         if !opt.watermark.is_empty() {
-            let size = (w.min(h) / opt.watermark.chars().count().max(4) as f32 * 1.6).clamp(18.0, 72.0);
+            let size =
+                (w.min(h) / opt.watermark.chars().count().max(4) as f32 * 1.6).clamp(18.0, 72.0);
             let text_w = font.width_of_text(&opt.watermark, size);
             // 沿对角线居中放置，45 度
             let (cx, cy) = (x0 + w / 2.0, y0 + h / 2.0);
@@ -1567,7 +1643,10 @@ pub fn stamp_file(src: &Path, opt: &StampOptions) -> AppResult<(PathBuf, usize, 
             }
             ops.push_str("0.45 0.45 0.45 rg\nBT\n");
             ops.push_str(&format!("/BaoboxF {size:.1} Tf\n"));
-            ops.push_str(&format!("{cos:.4} {sin:.4} {:.4} {cos:.4} {tx:.2} {ty:.2} Tm\n", -sin));
+            ops.push_str(&format!(
+                "{cos:.4} {sin:.4} {:.4} {cos:.4} {tx:.2} {ty:.2} Tm\n",
+                -sin
+            ));
             ops.push_str(&format!("<{}> Tj\nET\nQ\n", font.encode(&opt.watermark)));
         }
 
@@ -1637,8 +1716,11 @@ fn pdf_to_text_blocking(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> 
         let outcome = match text_file(&src) {
             Ok((dst, text)) => {
                 let chars = text.chars().count();
-                let mut o =
-                    FileOutcome::ok(&src, dst, Some(Note::new("note.extracted").with("chars", chars)));
+                let mut o = FileOutcome::ok(
+                    &src,
+                    dst,
+                    Some(Note::new("note.extracted").with("chars", chars)),
+                );
                 o.text = Some(text);
                 o
             }
@@ -1769,11 +1851,7 @@ pub async fn pdf_from_image(app: AppHandle, paths: Vec<String>) -> Vec<FileOutco
 }
 
 #[tauri::command]
-pub async fn pdf_decrypt(
-    app: AppHandle,
-    paths: Vec<String>,
-    password: String,
-) -> Vec<FileOutcome> {
+pub async fn pdf_decrypt(app: AppHandle, paths: Vec<String>, password: String) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || pdf_decrypt_blocking(app, paths, password))
         .await
         .unwrap_or_default()

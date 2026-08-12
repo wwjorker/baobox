@@ -44,7 +44,14 @@ fn main() {
     check(
         "作者等字段已清空",
         !after.contains("wty") && !after.contains("Microsoft Word"),
-        format!("剩下 {}", if after.is_empty() { "（空）".into() } else { after.clone() }),
+        format!(
+            "剩下 {}",
+            if after.is_empty() {
+                "（空）".into()
+            } else {
+                after.clone()
+            }
+        ),
     );
     check(
         "如实报告清掉了什么",
@@ -53,8 +60,7 @@ fn main() {
     );
     check(
         "XMP 那份独立副本也清了",
-        removed.contains(&"XMP".to_string())
-            && !has_xmp(&cleaned),
+        removed.contains(&"XMP".to_string()) && !has_xmp(&cleaned),
         "只清 /Info 的话属性面板干净了，XML 还在里面".into(),
     );
 
@@ -68,7 +74,10 @@ fn main() {
     // 产物还得能打开
     check(
         "产物结构完好",
-        Document::load(&cleaned).map(|d| d.get_pages().len()).unwrap_or(0) == 1,
+        Document::load(&cleaned)
+            .map(|d| d.get_pages().len())
+            .unwrap_or(0)
+            == 1,
         "1 页".into(),
     );
 
@@ -91,7 +100,11 @@ fn main() {
 
     match crop_file(&margin_pdf, 0.0) {
         Ok((dst, total, n)) => {
-            check("裁了这一页", total == 1 && n == 1, format!("{n}/{total} 页"));
+            check(
+                "裁了这一页",
+                total == 1 && n == 1,
+                format!("{n}/{total} 页"),
+            );
             let doc = Document::load(&dst).unwrap();
             let (_, page_id) = doc.get_pages().into_iter().next().unwrap();
             let cb = doc
@@ -118,7 +131,10 @@ fn main() {
             check(
                 "裁后区域明显变小",
                 shrunk,
-                format!("宽 {:.0} pt（原 595）", if cb.len() == 4 { cb[2] - cb[0] } else { 0.0 }),
+                format!(
+                    "宽 {:.0} pt（原 595）",
+                    if cb.len() == 4 { cb[2] - cb[0] } else { 0.0 }
+                ),
             );
             check(
                 "没有删掉页面内容",
@@ -164,13 +180,19 @@ fn main() {
     let mut all_png = true;
     for i in 0..n {
         let e = 6 + 16 * i;
-        let size = u32::from_le_bytes([data[e + 8], data[e + 9], data[e + 10], data[e + 11]]) as usize;
-        let off = u32::from_le_bytes([data[e + 12], data[e + 13], data[e + 14], data[e + 15]]) as usize;
+        let size =
+            u32::from_le_bytes([data[e + 8], data[e + 9], data[e + 10], data[e + 11]]) as usize;
+        let off =
+            u32::from_le_bytes([data[e + 12], data[e + 13], data[e + 14], data[e + 15]]) as usize;
         if image::load_from_memory(&data[off..off + size]).is_err() {
             all_png = false;
         }
     }
-    check("每个尺寸都是有效图像", all_png, format!("{n} 个载荷全部可解码"));
+    check(
+        "每个尺寸都是有效图像",
+        all_png,
+        format!("{n} 个载荷全部可解码"),
+    );
 
     // ------------------------------------------------------ 分卷闭环
     println!("\n======== 分割与合并（闭环）========");
@@ -181,7 +203,11 @@ fn main() {
     std::fs::write(&bigfile, &content).unwrap();
 
     let (_, parts) = split_file(&bigfile, 2).unwrap();
-    check("切成了多卷", parts == 3, format!("5 MB ÷ 2 MB → {parts} 卷"));
+    check(
+        "切成了多卷",
+        parts == 3,
+        format!("5 MB ÷ 2 MB → {parts} 卷"),
+    );
 
     let out_dir = tmp.join("Baobox_output");
     let first = out_dir.join("payload.bin.001");
@@ -219,7 +245,11 @@ fn main() {
     println!("\n======== 按行去重排序 ========");
 
     let lines = tmp.join("list.txt");
-    std::fs::write(&lines, "banana\napple\nbanana\ncherry\napple\nbanana\n".as_bytes()).unwrap();
+    std::fs::write(
+        &lines,
+        "banana\napple\nbanana\ncherry\napple\nbanana\n".as_bytes(),
+    )
+    .unwrap();
 
     let (d1, b1, a1) = process_lines(&lines, true, false, false).unwrap();
     let s1 = read_utf8(&d1);
@@ -236,11 +266,7 @@ fn main() {
 
     let (d3, _, _) = process_lines(&lines, false, false, true).unwrap();
     let s3 = read_utf8(&d3);
-    check(
-        "词频按次数降序",
-        s3.starts_with("3\tbanana"),
-        one(&s3),
-    );
+    check("词频按次数降序", s3.starts_with("3\tbanana"), one(&s3));
 
     let _ = std::fs::remove_dir_all(&tmp);
     println!("\n======== 通过 {pass} / 失败 {fail} ========");
@@ -250,12 +276,21 @@ fn main() {
 }
 
 fn one(s: &str) -> String {
-    s.lines().collect::<Vec<_>>().join(" / ").chars().take(50).collect()
+    s.lines()
+        .collect::<Vec<_>>()
+        .join(" / ")
+        .chars()
+        .take(50)
+        .collect()
 }
 
 fn read_utf8(p: &PathBuf) -> String {
     let b = std::fs::read(p).unwrap();
-    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) { &b[3..] } else { &b[..] };
+    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &b[3..]
+    } else {
+        &b[..]
+    };
     String::from_utf8_lossy(body).to_string()
 }
 
@@ -337,7 +372,8 @@ fn image_to_pdf(path: &PathBuf, img: &PathBuf) {
         "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
     });
     doc.add_page_contents(page, Vec::new()).unwrap();
-    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0)).unwrap();
+    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0))
+        .unwrap();
     doc.objects.insert(
         pages_id,
         Object::Dictionary(dictionary! {

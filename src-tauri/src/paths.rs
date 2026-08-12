@@ -98,8 +98,7 @@ pub fn output_dir_for(src: &Path) -> AppResult<PathBuf> {
 pub fn unique_path(dir: &Path, stem: &str, ext: &str) -> PathBuf {
     let candidate = dir.join(format!("{stem}.{ext}"));
     // 只有它确实是我们自建的输出目录、且不是用户指定的，才允许覆盖
-    let ours =
-        output_root().is_none() && dir.file_name().map(|n| n == OUTPUT_DIR).unwrap_or(false);
+    let ours = output_root().is_none() && dir.file_name().map(|n| n == OUTPUT_DIR).unwrap_or(false);
     if ours || !long_path(&candidate).exists() {
         return candidate;
     }

@@ -27,7 +27,11 @@ fn main() {
     let b64 = shot.data_url.split(',').nth(1).unwrap_or("");
     let bytes = decode_b64(b64);
     std::fs::write(&out, &bytes).unwrap();
-    println!("  [2] PNG 体积       {:.0} KB → {}", bytes.len() as f64 / 1024.0, out.display());
+    println!(
+        "  [2] PNG 体积       {:.0} KB → {}",
+        bytes.len() as f64 / 1024.0,
+        out.display()
+    );
 
     // 尺寸得和系统报告的虚拟桌面一致
     let img = image::load_from_memory(&bytes).expect("PNG 解不开");
@@ -40,7 +44,10 @@ fn main() {
             let chars = text.chars().filter(|c| !c.is_whitespace()).count();
             println!("  [4] OCR 读回       {chars} 个字符");
             let sample: String = text.lines().take(3).collect::<Vec<_>>().join(" / ");
-            println!("      样例: {}", sample.chars().take(90).collect::<String>());
+            println!(
+                "      样例: {}",
+                sample.chars().take(90).collect::<String>()
+            );
             println!(
                 "\n======== {} ========",
                 if chars > 10 && dims_ok {
@@ -57,7 +64,10 @@ fn main() {
 fn decode_b64(s: &str) -> Vec<u8> {
     const T: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let idx = |c: u8| T.iter().position(|&t| t == c).unwrap_or(0) as u32;
-    let clean: Vec<u8> = s.bytes().filter(|c| *c != b'=' && !c.is_ascii_whitespace()).collect();
+    let clean: Vec<u8> = s
+        .bytes()
+        .filter(|c| *c != b'=' && !c.is_ascii_whitespace())
+        .collect();
     let mut out = Vec::with_capacity(clean.len() * 3 / 4);
     for chunk in clean.chunks(4) {
         let mut n = 0u32;
@@ -65,8 +75,12 @@ fn decode_b64(s: &str) -> Vec<u8> {
             n |= idx(*c) << (18 - 6 * i);
         }
         out.push((n >> 16) as u8);
-        if chunk.len() > 2 { out.push((n >> 8) as u8) }
-        if chunk.len() > 3 { out.push(n as u8) }
+        if chunk.len() > 2 {
+            out.push((n >> 8) as u8)
+        }
+        if chunk.len() > 3 {
+            out.push(n as u8)
+        }
     }
     out
 }

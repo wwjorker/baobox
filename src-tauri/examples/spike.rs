@@ -113,10 +113,7 @@ fn strip_cjk_spaces(s: &str) -> String {
 fn spike_font() {
     println!("[2] 中文字体子集化（PDF 嵌入的前提）");
 
-    let candidates = [
-        r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\simhei.ttf",
-    ];
+    let candidates = [r"C:\Windows\Fonts\msyh.ttc", r"C:\Windows\Fonts\simhei.ttf"];
     let Some(path) = candidates.iter().find(|p| std::path::Path::new(p).exists()) else {
         println!("    ✗ 未找到中文字体");
         return;
@@ -172,7 +169,10 @@ fn spike_font() {
         data.len() as f64 / 1_048_576.0
     );
     let ratio = data.len() as f64 / outline_bytes.max(1) as f64;
-    println!("    ✓ 子集化后体积约为原字体的 1/{:.0}，符合分发要求", ratio);
+    println!(
+        "    ✓ 子集化后体积约为原字体的 1/{:.0}，符合分发要求",
+        ratio
+    );
 }
 
 #[derive(Default)]

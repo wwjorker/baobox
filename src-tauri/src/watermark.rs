@@ -74,7 +74,9 @@ fn draw_text(
 
 fn text_width(font: &FontRef, text: &str, size: f32) -> f32 {
     let scaled = font.as_scaled(PxScale::from(size));
-    text.chars().map(|c| scaled.h_advance(font.glyph_id(c))).sum()
+    text.chars()
+        .map(|c| scaled.h_advance(font.glyph_id(c)))
+        .sum()
 }
 
 pub fn watermark_file(
@@ -159,7 +161,11 @@ fn average_luma(img: &image::RgbaImage) -> f32 {
             n += 1.0;
         }
     }
-    if n == 0.0 { 128.0 } else { sum / n }
+    if n == 0.0 {
+        128.0
+    } else {
+        sum / n
+    }
 }
 
 fn img_watermark_blocking(

@@ -55,9 +55,21 @@ fn main() {
         parse_pages("1,99", 5).unwrap() == vec![1],
         "99 不存在，静默忽略".into(),
     );
-    check("去重并排序", parse_pages("3,1,3", 5).unwrap() == vec![1, 3], "3,1,3 → [1,3]".into());
-    check("乱写的报错", parse_pages("abc", 5).is_err(), "err.badPageSpec".into());
-    check("全部超范围也报错", parse_pages("99", 5).is_err(), "err.noPagesMatched".into());
+    check(
+        "去重并排序",
+        parse_pages("3,1,3", 5).unwrap() == vec![1, 3],
+        "3,1,3 → [1,3]".into(),
+    );
+    check(
+        "乱写的报错",
+        parse_pages("abc", 5).is_err(),
+        "err.badPageSpec".into(),
+    );
+    check(
+        "全部超范围也报错",
+        parse_pages("99", 5).is_err(),
+        "err.noPagesMatched".into(),
+    );
 
     // ------------------------------------------------------- PDF 页面
     println!("\n======== PDF 页面操作 ========");
@@ -134,7 +146,11 @@ fn main() {
                 .flatten()
                 .filter(|e| e.file_name().to_string_lossy().contains("图0"))
                 .collect();
-            check("产物真的落盘了", !found.is_empty(), format!("{} 个文件", found.len()));
+            check(
+                "产物真的落盘了",
+                !found.is_empty(),
+                format!("{} 个文件", found.len()),
+            );
             // 抠出来的必须跟原图逐像素一致。
             // 只验「能打开」是不够的——预测器还原写错的话，出来的是一张
             // 能正常打开的斜纹噪声图，看起来一切正常。
@@ -275,13 +291,25 @@ fn main() {
     std::fs::write(root.join("src").join("deep").join("nested.txt"), b"x").unwrap();
 
     let t = tree_of(&root, 4, true).unwrap();
-    check("包含子目录内容", t.contains("main.rs"), "src/main.rs 在".into());
-    check("目录排在文件前", {
-        let si = t.find("src/").unwrap_or(usize::MAX);
-        let ri = t.find("README.md").unwrap_or(0);
-        si < ri
-    }, "src/ 在 README.md 之前".into());
-    check("显示了体积", t.contains("5 B") || t.contains("B)"), "带大小标注".into());
+    check(
+        "包含子目录内容",
+        t.contains("main.rs"),
+        "src/main.rs 在".into(),
+    );
+    check(
+        "目录排在文件前",
+        {
+            let si = t.find("src/").unwrap_or(usize::MAX);
+            let ri = t.find("README.md").unwrap_or(0);
+            si < ri
+        },
+        "src/ 在 README.md 之前".into(),
+    );
+    check(
+        "显示了体积",
+        t.contains("5 B") || t.contains("B)"),
+        "带大小标注".into(),
+    );
 
     let shallow = tree_of(&root, 2, false).unwrap();
     check(
@@ -299,7 +327,11 @@ fn main() {
 
 fn read_utf8(p: &PathBuf) -> String {
     let b = std::fs::read(p).unwrap();
-    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) { &b[3..] } else { &b[..] };
+    let body = if b.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &b[3..]
+    } else {
+        &b[..]
+    };
     String::from_utf8_lossy(body).to_string()
 }
 
@@ -350,7 +382,8 @@ fn make_pdf_with_image(path: &PathBuf, img: &PathBuf) {
         "MediaBox" => vec![0.into(), 0.into(), 300.into(), 200.into()],
     });
     doc.add_page_contents(page, Vec::new()).unwrap();
-    doc.insert_image(page, image, (0.0, 0.0), (300.0, 200.0)).unwrap();
+    doc.insert_image(page, image, (0.0, 0.0), (300.0, 200.0))
+        .unwrap();
     doc.objects.insert(
         pages_id,
         Object::Dictionary(dictionary! {

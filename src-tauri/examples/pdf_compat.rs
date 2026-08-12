@@ -66,8 +66,9 @@ fn main() {
         let t0 = Instant::now();
         // 损坏的 PDF 有可能触发 panic 而不只是返回 Err，
         // 真实语料里这种情况必须兜住，否则一个坏文件能拖垮整批处理
-        let outcome =
-            std::panic::catch_unwind(|| lopdf::Document::load(p).map(|d| (d.is_encrypted(), d.get_pages().len())));
+        let outcome = std::panic::catch_unwind(|| {
+            lopdf::Document::load(p).map(|d| (d.is_encrypted(), d.get_pages().len()))
+        });
 
         match outcome {
             Ok(Ok((enc, pages))) => {

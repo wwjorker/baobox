@@ -32,11 +32,7 @@ pub enum RedactMode {
 }
 
 /// 在一张图上抹掉若干区域，返回实际处理的区域数
-pub fn redact_image(
-    img: &mut image::RgbaImage,
-    regions: &[Region],
-    mode: RedactMode,
-) -> usize {
+pub fn redact_image(img: &mut image::RgbaImage, regions: &[Region], mode: RedactMode) -> usize {
     let (iw, ih) = (img.width(), img.height());
     let mut done = 0;
 
@@ -79,12 +75,8 @@ pub fn redact_image(
                             }
                         }
                         let n = n.max(1);
-                        let avg = image::Rgba([
-                            (r_ / n) as u8,
-                            (g_ / n) as u8,
-                            (b_ / n) as u8,
-                            255,
-                        ]);
+                        let avg =
+                            image::Rgba([(r_ / n) as u8, (g_ / n) as u8, (b_ / n) as u8, 255]);
                         for y in by..by + bh {
                             for x in bx..bx + bw {
                                 img.put_pixel(x, y, avg);

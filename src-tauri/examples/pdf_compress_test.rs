@@ -48,7 +48,9 @@ fn main() {
             break;
         }
         let p = PathBuf::from(line.trim());
-        let Ok(meta) = std::fs::metadata(&p) else { continue };
+        let Ok(meta) = std::fs::metadata(&p) else {
+            continue;
+        };
         if meta.len() < 300 * 1024 || meta.len() > 40 * 1024 * 1024 {
             continue;
         }

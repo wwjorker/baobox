@@ -281,7 +281,11 @@ fn walk(
     for (i, e) in entries.iter().enumerate() {
         let name = e.file_name().to_string_lossy().to_string();
         let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
-        let branch = if i == last { "└── " } else { "├── " };
+        let branch = if i == last {
+            "└── "
+        } else {
+            "├── "
+        };
         out.push_str(prefix);
         out.push_str(branch);
         out.push_str(&name);
@@ -431,7 +435,10 @@ pub async fn file_split(app: AppHandle, paths: Vec<String>, partMb: u32) -> Vec<
         let mb = partMb.max(1) as u64;
         run_batch(&app, paths, move |src| {
             let (last, n) = split_file(src, mb)?;
-            Ok((last, Some(Note::new("note.splitParts").with("n", n).with("mb", mb))))
+            Ok((
+                last,
+                Some(Note::new("note.splitParts").with("n", n).with("mb", mb)),
+            ))
         })
     })
     .await
@@ -569,7 +576,9 @@ pub async fn text_lines(
                 Some(if count {
                     Note::new("note.lineFreq").with("n", after)
                 } else {
-                    Note::new("note.lineResult").with("before", before).with("after", after)
+                    Note::new("note.lineResult")
+                        .with("before", before)
+                        .with("after", after)
                 }),
             ))
         })
@@ -605,7 +614,10 @@ pub fn csv_to_json(src: &Path, pretty: bool) -> AppResult<(PathBuf, usize)> {
                 } else {
                     key.clone()
                 };
-                m.insert(k, serde_json::Value::String(r.get(i).cloned().unwrap_or_default()));
+                m.insert(
+                    k,
+                    serde_json::Value::String(r.get(i).cloned().unwrap_or_default()),
+                );
             }
             serde_json::Value::Object(m)
         })
@@ -656,7 +668,13 @@ pub fn json_to_csv(src: &Path) -> AppResult<(PathBuf, usize)> {
     }
 
     let mut out = String::new();
-    out.push_str(&cols.iter().map(|c| csv_cell(c)).collect::<Vec<_>>().join(","));
+    out.push_str(
+        &cols
+            .iter()
+            .map(|c| csv_cell(c))
+            .collect::<Vec<_>>()
+            .join(","),
+    );
     out.push_str("\r\n");
     for it in &items {
         let row: Vec<String> = cols
@@ -733,11 +751,7 @@ fn parse_csv(text: &str) -> Vec<Vec<String>> {
 }
 
 #[tauri::command]
-pub async fn data_convert(
-    app: AppHandle,
-    paths: Vec<String>,
-    pretty: bool,
-) -> Vec<FileOutcome> {
+pub async fn data_convert(app: AppHandle, paths: Vec<String>, pretty: bool) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || {
         run_batch(&app, paths, move |src| {
             // 按扩展名决定方向，用户不用再选一次——CSV 只可能转 JSON，反之亦然

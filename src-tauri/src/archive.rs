@@ -19,8 +19,8 @@
 //!
 //! **自动建同名文件夹。** 一个包里几十个文件直接倒进当前目录是灾难。
 
-use crate::batch::{fold_outcomes, FileOutcome, Note};
 use crate::batch::run_batch;
+use crate::batch::{fold_outcomes, FileOutcome, Note};
 use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
 use std::io::Read;
@@ -59,7 +59,11 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
             }
             // 文件夹自己的名字作为 zip 内的顶层目录
             let folder = src.file_name().map(|n| n.to_string_lossy().to_string());
-            for entry in jwalk::WalkDir::new(&lp).skip_hidden(false).into_iter().flatten() {
+            for entry in jwalk::WalkDir::new(&lp)
+                .skip_hidden(false)
+                .into_iter()
+                .flatten()
+            {
                 if entries.len() >= MAX_ENTRIES {
                     hit_cap = true;
                     break 'outer;
@@ -69,7 +73,9 @@ pub fn create_zip(srcs: &[PathBuf]) -> AppResult<(PathBuf, usize)> {
                 }
                 let p = entry.path();
                 // 别把上一轮自己的产物也打进去
-                if p.components().any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR) {
+                if p.components()
+                    .any(|c| c.as_os_str() == crate::paths::OUTPUT_DIR)
+                {
                     continue;
                 }
                 // 相对「被 walk 的根」算——两边都带 \\?\ 前缀，strip 才对得上；
@@ -141,7 +147,9 @@ pub async fn zip_create(app: AppHandle, paths: Vec<String>) -> Vec<FileOutcome> 
         let srcs: Vec<PathBuf> = paths.iter().map(PathBuf::from).collect();
         let total = srcs.len();
         let o = match create_zip(&srcs) {
-            Ok((dst, n)) => FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.zipped").with("n", n))),
+            Ok((dst, n)) => {
+                FileOutcome::ok(&srcs[0], dst, Some(Note::new("note.zipped").with("n", n)))
+            }
             Err(e) => FileOutcome::fail(&srcs[0], e),
         };
         // N→1：产物一份挂第一个，其余各发一条「已并入」，别让它们停在「等待」
@@ -246,7 +254,13 @@ fn safe_relative(name: &str) -> Option<PathBuf> {
         // 否则整条解不出来
         let cleaned: String = part
             .chars()
-            .map(|c| if matches!(c, ':' | '*' | '?' | '"' | '<' | '>' | '|') { '_' } else { c })
+            .map(|c| {
+                if matches!(c, ':' | '*' | '?' | '"' | '<' | '>' | '|') {
+                    '_'
+                } else {
+                    c
+                }
+            })
             .collect();
         if cleaned.trim().is_empty() {
             return None;
@@ -254,10 +268,7 @@ fn safe_relative(name: &str) -> Option<PathBuf> {
         out.push(cleaned);
     }
     // 再兜一层：拼完之后不许出现任何非普通段
-    if out
-        .components()
-        .any(|c| !matches!(c, Component::Normal(_)))
-    {
+    if out.components().any(|c| !matches!(c, Component::Normal(_))) {
         return None;
     }
     (!out.as_os_str().is_empty()).then_some(out)
@@ -283,8 +294,8 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
     const MAX_ENTRIES: usize = 100_000; // 条目数上限，挡「百万空条目」
 
     let file = std::fs::File::open(long_path(src))?;
-    let mut zip = zip::ZipArchive::new(file)
-        .map_err(|e| AppError::new("err.badArchive").detail(e))?;
+    let mut zip =
+        zip::ZipArchive::new(file).map_err(|e| AppError::new("err.badArchive").detail(e))?;
     if zip.len() > MAX_ENTRIES {
         return Err(AppError::new("err.archiveTooLarge"));
     }
@@ -402,11 +413,7 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
 }
 
 #[tauri::command]
-pub async fn zip_extract(
-    app: AppHandle,
-    paths: Vec<String>,
-    password: String,
-) -> Vec<FileOutcome> {
+pub async fn zip_extract(app: AppHandle, paths: Vec<String>, password: String) -> Vec<FileOutcome> {
     tauri::async_runtime::spawn_blocking(move || {
         run_batch(&app, paths, move |src| {
             let pw = (!password.is_empty()).then_some(password.as_str());

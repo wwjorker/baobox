@@ -1,4 +1,4 @@
-﻿use crate::err::{AppError, AppResult};
+use crate::err::{AppError, AppResult};
 use crate::paths::{file_name_of, long_path, output_dir_for, stem_of, unique_path};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -286,7 +286,11 @@ struct OcrProgress {
 /// 和 `ocr_image` 的区别是产物形态：这个给的是一份可直接归档的整合文档，
 /// 适合「把一叠扫描件转成一份可搜索的文字稿」这类场景。
 #[tauri::command]
-pub async fn ocr_batch(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec<OcrOutcome> {
+pub async fn ocr_batch(
+    app: AppHandle,
+    paths: Vec<String>,
+    lang: Option<String>,
+) -> Vec<OcrOutcome> {
     tauri::async_runtime::spawn_blocking(move || ocr_batch_blocking(app, paths, lang))
         .await
         .unwrap_or_default()
@@ -325,7 +329,11 @@ fn ocr_batch_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) 
 /// Tauri 的同步命令跑在主线程上，长任务会让窗口失去响应、
 /// 进度事件也渲染不出来。
 #[tauri::command]
-pub async fn ocr_image(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec<OcrOutcome> {
+pub async fn ocr_image(
+    app: AppHandle,
+    paths: Vec<String>,
+    lang: Option<String>,
+) -> Vec<OcrOutcome> {
     tauri::async_runtime::spawn_blocking(move || ocr_blocking(app, paths, lang))
         .await
         .unwrap_or_default()
@@ -339,7 +347,9 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
 
     for (index, p) in paths.iter().enumerate() {
         let src = PathBuf::from(p);
-        let in_bytes = std::fs::metadata(long_path(&src)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(&src))
+            .map(|m| m.len())
+            .unwrap_or(0);
 
         if crate::batch::cancelled() {
             let o = OcrOutcome {
@@ -389,7 +399,10 @@ fn ocr_blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec
                     // 界面拿 in-out 一减，就把「31 KB 的图识别出 200 字节文字」
                     // 算成省下 30 KB 记进了首页那个累计数字。
                     out_bytes: in_bytes,
-                    out_path: written.as_ref().ok().map(|d| d.to_string_lossy().to_string()),
+                    out_path: written
+                        .as_ref()
+                        .ok()
+                        .map(|d| d.to_string_lossy().to_string()),
                     note: Some(if chars == 0 {
                         crate::batch::Note::new("note.ocrNone")
                     } else {

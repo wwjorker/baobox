@@ -47,7 +47,10 @@ fn main() {
             let img = match image::open(f) {
                 Ok(i) => i,
                 Err(e) => {
-                    println!("  {:<16} 解码失败 {e}", f.file_name().unwrap().to_string_lossy());
+                    println!(
+                        "  {:<16} 解码失败 {e}",
+                        f.file_name().unwrap().to_string_lossy()
+                    );
                     continue;
                 }
             };

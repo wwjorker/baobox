@@ -124,7 +124,8 @@ pub fn make_searchable(
     doc.trailer.remove(b"XRefStm");
     doc.renumber_objects();
     doc.compress();
-    doc.save(long_path(&dst)).map_err(|e| AppError::unknown(e))?;
+    doc.save(long_path(&dst))
+        .map_err(|e| AppError::unknown(e))?;
     Ok((dst, page_count, word_count))
 }
 
@@ -205,11 +206,18 @@ fn page_box(doc: &Document, page_id: lopdf::ObjectId) -> (f32, f32, f32, f32) {
             .collect();
         (v.len() == 4).then_some(v)
     };
-    let b = read(b"CropBox").or_else(|| read(b"MediaBox")).unwrap_or_else(|| {
-        // A4，跟渲染引擎在缺 MediaBox 时的默认一致
-        vec![0.0, 0.0, 595.0, 842.0]
-    });
-    let (x0, y0, x1, y1) = (b[0].min(b[2]), b[1].min(b[3]), b[0].max(b[2]), b[1].max(b[3]));
+    let b = read(b"CropBox")
+        .or_else(|| read(b"MediaBox"))
+        .unwrap_or_else(|| {
+            // A4，跟渲染引擎在缺 MediaBox 时的默认一致
+            vec![0.0, 0.0, 595.0, 842.0]
+        });
+    let (x0, y0, x1, y1) = (
+        b[0].min(b[2]),
+        b[1].min(b[3]),
+        b[0].max(b[2]),
+        b[1].max(b[3]),
+    );
     (x0, y0, x1 - x0, y1 - y0)
 }
 
@@ -231,7 +239,11 @@ fn blocking(app: AppHandle, paths: Vec<String>, lang: Option<String>) -> Vec<Fil
             Ok((dst, pages, words)) => FileOutcome::ok(
                 &src,
                 dst,
-                Some(Note::new("note.ocrLayer").with("pages", pages).with("words", words)),
+                Some(
+                    Note::new("note.ocrLayer")
+                        .with("pages", pages)
+                        .with("words", words),
+                ),
             ),
             Err(e) => FileOutcome::fail(&src, e),
         };

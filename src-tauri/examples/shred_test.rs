@@ -35,7 +35,11 @@ fn main() {
     // 记下它占的磁盘位置——粉碎会改名，我们要在改名前看它固定在某个 inode/簇。
     // Windows 上没有稳定的 inode 概念，退而验证：粉碎前后同一路径读到的内容变了。
     // 更关键的验证是下面「就地覆写」那条。
-    check("样本已写入", victim.exists(), format!("{} 字节", original_len));
+    check(
+        "样本已写入",
+        victim.exists(),
+        format!("{} 字节", original_len),
+    );
 
     let r = shred_one_for_test(&victim, 3);
     check("粉碎返回成功", r.is_ok(), format!("{r:?}"));
@@ -57,7 +61,10 @@ fn main() {
     // 这一步验证的是「覆写」本身有效，而不是删除。
     {
         use std::io::Write;
-        let mut f = std::fs::OpenOptions::new().write(true).open(&victim2).unwrap();
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&victim2)
+            .unwrap();
         f.seek(SeekFrom::Start(0)).unwrap();
         let zeros = vec![0u8; payload.len()];
         f.write_all(&zeros).unwrap();

@@ -50,7 +50,13 @@ fn main() {
 
     let (mut ok, mut wrong_pw, mut broken) = (0, 0, 0);
     for (p, pages) in &encrypted {
-        let name: String = p.file_name().unwrap().to_string_lossy().chars().take(38).collect();
+        let name: String = p
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .chars()
+            .take(38)
+            .collect();
         let Some(p) = stage(p, &sandbox) else {
             println!("  [--]   {name:<38} 无法复制到沙箱，跳过");
             continue;
@@ -65,9 +71,7 @@ fn main() {
                         println!("  [OK]   {name:<38} {pages} 页 · 原本加密={was} · 产物已解锁");
                     } else {
                         broken += 1;
-                        println!(
-                            "  [FAIL] {name:<38} 仍加密={still} 页数 {pages}->{np}"
-                        );
+                        println!("  [FAIL] {name:<38} 仍加密={still} 页数 {pages}->{np}");
                     }
                 }
                 Err(e) => {

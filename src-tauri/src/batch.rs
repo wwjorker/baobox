@@ -107,8 +107,12 @@ pub struct Progress {
 
 impl FileOutcome {
     pub fn ok(src: &Path, dst: PathBuf, note: Option<Note>) -> Self {
-        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
-        let out_bytes = std::fs::metadata(long_path(&dst)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0);
+        let out_bytes = std::fs::metadata(long_path(&dst))
+            .map(|m| m.len())
+            .unwrap_or(0);
         Self {
             path: src.to_string_lossy().to_string(),
             name: file_name_of(src),
@@ -124,7 +128,9 @@ impl FileOutcome {
     }
 
     pub fn fail(src: &Path, e: AppError) -> Self {
-        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0);
         Self {
             path: src.to_string_lossy().to_string(),
             name: file_name_of(src),
@@ -145,7 +151,9 @@ impl FileOutcome {
     /// 而不是又下载一个文件再打开。out_path 留空，界面上
     /// 「打开输出文件夹」自然就不出现。
     pub fn text_only(src: &Path, text: String, note: Option<Note>) -> Self {
-        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0);
         Self {
             path: src.to_string_lossy().to_string(),
             name: file_name_of(src),
@@ -167,7 +175,9 @@ impl FileOutcome {
     /// 早先这里只是复用 fail() 把 error 清掉，界面看 `ok` 照样当失败画，
     /// 汇总还报「2 个失败」。得有独立的标记。
     pub fn skipped(src: &Path, reason_key: &str) -> Self {
-        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0);
         Self {
             path: src.to_string_lossy().to_string(),
             name: file_name_of(src),
@@ -187,7 +197,9 @@ impl FileOutcome {
     /// 合并、图片转 PDF 这类 N→1 的操作，产物只有一份，挂在第一个输入上。
     /// 其余输入原先什么结果都不发，界面上就永远停在「等待」——看着像卡死了。
     pub fn folded(src: &Path) -> Self {
-        let in_bytes = std::fs::metadata(long_path(src)).map(|m| m.len()).unwrap_or(0);
+        let in_bytes = std::fs::metadata(long_path(src))
+            .map(|m| m.len())
+            .unwrap_or(0);
         Self {
             path: src.to_string_lossy().to_string(),
             name: file_name_of(src),

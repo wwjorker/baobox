@@ -48,7 +48,11 @@ fn main() {
     println!("\n======== 加文字层 ========");
     match make_searchable(&scan_pdf, None, None) {
         Ok((dst, pages, count)) => {
-            check("处理成功", pages == 1 && count > 0, format!("{pages} 页 · {count} 段文字"));
+            check(
+                "处理成功",
+                pages == 1 && count > 0,
+                format!("{pages} 页 · {count} 段文字"),
+            );
 
             let after = extract(&dst);
             check(
@@ -75,7 +79,11 @@ fn main() {
                 matches!(o, Object::Stream(s) if s.dict.get(b"Subtype")
                     .and_then(|x| x.as_name()).map(|n| n == b"Image").unwrap_or(false))
             });
-            check("原图仍在，页面外观不变", has_image, "文字层是叠加的，不是替换".into());
+            check(
+                "原图仍在，页面外观不变",
+                has_image,
+                "文字层是叠加的，不是替换".into(),
+            );
 
             // 坐标翻转做错的话文字会跑到页外。抽出所有 Td 坐标验证在页内。
             let (in_page, total_pos, sample) = check_positions(&doc, 595.0, 842.0);
@@ -109,7 +117,12 @@ fn main() {
 }
 
 fn one_line(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(60).collect()
+    s.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(60)
+        .collect()
 }
 
 fn extract(p: &PathBuf) -> String {
@@ -125,13 +138,17 @@ fn check_positions(doc: &Document, w: f32, h: f32) -> (usize, usize, String) {
     let mut sample = String::from("无");
     for obj in doc.objects.values() {
         let Object::Stream(s) = obj else { continue };
-        let Ok(raw) = s.decompressed_content() else { continue };
+        let Ok(raw) = s.decompressed_content() else {
+            continue;
+        };
         let text = String::from_utf8_lossy(&raw);
         if !text.contains("3 Tr") {
             continue;
         }
         for line in text.lines() {
-            let Some(idx) = line.find(" Td ") else { continue };
+            let Some(idx) = line.find(" Td ") else {
+                continue;
+            };
             let parts: Vec<&str> = line[..idx].split_whitespace().collect();
             if parts.len() < 2 {
                 continue;
@@ -162,8 +179,7 @@ fn render_text_image(path: &PathBuf, lines: &[&str]) {
         .or_else(|_| std::fs::read(r"C:\Windows\Fonts\simsun.ttc"))
         .expect("找不到系统中文字体");
     // ttc 是字体集合，取第一份
-    let font = FontRef::try_from_slice_and_index(&font_bytes, 0)
-        .expect("字体解析失败");
+    let font = FontRef::try_from_slice_and_index(&font_bytes, 0).expect("字体解析失败");
 
     let (w, h) = (1200u32, 900u32);
     let mut img = image::RgbImage::from_pixel(w, h, image::Rgb([255, 255, 255]));
@@ -205,7 +221,8 @@ fn image_to_pdf(path: &PathBuf, img: &PathBuf) {
         "MediaBox" => vec![0.into(), 0.into(), 595.into(), 842.into()],
     });
     doc.add_page_contents(page, Vec::new()).unwrap();
-    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0)).unwrap();
+    doc.insert_image(page, image, (0.0, 0.0), (595.0, 842.0))
+        .unwrap();
     doc.objects.insert(
         pages_id,
         Object::Dictionary(dictionary! {

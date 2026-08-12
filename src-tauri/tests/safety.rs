@@ -28,9 +28,17 @@ fn redact_destroys_pixels_in_region_only() {
             before.put_pixel(x, y, p);
         }
     }
-    let regions = [Region { x: 0.0, y: 0.0, w: 0.5, h: 1.0 }];
+    let regions = [Region {
+        x: 0.0,
+        y: 0.0,
+        w: 0.5,
+        h: 1.0,
+    }];
 
-    for (name, mode) in [("blackout", RedactMode::Blackout), ("pixelate", RedactMode::Pixelate)] {
+    for (name, mode) in [
+        ("blackout", RedactMode::Blackout),
+        ("pixelate", RedactMode::Pixelate),
+    ] {
         let mut work = before.clone();
         redact_image(&mut work, &regions, mode);
 
@@ -80,7 +88,10 @@ fn merge_keeps_both_documents_content() {
                 Operation::new("Td", vec![72.into(), 700.into()]),
                 Operation::new(
                     "Tj",
-                    vec![Object::String(marker.as_bytes().to_vec(), StringFormat::Literal)],
+                    vec![Object::String(
+                        marker.as_bytes().to_vec(),
+                        StringFormat::Literal,
+                    )],
                 ),
                 Operation::new("ET", vec![]),
             ],

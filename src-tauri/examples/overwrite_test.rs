@@ -46,10 +46,7 @@ fn main() {
     let untouched = orig.pixels().all(|p| p.0 == [240, 238, 232]);
 
     println!();
-    println!(
-        "  最终文件: {:?}",
-        files
-    );
+    println!("  最终文件: {:?}", files);
     println!(
         "\n======== {} ========",
         if files.len() == 1 && untouched {

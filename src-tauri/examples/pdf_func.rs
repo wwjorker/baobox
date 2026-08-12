@@ -104,7 +104,11 @@ fn main() {
         Ok((_, text)) => check(
             "提取文字",
             text.contains("Baobox"),
-            format!("{} 个字符，含预期标记: {}", text.chars().count(), text.contains("Baobox")),
+            format!(
+                "{} 个字符，含预期标记: {}",
+                text.chars().count(),
+                text.contains("Baobox")
+            ),
         ),
         Err(e) => check("提取文字", false, format!("{:?}", e.key)),
     }

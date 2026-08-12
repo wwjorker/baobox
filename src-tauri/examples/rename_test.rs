@@ -45,13 +45,25 @@ fn main() {
         }
     };
 
-    println!("======== 批量重命名验收 ========\n沙箱: {}\n", dir.display());
+    println!(
+        "======== 批量重命名验收 ========\n沙箱: {}\n",
+        dir.display()
+    );
 
     // ---- 1. 规则叠加：去掉 IMG_ 前缀 → 全小写 → 前面加两位序号 ----
     let rules = vec![
-        Rule::Replace { find: "IMG_".into(), replace: "photo_".into() },
-        Rule::Case { mode: "lower".into() },
-        Rule::Number { start: 1, digits: 2, prefix: true },
+        Rule::Replace {
+            find: "IMG_".into(),
+            replace: "photo_".into(),
+        },
+        Rule::Case {
+            mode: "lower".into(),
+        },
+        Rule::Number {
+            start: 1,
+            digits: 2,
+            prefix: true,
+        },
     ];
     let pv = rename_preview(paths.clone(), rules.clone());
     let first = pv.iter().find(|p| p.old_name == "IMG_0001.JPG").unwrap();
@@ -75,18 +87,30 @@ fn main() {
     );
 
     // ---- 3. 非法字符 ----
-    let bad_rules = vec![Rule::Suffix { text: "?<bad>".into() }];
+    let bad_rules = vec![Rule::Suffix {
+        text: "?<bad>".into(),
+    }];
     let pv3 = rename_preview(paths.clone(), bad_rules);
     check(
         "非法字符",
         pv3.iter().all(|p| p.invalid),
-        format!("{}/{} 被标为非法", pv3.iter().filter(|p| p.invalid).count(), pv3.len()),
+        format!(
+            "{}/{} 被标为非法",
+            pv3.iter().filter(|p| p.invalid).count(),
+            pv3.len()
+        ),
     );
 
     // ---- 4. 执行 ----
     let before: Vec<String> = paths
         .iter()
-        .map(|p| PathBuf::from(p).file_name().unwrap().to_string_lossy().to_string())
+        .map(|p| {
+            PathBuf::from(p)
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        })
         .collect();
     let res = rename_apply(paths.clone(), rules).expect("执行失败");
     let after: Vec<String> = std::fs::read_dir(&dir)
@@ -98,7 +122,10 @@ fn main() {
     check(
         "执行",
         res.done > 0 && after.iter().any(|n| n.starts_with("01photo")),
-        format!("成功 {} · 跳过 {} · 失败 {}", res.done, res.skipped, res.failed),
+        format!(
+            "成功 {} · 跳过 {} · 失败 {}",
+            res.done, res.skipped, res.failed
+        ),
     );
 
     // ---- 5. 撤销：必须把每一个名字都还原回去 ----
@@ -114,7 +141,10 @@ fn main() {
     check(
         "撤销还原",
         all_back && restored == res.done && undo.failed == 0,
-        format!("还原 {restored}/{} · 失败 {} · 原名全部回来: {all_back}", res.done, undo.failed),
+        format!(
+            "还原 {restored}/{} · 失败 {} · 原名全部回来: {all_back}",
+            res.done, undo.failed
+        ),
     );
 
     // ---- 6. 占位文件没被覆盖 ----

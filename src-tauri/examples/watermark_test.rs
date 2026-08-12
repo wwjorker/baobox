@@ -24,7 +24,13 @@ fn main() {
     let mut pass = 0;
     let mut fail = 0;
     let mut check = |l: &str, ok: bool, d: String| {
-        if ok { pass += 1; println!("  [OK]   {l:<16} {d}") } else { fail += 1; println!("  [FAIL] {l:<16} {d}") }
+        if ok {
+            pass += 1;
+            println!("  [OK]   {l:<16} {d}")
+        } else {
+            fail += 1;
+            println!("  [FAIL] {l:<16} {d}")
+        }
     };
 
     // ---- 平铺模式 ----
@@ -37,7 +43,11 @@ fn main() {
                     check(
                         "OCR 读回",
                         flat.contains(text),
-                        format!("识别到 {} 个字符，含原文: {}", flat.chars().count(), flat.contains(text)),
+                        format!(
+                            "识别到 {} 个字符，含原文: {}",
+                            flat.chars().count(),
+                            flat.contains(text)
+                        ),
                     );
                 }
                 Err(e) => check("OCR 读回", false, e.key),
