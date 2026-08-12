@@ -249,3 +249,46 @@ fn zip_extract_cleans_up_when_nothing_extracted() {
 
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+/// ZIP 累计上限回归（Codex 复审建议补的自动测试）：三条各 1 MiB 的条目、累计上限
+/// 设 1.5 MiB，应只解出第一条、其余因跨累计线被拒——用参数化的小限额替代「真写满
+/// 8 GiB」。它盯住「累计上限确实生效、且随实际写出的字节累加」：谁把它改成不限、
+/// 或只按条目数算，都会解出多于 1 个文件而挂掉。
+///
+/// 诚实说明：诚实 zip 的声明尺寸=实际，所以这条测不了「deflate 谎报 uncompressed_size」
+/// 那种绕过——那需手工构造恶意包，已由 Codex 手工验证（新代码按实际 take 截断、不看
+/// 声明尺寸），此处不重复造。
+#[test]
+fn zip_cumulative_limit_counts_actual_bytes() {
+    use baobox_lib::archive::Limits;
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+
+    let tmp = std::env::temp_dir().join("baobox_zip_cumulative");
+    let _ = std::fs::remove_dir_all(&tmp);
+    std::fs::create_dir_all(&tmp).unwrap();
+    let zip_path = tmp.join("three.zip");
+    {
+        let f = std::fs::File::create(&zip_path).unwrap();
+        let mut w = zip::ZipWriter::new(f);
+        // Stored（不压缩）：声明尺寸=实际字节，测的正是「累计按实际写出的字节算」
+        let opts = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        for i in 0..3 {
+            w.start_file(format!("f{i}.bin"), opts).unwrap();
+            w.write_all(&vec![0u8; 1 << 20]).unwrap(); // 1 MiB
+        }
+        w.finish().unwrap();
+    }
+
+    let limits = Limits {
+        max_entry: 4u64 << 20, // 单条 4 MiB，不卡单条
+        max_total: 3u64 << 19, // 累计 1.5 MiB
+        max_entries: 100,
+    };
+    let rep = baobox_lib::archive::extract_with_limits(&zip_path, None, &limits)
+        .expect("第一条应成功，函数返回 Ok");
+    assert_eq!(rep.files, 1, "累计 1.5 MiB 下只该解出第 1 个 1 MiB 文件");
+    assert!(rep.rejected >= 1, "跨累计线的后续条目应被拒");
+
+    let _ = std::fs::remove_dir_all(&tmp);
+}

@@ -285,18 +285,35 @@ pub struct ExtractReport {
     pub unsupported: usize,
 }
 
+/// 解压炸弹的三道闸：单条上限、累计上限、条目数上限。参数化是为了能用 MiB 级的
+/// 小限额写自动回归测试——真写满 GiB 级不现实。
+pub struct Limits {
+    pub max_entry: u64,
+    pub max_total: u64,
+    pub max_entries: usize,
+}
+
+const DEFAULT_LIMITS: Limits = Limits {
+    max_entry: 2u64 << 30, // 单条最多解出 2 GiB
+    max_total: 8u64 << 30, // 整包累计最多解出 8 GiB
+    max_entries: 100_000,  // 条目数上限，挡「百万空条目」
+};
+
 pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
-    // 防解压炸弹的三道闸：单条上限、累计上限、条目数上限。
+    extract_with_limits(src, password, &DEFAULT_LIMITS)
+}
+
+pub fn extract_with_limits(
+    src: &Path,
+    password: Option<&str>,
+    limits: &Limits,
+) -> AppResult<ExtractReport> {
     // 原来用 read_to_end 会把整条解压进内存，一个高压缩比的小包就能撑爆内存；
     // 改成流式写 + 这三个上限挡住。
-    const MAX_ENTRY_BYTES: u64 = 2u64 << 30; // 单条最多解出 2 GiB
-    const MAX_TOTAL_BYTES: u64 = 8u64 << 30; // 整包累计最多解出 8 GiB
-    const MAX_ENTRIES: usize = 100_000; // 条目数上限，挡「百万空条目」
-
     let file = std::fs::File::open(long_path(src))?;
     let mut zip =
         zip::ZipArchive::new(file).map_err(|e| AppError::new("err.badArchive").detail(e))?;
-    if zip.len() > MAX_ENTRIES {
+    if zip.len() > limits.max_entries {
         return Err(AppError::new("err.archiveTooLarge"));
     }
 
@@ -358,19 +375,19 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
         }
 
         // 声明尺寸就超单条上限：直接拒，连目录和写句柄都不建
-        if entry.size() > MAX_ENTRY_BYTES {
+        if entry.size() > limits.max_entry {
             rep.rejected += 1;
             continue;
         }
         // 这条允许写出的实际字节上限：既不能超单条上限，也不能吃掉剩余的累计额度。
         // 关键是用「实际写出的字节」限制累计——声明尺寸撒谎也没用，take 到 cap+1
         // 就截断判炸弹。原来只按声明尺寸累加，多条撒谎的条目能突破累计上限。
-        let remaining = MAX_TOTAL_BYTES.saturating_sub(total_out);
+        let remaining = limits.max_total.saturating_sub(total_out);
         if remaining == 0 {
             rep.rejected += 1;
             continue;
         }
-        let cap = MAX_ENTRY_BYTES.min(remaining);
+        let cap = limits.max_entry.min(remaining);
 
         // 到这才建父目录、开写句柄——前面被拒的条目不会留下空目录
         if let Some(parent) = dst.parent() {
