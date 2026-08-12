@@ -4,7 +4,7 @@
 
 [中文说明](#中文) · MIT · Windows 10/11
 
-![Compressing four photos to fit a 500 KB upload limit](docs/screenshots/compress-target.png)
+![Baobox home — drop a file in and it routes to the right tool](docs/screenshots/home.png)
 
 > ## 🚧 Preview — 60 of 61 tools work
 >
@@ -34,6 +34,8 @@ into it.
 
 ### Images
 
+![Compress to a target size — 56 KB down to 9 KB, −84%](docs/screenshots/compress-target.png)
+
 | Tool | |
 |---|---|
 | **Compress to a target size** | ✅ Binary-searches quality, falls back to downscaling. TinyPNG gives you quality presets; upload forms enforce bytes. |
@@ -54,6 +56,8 @@ iLovePDF and Smallpdf put OCR behind a paid plan. Windows already ships an
 engine that is [faster and more accurate than Tesseract](https://transloadit.com/devtips/recognize-text-in-images-ocr-in-rust/),
 so this costs nothing and adds no bytes.
 
+![Extracting text from an invoice image, fully offline](docs/screenshots/ocr.png)
+
 | Tool | |
 |---|---|
 | Extract text from image | ✅ 77 ms per image |
@@ -62,6 +66,8 @@ so this costs nothing and adds no bytes.
 | **Scanned PDF → searchable** | ✅ Under PDF. The page looks identical; the words go underneath it |
 
 ### PDF
+
+![Visual page organiser — reorder, rotate and drop pages, then export](docs/screenshots/pdf-pages.png)
 
 | Tool | |
 |---|---|
