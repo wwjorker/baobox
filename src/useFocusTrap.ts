@@ -41,14 +41,19 @@ export function useFocusTrap(
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // 只关这个弹层——必须拦住冒泡，否则 Esc 会继续传到 window 上的「层层
+        // 后退」导航，关掉确认框的同时把整个面板也退掉了。
         e.preventDefault();
+        e.stopPropagation();
         closeRef.current();
         return;
       }
       if (e.key !== "Tab" || !box) return;
       const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        // 再滤掉隐藏 / inert 的：它们能被选择器选中，却不是真正可聚焦的落点
-        (el) => !el.hasAttribute("inert") && el.offsetParent !== null,
+        // 再滤掉不可见 / inert 的：它们能被选择器选中，却不是真正可聚焦的落点。
+        // getClientRects 比 offsetParent 稳（position:fixed 也不会被误判为隐藏），
+        // 再排除落在 inert 祖先里的。
+        (el) => el.getClientRects().length > 0 && !el.closest("[inert]"),
       );
       if (items.length === 0) return;
       const first = items[0];
