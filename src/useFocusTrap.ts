@@ -1,7 +1,9 @@
 import { useEffect, useRef, type RefObject } from "react";
 
+// 排除 disabled：粉碎确认框的危险按钮在没输确认词前是 disabled、且排在 DOM 最后，
+// 若算进可聚焦元素就会被当成 Tab 循环的末尾，可浏览器会跳过它，焦点便漏到背景去了。
 const FOCUSABLE =
-  'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * 弹层的键盘可达性。
@@ -44,7 +46,10 @@ export function useFocusTrap(
         return;
       }
       if (e.key !== "Tab" || !box) return;
-      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        // 再滤掉隐藏 / inert 的：它们能被选择器选中，却不是真正可聚焦的落点
+        (el) => !el.hasAttribute("inert") && el.offsetParent !== null,
+      );
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];
