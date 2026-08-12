@@ -356,19 +356,25 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
             std::fs::create_dir_all(long_path(&dst))?;
             continue;
         }
-        if let Some(parent) = dst.parent() {
-            std::fs::create_dir_all(long_path(parent))?;
-        }
 
-        // 声明尺寸就超单条上限：直接拒，连写句柄都不开
+        // 声明尺寸就超单条上限：直接拒，连目录和写句柄都不建
         if entry.size() > MAX_ENTRY_BYTES {
             rep.rejected += 1;
             continue;
         }
-        // 加上这条会超累计上限：拒掉，但继续看后面的小条目
-        if total_out.saturating_add(entry.size()) > MAX_TOTAL_BYTES {
+        // 这条允许写出的实际字节上限：既不能超单条上限，也不能吃掉剩余的累计额度。
+        // 关键是用「实际写出的字节」限制累计——声明尺寸撒谎也没用，take 到 cap+1
+        // 就截断判炸弹。原来只按声明尺寸累加，多条撒谎的条目能突破累计上限。
+        let remaining = MAX_TOTAL_BYTES.saturating_sub(total_out);
+        if remaining == 0 {
             rep.rejected += 1;
             continue;
+        }
+        let cap = MAX_ENTRY_BYTES.min(remaining);
+
+        // 到这才建父目录、开写句柄——前面被拒的条目不会留下空目录
+        if let Some(parent) = dst.parent() {
+            std::fs::create_dir_all(long_path(parent))?;
         }
         let mut out = match std::fs::File::create(long_path(&dst)) {
             Ok(f) => f,
@@ -377,12 +383,12 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
                 continue;
             }
         };
-        // 流式写，不把整条读进内存。take 是第二道保险：哪怕 size 字段撒谎，
-        // 最多也只读到上限 +1 字节就判为炸弹。
-        let mut capped = entry.take(MAX_ENTRY_BYTES + 1);
+        // 流式写，不把整条读进内存。take 到 cap+1：哪怕 size 字段撒谎，
+        // 最多也只读到 cap+1 字节，超了就判炸弹。
+        let mut capped = entry.take(cap + 1);
         match std::io::copy(&mut capped, &mut out) {
-            Ok(n) if n > MAX_ENTRY_BYTES => {
-                // 实际解压超上限（声明尺寸撒谎的炸弹）——删半成品、判拒绝
+            Ok(n) if n > cap => {
+                // 实际解压超出（单条或累计上限）——声明尺寸撒谎的炸弹，删半成品、判拒绝
                 drop(out);
                 let _ = std::fs::remove_file(long_path(&dst));
                 rep.rejected += 1;
@@ -403,10 +409,12 @@ pub fn extract(src: &Path, password: Option<&str>) -> AppResult<ExtractReport> {
         }
     }
 
-    if rep.files == 0 && rep.unsupported > 0 {
-        return Err(AppError::new("err.archiveUnsupported"));
-    }
+    // 一个文件都没成功解出：把本次建的输出目录整棵删掉，不留空壳
     if rep.files == 0 {
+        let _ = std::fs::remove_dir_all(long_path(&base));
+        if rep.unsupported > 0 {
+            return Err(AppError::new("err.archiveUnsupported"));
+        }
         return Err(AppError::new("err.archiveEmpty"));
     }
     Ok(rep)
