@@ -193,12 +193,16 @@ installed copy of Word over COM was tried and abandoned: Word's PDF-reflow
 dialog hangs headless calls, and suppressing it means writing to your Word
 registry settings.
 
+**Cross-platform.** Windows only, on purpose. OCR uses the WinRT engine and PDF
+rendering uses `Windows.Data.Pdf` — neither has a cross-platform equivalent that
+stays this small.
+
 ## Size
 
 | | |
 |---|---|
-| Installer | **3.2 MB** |
-| Installed | 11.5 MB |
+| Installer | **4.1 MB** (`.exe`) · 5.6 MB (`.msi`) |
+| Installed | ~12 MB |
 | Memory in use | ~23 MB |
 
 For comparison: Stirling-PDF needs a Docker runtime, and an Electron build of
@@ -211,9 +215,6 @@ the same feature set starts around 150 MB.
   checksums so you can at least verify what you downloaded.
 - **Antivirus false positives are likely.** A small Rust binary that reads and writes files in bulk
   and captures the screen looks suspicious to heuristics.
-- **Windows only, on purpose.** OCR uses the WinRT engine and PDF rendering uses
-  `Windows.Data.Pdf`. Neither has a cross-platform equivalent that stays this
-  small.
 
 ## Build
 
@@ -297,14 +298,20 @@ iLovePDF、Smallpdf、TinyPNG 用户量巨大，但有四个共同问题：文�
    产出的是新东西不是替换，一概不计。点那个数字它会自己说清楚，包括「原图还在磁盘上，
    这是换掉原件能省多少，不是已经空出来的量」。
 
+## 刻意不做的
+
+**设置 PDF 密码**。lopdf 只能解密、不能加密。自己硬写 PDF 加密一旦有细节出错，
+会给你一份「自称受保护、实则形同虚设」的文件——比不做更糟。等接到经过验证的实现再上。
+
+**跨平台**。只做 Windows 是刻意的：OCR 用 WinRT 引擎、PDF 渲染用 `Windows.Data.Pdf`，
+这两样都没有能保持这么小体积的跨平台替代。
+
 ## 已知的粗糙之处
 
 - **没有代码签名**，SmartScreen 会提示「未知发布者」。证书每年几百美元。
   发布包会附 SHA-256 校验值，至少能确认下载的东西没被掉包。
 - **国内杀软大概率误报**。小体积 Rust 程序 + 批量文件操作 + 全局热键，
   在启发式检测眼里就是可疑组合。
-- **只做 Windows**，这是刻意的。OCR 用 WinRT 引擎，PDF 渲染用 `Windows.Data.Pdf`，
-  跨平台方案都做不到这个体积。
 
 ## 授权
 
