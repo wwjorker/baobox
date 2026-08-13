@@ -6,11 +6,13 @@
 
 ![Baobox home — drop a file in and it routes to the right tool](docs/screenshots/home.png)
 
-> ## 🚧 Preview — 60 of 61 tools work
+> ## 60 of 61 tools work · [**Download v0.1.0**](https://github.com/wwjorker/baobox/releases/latest)
 >
-> No release binary yet; build from source with the steps below. Everything
-> marked ✅ has been run against real files and measured. Anything else says so
-> inside the app rather than pretending to work.
+> Grab `Baobox_0.1.0_x64-setup.exe` and double-click to install (Windows 10/11).
+> Verify it against `SHA256SUMS.txt`; being unsigned, SmartScreen will warn
+> "unknown publisher". Everything marked ✅ has been run against real files and
+> measured; anything else says so inside the app rather than pretending to work.
+> Prefer to build it yourself? See [Build](#build) below.
 
 ---
 
@@ -236,10 +238,11 @@ because it is AGPL.
 
 **一个 Windows 本地文件工具箱。不上传、无限制、不联网。**
 
-> ## 🚧 预览版 —— 61 个工具中 60 个可用
+> ## 61 个工具中 60 个可用 · [**下载 v0.1.0**](https://github.com/wwjorker/baobox/releases/latest)
 >
-> 暂无预编译版本，请按下方步骤自行构建。标 ✅ 的都拿真实文件跑过并留有实测数据；
-> 其余的在软件里会明说自己还没做好，不会假装能用。
+> 下 `Baobox_0.1.0_x64-setup.exe` 双击安装（Windows 10/11）。可用 `SHA256SUMS.txt`
+> 核对完整性；未签名，SmartScreen 会提示"未知发布者"。标 ✅ 的都拿真实文件跑过并有
+> 实测数据；其余的软件里会明说，不假装能用。想自己构建见下方 [Build](#build)。
 
 ## 为什么做这个
 
