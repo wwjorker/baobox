@@ -51,6 +51,7 @@ export default {
     pickTitle: "拖文件进来，或点这里选",
     savedSub: "累计帮你压掉的体积 · 点开看口径",
     noFav: "点工具卡片右上角的星，把常用钉在这儿，下次一步直达。",
+    favSlot: "钉个常用",
     discover: "试试看 · 你可能还没用过",
     tipTag: "小贴士",
     tip1: "截图取字有全局热键 Ctrl+Shift+S，在别的软件里也能随手唤起。",

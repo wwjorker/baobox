@@ -115,7 +115,14 @@ export function Home({
           ))}
         </div>
       ) : (
-        <p className="home__favhint">{t("home.noFav")}</p>
+        <>
+          <div className="favslots">
+            <div className="favslot"><div className="favslot__star">☆</div><div className="favslot__t">{t("home.favSlot")}</div></div>
+            <div className="favslot"><div className="favslot__star">☆</div><div className="favslot__t">{t("home.favSlot")}</div></div>
+            <div className="favslot"><div className="favslot__star">☆</div><div className="favslot__t">{t("home.favSlot")}</div></div>
+          </div>
+          <p className="home__favhint">{t("home.noFav")}</p>
+        </>
       )}
 
       {recent.length > 0 && (
@@ -128,7 +135,23 @@ export function Home({
       {discover.length > 0 && (
         <>
           <div className="grouplabel is-quiet">{t("home.discover")}</div>
-          <div className="recentstrip">{discover.map((tl) => chip(tl.id))}</div>
+          <div className="disc">
+            {discover.slice(0, 3).map((tl) => (
+              <button
+                key={tl.id}
+                className={`dcard dcard--${pillarOf(tl.id)}`}
+                onClick={() => onOpenTool(tl.id)}
+              >
+                <span className="dcard__h">
+                  <span className="dcard__ico">
+                    <ToolIcon id={tl.id} />
+                  </span>
+                  {t(`tool.${tl.id}.name` as never)}
+                </span>
+                <span className="dcard__d">{t(`tool.${tl.id}.desc` as never)}</span>
+              </button>
+            ))}
+          </div>
         </>
       )}
 

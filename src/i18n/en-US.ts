@@ -53,6 +53,7 @@ const enUS: typeof zhCN = {
     pickTitle: "Drop files here, or click to choose",
     savedSub: "Total size squeezed out over time · click for details",
     noFav: "Tap the star on a tool card to pin your regulars here for one-tap access.",
+    favSlot: "Pin a favourite",
     discover: "Try these · you may not have used them",
     tipTag: "Tip",
     tip1: "Screen OCR has a global hotkey, Ctrl+Shift+S — grab text from any app.",
