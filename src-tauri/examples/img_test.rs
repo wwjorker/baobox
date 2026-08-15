@@ -20,9 +20,9 @@ fn sha_of(p: &Path) -> u64 {
 }
 
 fn main() {
-    let dir = std::env::args().nth(1).unwrap_or_else(|| {
-        r"C:\Users\wty\AppData\Local\Temp\claude\f--AI--\aba2743b-ab4b-4ea7-a33a-b47ab2ed99fa\scratchpad\imgtest".into()
-    });
+    let dir = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| r"C:\baobox-samples\imgtest".into());
     let targets_kb = [500u32, 200, 100];
 
     println!("======== 压到指定体积 · 实测 ========\n");

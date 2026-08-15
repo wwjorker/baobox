@@ -35,9 +35,9 @@ fn spike_ocr() {
     }
     println!();
 
-    let path = std::env::args().nth(1).unwrap_or_else(|| {
-        r"C:\Users\wty\AppData\Local\Temp\claude\f--AI--\aba2743b-ab4b-4ea7-a33a-b47ab2ed99fa\scratchpad\ocr_test.png".into()
-    });
+    let path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| r"C:\baobox-samples\ocr_test.png".into());
 
     let run = || -> windows::core::Result<String> {
         let file = StorageFile::GetFileFromPathAsync(&HSTRING::from(path.as_str()))?.get()?;

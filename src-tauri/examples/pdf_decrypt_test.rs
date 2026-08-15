@@ -20,9 +20,9 @@ fn stage(src: &Path, sandbox: &Path) -> Option<PathBuf> {
 }
 
 fn main() {
-    let list = std::env::args().nth(1).unwrap_or_else(|| {
-        r"C:\Users\wty\AppData\Local\Temp\claude\f--AI--\aba2743b-ab4b-4ea7-a33a-b47ab2ed99fa\scratchpad\pdf_list_real.txt".into()
-    });
+    let list = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| r"C:\baobox-samples\pdf_list_real.txt".into());
 
     // 先把加密的挑出来
     let mut encrypted: Vec<(PathBuf, usize)> = Vec::new();

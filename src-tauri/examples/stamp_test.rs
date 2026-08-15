@@ -14,9 +14,11 @@ use lopdf::{Document, Object};
 use std::path::PathBuf;
 
 fn main() {
-    let dir = PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| {
-        r"C:\Users\wty\AppData\Local\Temp\claude\f--AI--\aba2743b-ab4b-4ea7-a33a-b47ab2ed99fa\scratchpad\pdftest".into()
-    }));
+    let dir = PathBuf::from(
+        std::env::args()
+            .nth(1)
+            .unwrap_or_else(|| r"C:\baobox-samples\pdftest".into()),
+    );
     let sandbox = std::env::temp_dir().join("baobox_stamp_test");
     let _ = std::fs::remove_dir_all(&sandbox);
     std::fs::create_dir_all(&sandbox).unwrap();

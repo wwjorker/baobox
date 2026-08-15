@@ -14,9 +14,11 @@ fn pages_of(p: &Path) -> Result<usize, String> {
 }
 
 fn main() {
-    let dir = PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| {
-        r"C:\Users\wty\AppData\Local\Temp\claude\f--AI--\aba2743b-ab4b-4ea7-a33a-b47ab2ed99fa\scratchpad\pdftest".into()
-    }));
+    let dir = PathBuf::from(
+        std::env::args()
+            .nth(1)
+            .unwrap_or_else(|| r"C:\baobox-samples\pdftest".into()),
+    );
 
     let mut srcs: Vec<PathBuf> = std::fs::read_dir(&dir)
         .expect("测试目录不存在")
